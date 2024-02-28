@@ -20,8 +20,6 @@ ban_list:
       line:
         startswith: pdftitle={A template for the arxiv style}
 
-  # It has the example_paper.tex
-  # 2402.14601v1, 2402.14688v1
   - description: Submission and Formatting Instructions for ICML 2024
     condition:
       filename:
