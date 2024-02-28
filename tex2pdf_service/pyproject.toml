@@ -3,6 +3,9 @@ name = "tex2pdf"
 version = "0.1.0"
 description = "Compiling TeX to PDF"
 authors = ["Naoyuki Tai <ntai@arxiv.org>"]
+packages = [
+    { include = "tex2pdf"}
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -20,7 +23,6 @@ python-multipart = "^0.0.6"
 pytest = "^7.4.3"
 pylint = "^3.0.2"
 mypy = "^1.8.0"
-types-requests = "^2.31.0.20240125"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
