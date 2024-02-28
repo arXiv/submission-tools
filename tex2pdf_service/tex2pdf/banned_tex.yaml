@@ -1,10 +1,4 @@
 ban_list:
-  # This is apparently a writing sample included in acm conf paper templates.
-  # This "looks like" the real tex as this is a writing sample.
-  # This should not be in the submission to begin with.
-  # 2310.00091v1
-  # geez 2310.16452v2 contains this...
-  # So switching to use the title which is in the template
   - description: ACM sample
     condition:
       filename:
