@@ -5,123 +5,67 @@ pages:
   image_digests: []
 - text_digest: 437abea16def9af812a643d69e73edb4446a1723
   image_digests:
-  - - 107
-    - 131
-    - 1722
-    - 1098
+  - [1722, 1098]
 - text_digest: 01e9494814d701da5583d2dfa083c7493692fbb2
   image_digests: []
 - text_digest: f81033a97a5b4e16c4263a2a7d32f2fa2cc4438a
   image_digests:
-  - - 136
-    - 141
-    - 1978
-    - 1090
+  - [1978, 1090]
 - text_digest: f93fa1e7c66401f6459ce29d8f3297789a33777e
   image_digests:
-  - - 142
-    - 148
-    - 1988
-    - 1088
+  - [1988, 1088]
 - text_digest: 6e1a4a01aafcc24e41b49bfc79170a703d5e9cc6
   image_digests:
-  - - 143
-    - 155
-    - 1990
-    - 1084
-  - - 149
-    - 156
-    - 1982
-    - 1092
+  - [1990, 1084]
+  - [1982, 1092]
 - text_digest: 8c33a5efbe66a6305f60b97cd39a929a6c5e6181
   image_digests:
-  - - 150
-    - 163
-    - 1988
-    - 1096
-  - - 157
-    - 164
-    - 1990
-    - 1094
+  - [1988, 1096]
+  - [1990, 1094]
 - text_digest: 07f338cfc84014f75b6193541623c468aa021ff6
   image_digests:
-  - - 165
-    - 170
-    - 1164
-    - 604
+  - [1164, 604]
 - text_digest: f6b78600dbde14470f14731ea2dd8a5f44d828df
   image_digests:
-  - - 172
-    - 178
-    - 1166
-    - 604
-  - - 171
-    - 177
-    - 1166
-    - 604
+  - [1166, 604]
+  - [1166, 604]
 - text_digest: cbb1652f8965fcb165dfda8944a0956996be6877
   image_digests:
-  - - 179
-    - 185
-    - 1166
+  - - 1166
     - 604
 - text_digest: f25514280376d248e9ce1c354a8c8c8df6db5c2a
   image_digests:
-  - - 180
-    - 193
-    - 1164
+  - - 1164
     - 604
 - text_digest: ad552e6dc057d1d825bf49df79d6b98eba846ebe
   image_digests:
-  - - 187
-    - 205
-    - 432
+  - - 432
     - 288
-  - - 188
-    - 206
-    - 432
+  - - 432
     - 288
-  - - 194
-    - 207
-    - 432
+  - - 432
     - 288
-  - - 195
-    - 208
-    - 432
+  - - 432
     - 288
-  - - 196
-    - 209
-    - 432
+  - - 432
     - 288
-  - - 197
-    - 210
-    - 432
+  - - 432
     - 288
-  - - 198
-    - 211
-    - 432
+  - - 432
     - 288
 - text_digest: 111632da31421e09d754251234fb715e052be0c5
   image_digests:
-  - - 199
-    - 219
-    - 432
+  - - 432
     - 288
-  - - 200
-    - 220
-    - 432
+  - - 432
     - 288
 - text_digest: a1f847808537781eaa882bb54c677f22f9beb324
   image_digests:
-  - - 221
-    - 226
-    - 4592
+  - - 4592
     - 2250
 - text_digest: 8a26068e9562e38e0e56de86d7d9f736de2114d5
   image_digests:
-  - - 227
-    - 232
-    - 566
+  - - 566
     - 381
 - text_digest: 53232dc00e8fa2c70af608858ad570dc4a3133f3
   image_digests: []

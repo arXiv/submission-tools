@@ -1,0 +1,71 @@
+ban_list:
+  # This is apparently a writing sample included in acm conf paper templates.
+  # This "looks like" the real tex as this is a writing sample.
+  # This should not be in the submission to begin with.
+  # 2310.00091v1
+  # geez 2310.16452v2 contains this...
+  # So switching to use the title which is in the template
+  - description: ACM sample
+    condition:
+      filename:
+        startswith: sample-
+      line:
+        startswith: \title{The Name of the Title is Hope}
+
+  - description: Guide to Using SIAM's LaTeX
+    condition:
+      filename:
+        equals: docsimart.tex
+      line:
+        startswith: \title{Guide to Using SIAM's \LaTeX\ Style\thanks{Submitted to the editors DATE.
+
+  - description: Half baked TeX source
+    condition:
+      filename:
+        equals: arxiv-template.tex
+      line:
+        startswith: pdftitle={A template for the arxiv style}
+
+  # It has the example_paper.tex
+  # 2402.14601v1, 2402.14688v1
+  - description: Submission and Formatting Instructions for ICML 2024
+    condition:
+      filename:
+        equals: example_paper.tex
+      line:
+        startswith: \icmltitlerunning{Submission and Formatting Instructions for ICML 2024}
+
+  - description: Responsible NLP research checklist version 0.1
+    condition:
+      filename:
+        equals: responsibleNLPresearch.tex
+      line:
+        startswith: \title{Responsible NLP Research Checklist
+
+  - description: check list, not paper
+    condition:
+      filename:
+        equals: responsible_checklist.tex
+      line:
+        startswith: \title{Responsible CheckList}
+
+  - description: This is an example SIAM \LaTeX\ article. This can be used as a template for new articles.
+    condition:
+      filename:
+        equals: ex_article.tex
+      line:
+        startswith: This is an example SIAM \LaTeX\ article. This can be used as a
+
+  - description: This is an example SIAM \LaTeX\ article. This can be used as a template for new articles.
+    condition:
+      filename:
+        equals: ex_supplement.tex
+      line:
+        contains: "pdftitle={Supplementary Materials: An Example Article},"
+
+  - description: Guide to Using SIAM's LaTeX Style
+    condition:
+      filename:
+        equals: docsiamart.tex
+      line:
+        startswith: \title{Guide to Using SIAM's \LaTeX\ Style\thanks{Submitted to the editors DATE.

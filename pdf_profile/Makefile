@@ -12,13 +12,10 @@ venv:
 venv/bin/poetry: venv
 	. venv/bin/activate && pip install poetry
 
-venv/lib/python3.10/site-packages/fastapi: venv/bin/poetry
-	. venv/bin/activate && poetry install
-
 #-#
 #-# Command: bootstrap
 #-#   show this message
-bootstrap: venv/lib/python3.10/site-packages/fastapi
+bootstrap: venv/bin/poetry
 
 #-#
 #-# Command: help

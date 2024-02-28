@@ -1,25 +1,26 @@
 [tool.poetry]
-name = "pdf_profile"
+name = "tex2pdf"
 version = "0.1.0"
-description = "PDF profiler tool"
+description = "Compiling TeX to PDF"
 authors = ["Naoyuki Tai <ntai@arxiv.org>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+fastapi = "^0.104.1"
+uvicorn = {extras = ["standard"], version = "^0.23.2"}
+arxiv-base = {git = "https://github.com/arXiv/arxiv-base.git", rev = "1.0.1"}
 pikepdf = "^8.7.1"
 reportlab = "^4.0.7"
+python-json-logger = "^2.0.7"
 ruamel-yaml = "^0.18.5"
 pillow = "^10.2.0"
-pymupdf = "^1.23.25"
-pdf2image = "^1.17.0"
-click = "^8.1.7"
-dictdiffer = "^0.9.0"
-levenshtein = "^0.25.0"
+python-multipart = "^0.0.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pylint = "^3.0.2"
 mypy = "^1.8.0"
+types-requests = "^2.31.0.20240125"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
