@@ -36,7 +36,7 @@ help:
 #-#
 #-# Command: app.docker
 #-#   builds the applience docker image
-app.docker: bootstrap
+app.docker:
 	@if [ -n "$$INSIDE_EMACS" ]; then \
 	  echo "Detected Emacs shell mode, stopping."; \
 	  exit 1; \
