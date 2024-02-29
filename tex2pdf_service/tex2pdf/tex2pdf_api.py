@@ -90,7 +90,7 @@ async def convert_pdf(incoming: UploadFile,
     get a tarball, and convert to PDF
     """
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
-    log_extra = {"filename": filename}
+    log_extra = {"source_filename": filename}
 
     with tempfile.TemporaryDirectory() as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
@@ -102,11 +102,11 @@ async def convert_pdf(incoming: UploadFile,
                 tag = stem
                 continue
             break
+        timeout_secs = float(MAX_TIME_BUDGET)
         if timeout is not None:
             try:
                 timeout_secs = float(timeout)
             except ValueError:
-                timeout_secs = float(MAX_TIME_BUDGET)
                 pass
             pass
         driver = ConverterDriver(tempdir, filename, tag=tag, water=watermark_text,

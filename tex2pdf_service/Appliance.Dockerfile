@@ -32,19 +32,18 @@ RUN python -m venv ./venv
 RUN . venv/bin/activate && \
     pip install --upgrade pip && \
     pip install poetry lockfile && \
-    venv/bin/poetry install
+    venv/bin/poetry install ; exit 0
 RUN mkdir -p texlive/2023
 RUN tlmgr info --json --verify-repo=none > texlive/2023/tlmgr-info.json; exit 0
 COPY app-logging.conf .
 #
 RUN tlmgr update --self; exit 0
-#RUN tlmgr update --all; exit 0
+# RUN tlmgr update --all; exit 0
 RUN tlmgr update minted; exit 0
 RUN tlmgr repository add https://mirror.ctan.org/systems/texlive/tlcontrib tlcontrib; exit 0
 RUN tlmgr pinning add tlcontrib "*"; exit 0
 COPY texlive/2023/tex-packages.txt ./texlive/2023/tex-packages.txt
-#RUN tlmgr install $(cat texlive/2023/tex-packages.txt); exit 0
-#RUN tlmgr restore hyperxmp; exit 0
+RUN tlmgr install $(cat texlive/2023/tex-packages.txt); exit 0
 RUN mktexlsr; exit 0
 COPY tex2pdf/ ./tex2pdf/
 ENV TEXMFHOME /usr/local/texlive/2023

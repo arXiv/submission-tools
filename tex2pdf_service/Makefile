@@ -63,5 +63,5 @@ app.stop:
 #-#
 #-# Command: sh
 #-#   runs a bash shell in the container to look inside of it
-app.sh: bootstrap app.stop
-	${APP_DOCKER_RUN}  -v /home/ntai/Downloads:/home/worker/Downloads -w /home/worker -it ${tag} /bin/bash
+app.sh: app.stop
+	${APP_DOCKER_RUN}  -v ${HOME}/Downloads:/home/worker/Downloads -w /home/worker -it ${app_tag} /bin/bash
