@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "arxiv-tex2pdf"
+name = "tex2pdf"
 version = "0.1.0"
 description = "Compiling TeX to PDF"
 authors = ["arxiv.org"]
