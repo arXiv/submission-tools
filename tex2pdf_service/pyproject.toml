@@ -1,8 +1,11 @@
 [tool.poetry]
-name = "tex2pdf"
+name = "arxiv-tex2pdf"
 version = "0.1.0"
 description = "Compiling TeX to PDF"
 authors = ["arxiv.org"]
+packages = [
+    { include = "tex2pdf" }
+]
 include = ["LICENSE", "README.md"]
 
 [tool.poetry.dependencies]
