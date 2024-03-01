@@ -6,44 +6,44 @@ arXiv's next generation TeX compilation based on TexLive Docker container.
 
 ### Prerequisite
 
-* docker
-* make
+* Docker
+* Make
 
-`make app.docker` builds the docker image.
+`make app.docker` builds the Docker image.
 
 ## How to run Tex-to-PDF service
 
-`make app.run` runs the docker image. 
-The HTTP port used for the doker is 6301, which is mentioned in Makefile.
-Once the docker starts, open the web browser with 
-http://localhost:6301/docs
-.
+`make app.run` runs the Docker image. 
+The HTTP port used for the Docker is 6301, which is mentioned in Makefile.
+Once the Docker starts, open the web browser with 
+http://localhost:6301/docs.
 
 ## How to compile your submission
 
 First, you need create a compressed TAR archive file with your TeX sources 
-just as you'd prepare for the arXiv submission.
+just as you would prepare for an arXiv submission.
 
 From the browser, navigate to 
 http://localhost:6301/docs#/default/convert_pdf_convert__post
 
-and click "Try it out"
+Click "Try it out"
 
-Give the submission archive file to "incoming" by using Choose File. Hit Execute button.
+Select "Choose File" to upload the submission archive file to "incoming".
+Click "Execute"
 
-When TeX-to-PDF finishes, it returns a compressed tar archive file, different from one you 
-uploaded. Please open the archive file, and it returns the "outcome" file in the top
-level directory, and "out" directory that contains the compiled PDF file, 
-TeX command log file and other artifacts created by the commands used. 
+When TeX-to-PDF finishes, it returns a compressed TAR archive file, different from one you 
+uploaded. Open the archive file. The top level directory it returns the "outcome" file and the
+"out" directory contains the compiled PDF file, TeX command log file,
+and other artifacts created by the commands used.
 
 The PDF file in the "out" directory is the same name as the archive file you 
 uploaded. For example, if the submission archive file is "my-paper.tar.gz",
-"out" directory should contains "my-paper.pdf", and outcome file is named
+the "out" directory should contain "my-paper.pdf", and the outcome file is named
 "outcome-my-paper.json".
 
 ## outcome JSON file
 
-The format and contents of outcome file is still in development and may change
+The format and contents of the outcome file are still in development and may change
 over time. When your PDF file does not look right, pay attention to "tex_files".
 
 Most often, the issue is the order and selection of TeX files in the top-level
@@ -66,29 +66,29 @@ command would have
 ```
 
 The input and output files are listed for the each run, as well as the
-log file from the tex command. This is intended for examining the each step of 
-running TeX compilation.
+log file from the tex command. This is intended to examine each step when
+running the TeX compilation.
 
 ## Development and debugging
 
-The development requires "unix-like" environment. It would be possible on most Linux, *BSD Unix 
+The development requires "unix-like" environment and would be possible to execute on most Linux, *BSD Unix 
 including MacOS(tm), and Windows(tm) WSL. The primary development is done on Linux so far.
 
     make bootstap
 
-sets up the virtual env "venv" and installs Python dependencies.
+Sets up the virtual env "venv" and installs Python dependencies.
 
-The software is primarily designed to run in a Docker image but it would be difficult to 
-use the debugger. To support the development, the commands of TexLive docker image container
-can be used via a wrapper shell script that passes/propagates `WORKDIR` variable to it.
+The software is primarily designed to run in a Docker image but it is difficult to 
+use the debugger. To support the development, the commands of TexLive Docker image container
+can be used via a wrapper shell script that passes/propagates the `WORKDIR` variable to it.
 
 The companion shell script is `bin/docker_pdflatex.sh` which must exist at 
-`/usr/local/bin/docker_pdflatex.sh`. If you change the docker image name, you may have to change
-the docker image name in it. 
+`/usr/local/bin/docker_pdflatex.sh`. If you change the Docker image name, you may have to change
+the Docker image name in it. 
 
     sudo install -m 755 bin/docker_pdflatex.sh /usr/local/bin
 
-In other word, you first must create the Docker image on your local machin in order to run the 
+In other words, you first must create the Docker image on your local machine in order to run the 
 python app in debugger. 
 
 With it, the execution requires:
