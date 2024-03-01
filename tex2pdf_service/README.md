@@ -68,3 +68,30 @@ command would have
 The input and output files are listed for the each run, as well as the
 log file from the tex command. This is intended for examining the each step of 
 running TeX compilation.
+
+## Development and debugging
+
+The development requires "unix-like" environment. It would be possible on most Linux, *BSD Unix 
+including MacOS(tm), and Windows(tm) WSL. The primary development is done on Linux so far.
+
+    make bootstap
+
+sets up the virtual env "venv" and installs Python dependencies.
+
+The software is primarily designed to run in a Docker image but it would be difficult to 
+use the debugger. To support the development, the commands of TexLive docker image container
+can be used via a wrapper shell script that passes/propagates `WORKDIR` variable to it.
+
+The companion shell script is `bin/docker_pdflatex.sh` which must exist at 
+`/usr/local/bin/docker_pdflatex.sh`. If you change the docker image name, you may have to change
+the docker image name in it. 
+
+    sudo install -m 755 bin/docker_pdflatex.sh /usr/local/bin
+
+In other word, you first must create the Docker image on your local machin in order to run the 
+python app in debugger. 
+
+With it, the execution requires:
+
+    LOCAL_EXEC=t uvicorn --host 0.0.0.0 --port=<LOCALHOST_PORT> tex2pdf.tex2pdf_api:app
+
