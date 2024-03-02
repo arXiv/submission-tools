@@ -29,15 +29,12 @@ def cli():
 def compile(submissions, service, score):
 
     def submit_tarball(tarball: str):
-        sdb = getattr(thread_local, "sdb", None)
-        if sdb is None:
-            sdb = score_db(score)
-            setattr(thread_local, "sdb", sdb)
-
-        logging.info("File: %s", os.path.basename(tarball))
         parent_dir, filename = os.path.split(tarball)
         os.makedirs(os.path.join(parent_dir, "outcomes"), exist_ok=True)
         outcome_file = os.path.join(parent_dir, "outcomes", "outcome-" + os.path.splitext(filename)[0] + ".tar.gz")
+        if os.path.exists(outcome_file):
+            return
+        logging.info("File: %s", os.path.basename(tarball))
         meta = {}
         status_code = None
 
@@ -67,7 +64,6 @@ def compile(submissions, service, score):
                 break
 
         success = meta.get("status") == "success"
-        sdb.execute("insert into score (source, outcome, status, success) values (?, ?, ?, ?) on conflict(source) do update set outcome=excluded.outcome, status=excluded.status, success=excluded.success", (tarball, json.dumps(meta, indent=2), status_code, success))
         logging.log(logging.INFO if success else logging.WARNING,
                     "submit: %s (%s) %s", os.path.basename(tarball), str(status_code), success)
 
