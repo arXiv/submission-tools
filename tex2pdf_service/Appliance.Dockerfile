@@ -35,7 +35,8 @@ RUN . venv/bin/activate && \
     venv/bin/poetry install ; exit 0
 RUN mkdir -p texlive/2023
 RUN tlmgr info --json --verify-repo=none > texlive/2023/tlmgr-info.json; exit 0
-COPY app-logging.conf .
+#COPY app-logging.conf .
+COPY app-logging.json .
 #
 RUN tlmgr update --self; exit 0
 # RUN tlmgr update --all; exit 0
