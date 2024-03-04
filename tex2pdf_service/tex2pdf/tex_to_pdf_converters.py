@@ -302,7 +302,7 @@ bad_for_latex_packages = {pname: True for pname in ["mmap"]}
 # as a result, the list has become empty.
 # bad_for_pdflatex_file_exts = [".ps", ".eps]
 
-bad_for_pdftex_file_exts = [".ps", ".eps]
+bad_for_pdftex_file_exts = [".ps", ".eps"]
 
 
 rerun_needle = "Rerun to get cross-references right."

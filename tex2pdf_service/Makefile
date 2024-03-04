@@ -2,7 +2,12 @@ app_tag := arxiv-tex2pdf-app
 app_name := tex2pdf_app
 app_port := 6301
 dockerport := 8080
-APP_DOCKER_RUN := docker run --cpus 2 --rm -p ${app_port}:${dockerport} -e PORT=${dockerport} -e WORKERS=16 --name ${app_name} --security-opt="no-new-privileges=true" 
+
+TEX2PDF_CPUS := $(shell echo $${TEX2PDF_CPUS:-4})
+TEX2PDF_WORKERS := $(shell echo $${TEX2PDF_WORKERS:-8})
+TEX2PDF_DOCKER_PLATFORM := $(shell echo $${TEX2PDF_DOCKER_PLATFORM:-linux/amd64})
+
+APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -p ${app_port}:${dockerport} -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true" 
 
 .PHONY: HELLO app.docker app.run app.stop bootstrap
 
@@ -45,7 +50,7 @@ app.docker:
 	@echo "dockerport: ${app_port}"
 	@echo "tag: ${appl_tag}"
 	@echo "name: ${app_name}"
-	docker buildx build -f ./Appliance.Dockerfile -t ${app_tag} .
+	docker buildx build -f ./Appliance.Dockerfile  --platform=${TEX2PDF_DOCKER_PLATFORM} -t ${app_tag} .
 
 #-#
 #-# Command: app.run
