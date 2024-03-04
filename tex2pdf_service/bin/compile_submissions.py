@@ -33,6 +33,18 @@ def tarball_to_outcome_path(tarball: str) -> str:
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
+def get_outcome_meta(outcome_file: str) -> dict:
+    """Open a compressed outcome tar archive and get the metadata"""
+    with tarfile.open(outcome_file, "r:gz") as outcome:
+        meta_file = [name for name in outcome.getnames() if name.startswith("outcome-") and name.endswith(".json")]
+        if meta_file:
+            # Extract the specified file
+            meta_contents = outcome.extractfile(meta_file[0])
+            if meta_contents:
+                return json.load(meta_contents)
+    return {}
+
+
 @cli.command()
 @click.argument('submissions', nargs=1)
 @click.option('--service',  default="http://localhost:6301/convert/")
@@ -53,7 +65,7 @@ def compile(submissions: str, service: str, score: str) -> None:
             uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
             while True:
                 try:
-                    res = requests.post(service, files=uploading, timeout=300, allow_redirects=False)
+                    res = requests.post(service + "?timeout=300", files=uploading, timeout=600, allow_redirects=False)
                     status_code = res.status_code
                     if status_code == 504:
                         logging.warning("Got 504 for %s", service)
@@ -64,15 +76,12 @@ def compile(submissions: str, service: str, score: str) -> None:
                         if res.content:
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            with tarfile.open(outcome_file, "r:gz") as tar:
-                                meta_file = [name for name in tar.getnames() if name.startswith("outcome-") and name.endswith(".json")]
-                                if meta_file:
-                                    # Extract the specified file
-                                    meta_contents = tar.extractfile(meta_file[0])
-                                    if meta_contents:
-                                        meta = json.load(meta_contents)
+                            meta = get_outcome_meta(outcome_file)
+                except TimeoutError:
+                    logging.warning("%s: Connection timed out", tarball)
+
                 except Exception as exc:
-                    logging.warning("%s: %s", service, str(exc))
+                    logging.warning("%s: %s", tarball, str(exc))
                 break
 
         success = meta.get("status") == "success"
@@ -84,13 +93,15 @@ def compile(submissions: str, service: str, score: str) -> None:
     logging.info("Got %d tarballs", len(tarballs))
     with ThreadPool(processes=int(16)) as pool:
         pool.map(submit_tarball, tarballs)
+    logging.info("Finished")
 
 
 @cli.command("harvest")
 @click.argument('submissions', nargs=1)
 @click.option('--score',  default="score.db", help="Score card db path")
 @click.option('--update',  default=False, help="Update scores")
-def register_outcomes(submissions: str, score: str, update: bool) -> None:
+@click.option('--purge-failed',  default=False, help="Purge failed outcomes")
+def register_outcomes(submissions: str, score: str, update: bool, purge_failed: bool) -> None:
     """Register the outcomes to a score card db"""
     submissions = os.path.expanduser(submissions)
     sdb = score_db(score)
@@ -106,36 +117,29 @@ def register_outcomes(submissions: str, score: str, update: bool) -> None:
     good = 0
     for tarball in tarballs:
         tarball_path = os.path.join(submissions, tarball)
+        if not update:
+            # If the success is already reported, no need to update
+            cursor = sdb.cursor()
+            cursor.execute("select success from score where source = ?", (tarball_path,))
+            row = cursor.fetchone()
+            cursor.close()
+            if row is not None:
+                success_in_db = row[0]
+                if success_in_db and not update:
+                    skipped += 1
+                    continue
+
         outcome_file = tarball_to_outcome_path(tarball_path)
-        meta = {"status": "fail"}
+        meta = {}
         pdf_file = None
         if os.path.exists(outcome_file):
             try:
-                with tarfile.open(outcome_file, "r:gz") as tar:
-                    meta_file = [name for name in tar.getnames() if
-                                 name.startswith("outcome-") and name.endswith(".json")]
-                    if meta_file:
-                        # Extract the specified file
-                        meta_contents = tar.extractfile(meta_file[0])
-                        if meta_contents:
-                            meta = json.load(meta_contents)
-                    pdf_file = meta.get("pdf_file")
-                    # if pdf_file:
-                        # tar_pdf_path = meta["out_directory"] + "/" + pdf_file
-                        # pdf_contents = tar.extractfile(tar_pdf_path)
-
+                meta = get_outcome_meta(outcome_file)
+                pdf_file = meta.get("pdf_file")
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
                 os.unlink(outcome_file)
         success = meta.get("status") == "success"
-        # If the success is already reported, no need to update
-        cursor = sdb.cursor()
-        cursor.execute("select count(*) from outcomes where source = ? and success", tarball_path)
-        count = cursor.fetchone()[0]
-        cursor.close()
-        if success and count > 0 and not update:
-            skipped += 1
-            continue
         # Upsert the result
         cursor = sdb.cursor()
         cursor.execute("begin")
@@ -145,7 +149,10 @@ def register_outcomes(submissions: str, score: str, update: bool) -> None:
         updated += 1
         if success:
             good += 1
-    logging.info("Total: %d, skipped: %d, updated: %d, good: %d, bad: %d", len(tarballs), skipped, updated, good, len(tarballs) - good)
+        elif purge_failed:
+            if os.path.exists(outcome_file):
+                os.unlink(outcome_file)
+    logging.info("Total: %d, skipped: %d, updated: %d, good: %d, bad: %d", len(tarballs), skipped, updated, good, len(tarballs) - skipped - good)
 
 
 if __name__ == '__main__':
