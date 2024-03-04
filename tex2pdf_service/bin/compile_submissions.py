@@ -18,7 +18,7 @@ thread_local = threading.local()
 def score_db(score_path: str) -> Connection:
     """Open scorecard database"""
     db = sqlite3.connect(score_path)
-    db.execute("create table if not exists score (source varcha primary key, outcome varchar, pdf varchar, status int, success bool)")
+    db.execute("create table if not exists score (source varcha primary key, outcome TEXT, pdf varchar, status int, success bool)")
     return db
 
 @click.group()
