@@ -5,10 +5,11 @@ GCP GenPdf service main file.
 import os
 import subprocess
 import tempfile
+import traceback
 import typing
 
 from fastapi import FastAPI, status as STATCODE, UploadFile, Query
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import StreamingResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
@@ -16,7 +17,7 @@ from pydantic import BaseModel
 from tex2pdf import MAX_TIME_BUDGET
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
 from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import save_stream, prep_tempdir
+from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
 from tex2pdf.fastapi_util import closer
 
 log_level = os.environ.get("LOGLEVEL", "INFO").upper()
@@ -79,29 +80,33 @@ def healthcheck() -> str:
          responses={
              STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}},
                                     "description": "Conversion result"},
-             STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message}
+             STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
+             STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+             STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
          })
 async def convert_pdf(incoming: UploadFile,
                       timeout: typing.Annotated[int | None,
                                                 Query(title="Time out",
                                                       description="Time out in seconds.")] = None,
-                      watermark_text: str | None = None) -> GzipResponse:
+                      watermark_text: str | None = None) -> Response:
     """
     get a tarball, and convert to PDF
     """
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
+    logger = get_logger()
+    logger.info("%s",incoming.filename)
+    tag = os.path.basename(filename)
+    while True:
+        [stem, ext] = os.path.splitext(tag)
+        if ext in [".gz", ".zip", ".tar"]:
+            tag = stem
+            continue
+        break
 
-    with tempfile.TemporaryDirectory() as tempdir:
+    with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
         await save_stream(in_dir, incoming, filename, log_extra)
-        tag = os.path.basename(filename)
-        while True:
-            [stem, ext] = os.path.splitext(tag)
-            if ext in [".gz", ".zip", ".tar"]:
-                tag = stem
-                continue
-            break
         timeout_secs = float(MAX_TIME_BUDGET)
         if timeout is not None:
             try:
@@ -110,8 +115,23 @@ async def convert_pdf(incoming: UploadFile,
                 pass
             pass
         driver = ConverterDriver(tempdir, filename, tag=tag, water=watermark_text,
-                                 max_time_budget=timeout_secs)
-        _pdf_file = driver.generate_pdf()
+                                     max_time_budget=timeout_secs)
+        try:
+            _pdf_file = driver.generate_pdf()
+        except RemovedSubmission:
+            logger.info("Archive is marked deleted.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "The source is marked deleted."})
+
+        except UnsupportedArchive:
+            logger.info("Archive is not supported")
+            return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                content={"message": "The archive is unsupported"})
+        except Exception as exc:
+            logger.error(f"Exception %s", str(exc), exc_info=True)
+            return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                                content={"message": traceback.format_exc()})
+
         more_files: typing.List[str] = []
         # if pdf_file:
         #     more_files.append(pdf_file)

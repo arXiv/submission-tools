@@ -124,6 +124,9 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
     round_1: typing.Set[str] = set()
 
     for filename in os.listdir(in_dir):
+        # Make sure it is a file
+        if not os.path.isfile(os.path.join(in_dir, filename)):
+            continue
         if test_file_extent(filename, TEX_FILE_EXTS):
             round_0.add(filename)
 
