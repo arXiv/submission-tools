@@ -1,5 +1,6 @@
 import os
 import time
+import typing
 from sqlite3 import Connection
 
 import click
@@ -18,7 +19,8 @@ thread_local = threading.local()
 def score_db(score_path: str) -> Connection:
     """Open scorecard database"""
     db = sqlite3.connect(score_path)
-    db.execute("create table if not exists score (source varcha primary key, outcome TEXT, pdf varchar, status int, success bool)")
+    db.execute("create table if not exists score (source varchar primary key, outcome TEXT, pdf varchar, status int, success bool)")
+    db.execute("create table if not exists touched (filename varchar primary key)")
     return db
 
 @click.group()
@@ -33,16 +35,25 @@ def tarball_to_outcome_path(tarball: str) -> str:
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
-def get_outcome_meta(outcome_file: str) -> dict:
+def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str]]:
     """Open a compressed outcome tar archive and get the metadata"""
+    meta = {}
+    files = []
     with tarfile.open(outcome_file, "r:gz") as outcome:
-        meta_file = [name for name in outcome.getnames() if name.startswith("outcome-") and name.endswith(".json")]
-        if meta_file:
-            # Extract the specified file
-            meta_contents = outcome.extractfile(meta_file[0])
-            if meta_contents:
-                return json.load(meta_contents)
-    return {}
+        for name in outcome.getnames():
+            if name.startswith("outcome-") and name.endswith(".json"):
+                meta_contents = outcome.extractfile(name)
+                if meta_contents:
+                    meta.update(json.load(meta_contents))
+            if name.endswith(".fls"):
+                files_fd = outcome.extractfile(name)
+                for files_line in files_fd.readlines():
+                    filename = files_line.decode("utf-8").strip()
+                    if filename.startswith("INPUT /usr/local/texlive/2023/texmf-arxiv"):
+                        files.append(filename.split()[1])
+                    elif filename.startswith("INPUT /usr/local/texlive/2023/texmf-local"):
+                        files.append(filename.split()[1])
+    return meta, files
 
 
 @cli.command()
@@ -76,7 +87,7 @@ def compile(submissions: str, service: str, score: str) -> None:
                         if res.content:
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            meta = get_outcome_meta(outcome_file)
+                            meta, lines = get_outcome_meta(outcome_file)
                 except TimeoutError:
                     logging.warning("%s: Connection timed out", tarball)
 
@@ -131,10 +142,11 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
 
         outcome_file = tarball_to_outcome_path(tarball_path)
         meta = {}
+        files = []
         pdf_file = None
         if os.path.exists(outcome_file):
             try:
-                meta = get_outcome_meta(outcome_file)
+                meta, files = get_outcome_meta(outcome_file)
                 pdf_file = meta.get("pdf_file")
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
@@ -146,6 +158,13 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         cursor.execute("insert into score (source, outcome, pdf, success) values (?, ?, ?, ?) on conflict(source) do update set outcome=excluded.outcome, pdf=excluded.pdf, success=excluded.success", (tarball_path, json.dumps(meta, indent=2), pdf_file, success))
         cursor.execute("commit")
         cursor.close()
+
+        cursor = sdb.cursor()
+        cursor.execute("begin")
+        cursor.executemany("insert or ignore into touched(filename) values (?) ", [(filename,) for filename in files])
+        cursor.execute("commit")
+        cursor.close()
+
         updated += 1
         if success:
             good += 1
@@ -154,6 +173,34 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
                 os.unlink(outcome_file)
     logging.info("Total: %d, skipped: %d, updated: %d, good: %d, bad: %d", len(tarballs), skipped, updated, good, len(tarballs) - skipped - good)
 
+
+def find_tex_errors(outcome):
+    arxiv_id = outcome.get("arxiv_id")
+    for converter in outcome.get("converters", []):
+        for run in converter.get("runs", []):
+            for tex_log in run.get("log", "").splitlines():
+                if tex_log.find("LaTeX Error: File") >= 0:
+                    print(f"{arxiv_id}; {tex_log}")
+
+
+@cli.command("extract-errors")
+@click.option('--score',  default="score.db", help="Score card db path")
+def extract_tex_errors(score):
+    sdb = score_db(score)
+    cursor = sdb.cursor()
+    try:
+        cursor.execute("SELECT outcome FROM score")
+        for row in cursor.fetchall():
+            # Parse the outcome column (assumed to be in JSON format) from the current row
+            outcome = json.loads(row[0])
+            find_tex_errors(outcome)
+    except sqlite3.Error as e:
+        logging.error(f"Database error: {e}")
+    except Exception as e:
+        logging.error(f"Exception in _query: {e}")
+
+    finally:
+        sdb.close()
 
 if __name__ == '__main__':
     cli()
