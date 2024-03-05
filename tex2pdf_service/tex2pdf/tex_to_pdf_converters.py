@@ -451,7 +451,7 @@ class LatexConverter(BaseDviConverter):
     def _latex_run(self, tag: str, tex_file: str, work_dir: str, in_dir: str, _out_dir: str) -> dict:
         stem = self.stem
         # breaks many packages... f"-output-directory=../{bod}"
-        args = ["/usr/bin/latex", "-interaction=batchmode", "-file-line-error"]
+        args = ["/usr/bin/latex", "-interaction=batchmode", "-file-line-error", "-recorder"]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -536,6 +536,7 @@ class PdfLatexConverter(BaseConverter):
         """Return the pdflatex command line arguments"""
         args = ["/usr/bin/pdflatex"] + [
             "-interaction=batchmode",
+            "-recorder",
             "-file-line-error"]
         # You need this sometimes, and harmful sometimes.
         if not self.pdfoutput_1_seen:
@@ -651,7 +652,7 @@ class PdfTexConverter(BaseConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
 
-        args = ["/usr/bin/pdftex", "-interaction=batchmode"]
+        args = ["/usr/bin/pdftex", "-interaction=batchmode", "-recorder"]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -711,7 +712,7 @@ class VanillaTexConverter(BaseDviConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
 
-        args = ["/usr/bin/tex", "-interaction=batchmode"]
+        args = ["/usr/bin/tex", "-interaction=batchmode", "-recorder"]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
