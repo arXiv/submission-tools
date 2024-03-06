@@ -1,6 +1,7 @@
 ams
 aop
 apjfonts
+axodraw4j
 biograph
 ecrc
 emulateapj
@@ -11,6 +12,7 @@ iopams
 iopart-num
 jheppub
 jinstpub
+mnras
 ol2
 opex3
 osajnl2
@@ -18,6 +20,8 @@ pst-hub
 pstricks
 pstricks-add
 setstack
+siam
+slashbox
 trackchanges
 undertilde
 vector
