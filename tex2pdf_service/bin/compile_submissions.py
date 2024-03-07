@@ -76,7 +76,7 @@ def compile(submissions: str, service: str, score: str) -> None:
             uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
             while True:
                 try:
-                    res = requests.post(service + "?timeout=300", files=uploading, timeout=600, allow_redirects=False)
+                    res = requests.post(service + "?timeout=100", files=uploading, timeout=600, allow_redirects=False)
                     status_code = res.status_code
                     if status_code == 504:
                         logging.warning("Got 504 for %s", service)

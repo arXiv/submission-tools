@@ -9,7 +9,7 @@ packages = [
 include = ["LICENSE", "README.md"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 fastapi = "^0.104.1"
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 arxiv-base = {git = "https://github.com/arXiv/arxiv-base.git", rev = "1.0.1"}
@@ -25,6 +25,7 @@ granian = "^1.1.1"
 pytest = "^7.4.3"
 pylint = "^3.0.2"
 mypy = "^1.8.0"
+click = "^8.1.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

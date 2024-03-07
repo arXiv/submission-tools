@@ -153,7 +153,8 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
                 round_1.add(tex_file)
 
             if stripped.startswith(r'\input'):
-                loser = find_tex_input("".join([ln.strip() for ln in lines[line_no:line_no+3]]))
+                # ln.strip()+" " - replace the \r or \n with space so that it delimits the \input.
+                loser = find_tex_input("".join([ln.strip()+" " for ln in lines[line_no:line_no+3]]))
                 if loser:
                     round_1.add(tex_file)  # I'm the winner!
                     [loser_stem, loser_ext] = os.path.splitext(loser)
@@ -332,19 +333,18 @@ def is_pdflatex_line(line: str)-> bool:
 
 
 _tex_input_1 = re.compile(r'\\input\{([^}]+)}')
-_tex_input_2 = re.compile(r'\\input\s+(.+)')
+_tex_input_2 = re.compile(r'\\input\s+([^\x00-\x1F\x7F/\s\r\n]+)')
 
 
-def find_tex_input(line: str) -> str | None:
+def find_tex_input(input_line: str) -> str | None:
     """Find a file name in a tex line"""
-    if line.find("\\input") < 0:
+    if input_line.find("\\input") < 0:
         return None
 
     for tex_input_re in [_tex_input_1, _tex_input_2]:
-        tex_input_match = tex_input_re.search(line)
+        tex_input_match = tex_input_re.search(input_line)
         if tex_input_match:
             return tex_input_match.group(1).strip()
-        pass
     return None
 
 
