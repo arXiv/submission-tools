@@ -39,44 +39,72 @@ bootstrap: venv/lib/python3.11/site-packages/fastapi
 help:
 	@awk '/^#-#/ { print substr($$0, 5)}' Makefile
 
-
 texlive/2023/texmf-arxiv/tex/latex/contrib/edpsciences/aa.cls:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/contrib/edpsciences/
 	cd texlive/2023/texmf-arxiv/tex/latex/contrib/edpsciences/ && curl -o macro-latex-aa.zip https://www.aanda.org/doc_journal/instructions/macro/aa/macro-latex-aa.zip
 	cd texlive/2023/texmf-arxiv/tex/latex/contrib/edpsciences/ && unzip macro-latex-aa.zip
 	rm -f texlive/2023/texmf-arxiv/tex/latex/contrib/edpsciences/macro-latex-aa.zip
 
-
 texlive/2023/texmf-arxiv/tex/latex/contrib/jhep/jheppub.sty:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/contrib/jhep/
-	curl -s -o texlive/2023/texmf-arxiv/tex/latex/contrib/jhep/jheppub.sty https://jhep.sissa.it/jhep/help/JHEP/TeXclass/DOCS/jheppub.sty
-
+	curl -L -s -o $@ https://jhep.sissa.it/jhep/help/JHEP/TeXclass/DOCS/jheppub.sty
 
 texlive/2023/texmf-arxiv/tex/latex/contrib/eptcs/eptcs.cls:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/contrib/eptcs/
-	curl -s -o texlive/2023/texmf-arxiv/tex/latex/contrib/eptcs/eptcs.cls https://raw.githubusercontent.com/EPTCS/style/main/eptcs.cls
+	curl -L -s -o @ https://raw.githubusercontent.com/EPTCS/style/main/eptcs.cls
 
 texlive/2023/texmf-arxiv/tex/latex/emulateapj/apjfonts.sty:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/emulateapj/
-	curl -s -o texlive/2023/texmf-arxiv/tex/latex/emulateapj/apjfonts.sty https://hea-www.harvard.edu/~alexey/emulateapj/apjfonts.sty
+	curl -L -s -o $@ https://hea-www.harvard.edu/~alexey/emulateapj/apjfonts.sty
 
 texlive/2023/texmf-arxiv/tex/latex/contrib/agu/agujournal2019.cls:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/contrib/agu/
-	curl -s -o texlive/2023/texmf-arxiv/tex/latex/contrib/agu/august-2022-latex-templates.zip https://www.agu.org/-/media/files/publications/august-2022-latex-templates.zip
+	curl -L -s -o texlive/2023/texmf-arxiv/tex/latex/contrib/agu/august-2022-latex-templates.zip https://www.agu.org/-/media/files/publications/august-2022-latex-templates.zip
 	cd texlive/2023/texmf-arxiv/tex/latex/contrib/agu/ && unzip august-2022-latex-templates.zip && mv ./August-2022-latex-templates/*.cls ./August-2022-latex-templates/*.sty ./ 
 	rm -fr texlive/2023/texmf-arxiv/tex/latex/contrib/agu/August-2022-latex-templates/ texlive/2023/texmf-arxiv/tex/latex/contrib/agu/august-2022-latex-templates.zip
 
-texlive/2023/texmf-local/diagrams.sty:
-	mkdir -p texlive/2023/texmf-local
-	curl -s -o texlive/2023/texmf-local/diagrams.sty https://www.paultaylor.eu/diagrams/diagrams.sty
+texlive/2023/texmf-local/tex/generic/misc/diagrams.sty:
+	mkdir -p texlive/2023/texmf-local/tex/generic/misc/
+	curl -L -s -o $@ https://www.paultaylor.eu/diagrams/diagrams.sty
+
+texlive/2023/texmf-arxiv/tex/latex/misc/slashbox.sty:
+	mkdir -p texlive/2023/texmf-arxiv/tex/latex/misc
+	curl -L -s -o $@ https://mirrors.ctan.org/macros/latex/contrib/slashbox/slashbox.sty
+
+texlive/2023/texmf-arxiv/tex/latex/misc/widetext.sty:
+	mkdir -p texlive/2023/texmf-arxiv/tex/latex/misc/
+	curl -L -s -o $@ https://git.physics.itmo.ru/k.ladutenko/Asymmetry-plasma/raw/master/widetext.sty
+
+texlive/2023/texmf-arxiv/tex/latex/misc/mn2e.cls:
+	mkdir -p texlive/2023/texmf-arxiv/tex/latex/misc/
+	curl -L -s -o $@ https://mirrors.ctan.org/macros/latex/contrib/mnras/LEGACY/mn2e.cls
+
+texlive/2023/texmf-arxiv/tex/latex/latex209/obsolete/contrib/misc/picins.sty:
+	mkdir -p texlive/2023/texmf-arxiv/tex/latex/latex209/obsolete/contrib/misc/
+	curl -L -s -o $@ https://mirrors.ctan.org/macros/latex209/contrib/picins/picins.sty
+
+texlive/2023/texmf-arxiv/tex/latex/contrib/sif/epl2/epl2.cls:
+	mkdir -p texlive/2023/texmf-arxiv/tex/latex/contrib/sif/
+	cd texlive/2023/texmf-arxiv/tex/latex/contrib/sif/ && curl -L -s -o epl2.zip https://www.sif.it/static/SIF/resources/public/files/epl2.zip && unzip epl2.zip epl2/epl2.cls
+	rm texlive/2023/texmf-arxiv/tex/latex/contrib/sif/epl2.zip
+
+texlive/2023/texmf-arxiv/tex/latex/misc/tmlr.sty:
+	mkdir -p texlive/2023/texmf-arxiv/tex/latex/misc/
+	curl -L -s -o $@ https://raw.githubusercontent.com/JmlrOrg/tmlr-style-file/main/tmlr.sty
 
 ADDITIONS := \
   texlive/2023/texmf-arxiv/tex/latex/contrib/eptcs/eptcs.cls \
   texlive/2023/texmf-arxiv/tex/latex/contrib/edpsciences/aa.cls \
   texlive/2023/texmf-arxiv/tex/latex/contrib/jhep/jheppub.sty \
   texlive/2023/texmf-arxiv/tex/latex/contrib/agu/agujournal2019.cls \
+  texlive/2023/texmf-arxiv/tex/latex/contrib/sif/epl2/epl2.cls \
   texlive/2023/texmf-arxiv/tex/latex/emulateapj/apjfonts.sty \
-  texlive/2023/texmf-local/diagrams.sty
+  texlive/2023/texmf-arxiv/tex/latex/misc/mn2e.cls \
+  texlive/2023/texmf-arxiv/tex/latex/misc/slashbox.sty \
+  texlive/2023/texmf-arxiv/tex/latex/misc/widetext.sty \
+  texlive/2023/texmf-arxiv/tex/latex/misc/tmlr.sty \
+  texlive/2023/texmf-arxiv/tex/latex/latex209/obsolete/contrib/misc/picins.sty \
+  texlive/2023/texmf-local/tex/generic/misc/diagrams.sty
 
 #-#
 #-# Command: app.docker
