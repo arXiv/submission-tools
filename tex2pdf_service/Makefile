@@ -51,7 +51,7 @@ texlive/2023/texmf-arxiv/tex/latex/contrib/jhep/jheppub.sty:
 
 texlive/2023/texmf-arxiv/tex/latex/contrib/eptcs/eptcs.cls:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/contrib/eptcs/
-	curl -L -s -o @ https://raw.githubusercontent.com/EPTCS/style/main/eptcs.cls
+	curl -L -s -o $@ https://raw.githubusercontent.com/EPTCS/style/main/eptcs.cls
 
 texlive/2023/texmf-arxiv/tex/latex/emulateapj/apjfonts.sty:
 	mkdir -p texlive/2023/texmf-arxiv/tex/latex/emulateapj/
