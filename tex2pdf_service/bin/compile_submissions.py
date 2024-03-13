@@ -102,7 +102,7 @@ def compile(submissions: str, service: str, score: str) -> None:
     source_dir = os.path.expanduser(submissions)
     tarballs = [os.path.join(source_dir, tarball) for tarball in os.listdir(source_dir) if tarball.endswith(".tar.gz") and not tarball.startswith("outcome-")]
     logging.info("Got %d tarballs", len(tarballs))
-    with ThreadPool(processes=int(16)) as pool:
+    with ThreadPool(processes=int(64)) as pool:
         pool.map(submit_tarball, tarballs)
     logging.info("Finished")
 

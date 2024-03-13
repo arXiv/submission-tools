@@ -392,8 +392,10 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-        if is_pdftex_line(tex_line) or is_vanilla_tex_line(tex_line):
+        if is_pdftex_line(tex_line):
             return True, f"LatexConverter cannot handle pdftex at line {line_number}"
+        # if is_vanilla_tex _line(tex_line):
+        #     return True, f"LatexConverter cannot handle pdftex at line {line_number}"
         if (line_number < 6) and (tex_line.find("\\pdfoutput=1") >= 0):
             return True, f"LatexConverter cannot handle \\pdfoutput=1 at line {line_number}"
         for package_name in pick_package_names(tex_line):
