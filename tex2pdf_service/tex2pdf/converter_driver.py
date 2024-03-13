@@ -49,6 +49,7 @@ class ConverterDriver:
     outcome: dict
     converter_logs: typing.List[str]
     tag: str
+    note: str
 
     def __init__(self, work_dir: str, source: str, tag: str | None = None, water: str | None = None,
                  max_time_budget: float|None=None):
@@ -372,7 +373,7 @@ class ConversionOutcomeMaker:
         subprocess.call(tar_cmd, cwd=self.work_dir)
         return
 
-    def unpack_outcome(self) -> dict | None:
+    def unpack_outcome(self) -> dict[str, str | int | float | dict] | None:
         """Corresponds to the packer above."""
         tar_cmd = ["tar", "xzf", self.outcome_file]
         logger = get_logger()
