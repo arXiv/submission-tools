@@ -329,7 +329,12 @@ def is_pdftex_line(line: str)-> bool:
 
 def is_pdflatex_line(line: str)-> bool:
     """Check if the line is a pdftex line"""
-    return line.startswith('\\documentclass') or line.startswith('\\usepackage')
+    # Do not check for \usepackage since etex allows
+    # \beginpackages
+    #    \usepackage{...}
+    # \endpackages
+    # return line.startswith('\\documentclass') or line.startswith('\\usepackage')
+    return line.startswith('\\documentclass')
 
 
 _tex_input_1 = re.compile(r'\\input\{([^}]+)}')
