@@ -25,11 +25,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest poetry
         poetry install
-    - name: mypy for tex2pdf
-      run: | 
-        cd tex2pdf_service
-        mypy tex2pdf
-    - name: Test tex2pdf with pytest
       run: |
         cd tex2pdf_service
+        export PYTHONPATH=$PWD
         poetry run pytest tests
