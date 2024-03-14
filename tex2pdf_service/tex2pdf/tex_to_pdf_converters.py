@@ -712,7 +712,7 @@ class VanillaTexConverter(BaseDviConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
 
-        args = ["/usr/bin/tex", "-interaction=batchmode", "-recorder"]
+        args = ["/usr/bin/etex", "-interaction=batchmode", "-recorder"]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
