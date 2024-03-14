@@ -288,14 +288,14 @@ def select_converter_classes(in_dir: str) \
 #bad_for_latex_file_exts = {ext: True for ext in [".png", ".jpg", ".jpeg"]}
 #bad_for_latex_file_exts = {ext: True for ext in []}
 
-bad_for_latex_packages = {pname: True for pname in ["mmap"]}
-# bad_for_pdflatex_packages = {pname: True for pname in [
+bad_for_latex_packages = {pname: True for pname in ["mmap", "fontspec"]}
+
+bad_for_pdflatex_packages = {pname: True for pname in ["fontspec"]}
 #     "pstricks",
 #     "pst-node",
 #     "pst-pdf",
 #     "auto-pst-pdf",
 #     "pst-eps",
-# ]}
 
 # 2024-02-19 ntai
 # it appears not all .ps or .eps fails with pdflatex so you have to give it a try.
@@ -304,6 +304,8 @@ bad_for_latex_packages = {pname: True for pname in ["mmap"]}
 
 bad_for_pdftex_file_exts = [".ps", ".eps"]
 
+bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
+bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
 rerun_needle = "Rerun to get cross-references right."
 
@@ -390,8 +392,10 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-        if is_pdftex_line(tex_line) or is_vanilla_tex_line(tex_line):
+        if is_pdftex_line(tex_line):
             return True, f"LatexConverter cannot handle pdftex at line {line_number}"
+        # if is_vanilla_tex _line(tex_line):
+        #     return True, f"LatexConverter cannot handle pdftex at line {line_number}"
         if (line_number < 6) and (tex_line.find("\\pdfoutput=1") >= 0):
             return True, f"LatexConverter cannot handle \\pdfoutput=1 at line {line_number}"
         for package_name in pick_package_names(tex_line):
@@ -526,9 +530,9 @@ class PdfLatexConverter(BaseConverter):
         #     if test_file_extent(filename, bad_for_pdflatex_file_exts):
         #         return True, f"PdfLatexConverter cannot handle {filename} at {line_number}."
         #     pass
-        # for package_name in pick_package_names(tex_line):
-        #     if package_name in bad_for_pdflatex_packages:
-        #         return True, f"PdfLatexConverter cannot handle {package_name} at line {line_number}"
+        for package_name in pick_package_names(tex_line):
+            if package_name in bad_for_pdflatex_packages:
+                return True, f"PdfLatexConverter cannot handle {package_name} at line {line_number}"
 
         return False, ""
 
@@ -636,6 +640,9 @@ class PdfTexConverter(BaseConverter):
     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
         if is_pdflatex_line(tex_line) or is_vanilla_tex_line(tex_line):
             return True, f"PdfTexConverter cannot handle line {line_number}"
+        for package_name in pick_package_names(tex_line):
+            if package_name in bad_for_pdftex_packages:
+                return True, f"PdfTexConverter cannot handle {package_name} at line {line_number}"
         return False, ""
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
@@ -695,6 +702,9 @@ class VanillaTexConverter(BaseDviConverter):
     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
         if is_pdflatex_line(tex_line):
             return True, f"VanillaTexConverter cannot handle line {line_number}"
+        for package_name in pick_package_names(tex_line):
+            if package_name in bad_for_tex_packages:
+                return True, f"TexConverter cannot handle {package_name} at line {line_number}"
         return False, ""
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:

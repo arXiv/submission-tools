@@ -61,3 +61,10 @@ ban_list:
         equals: docsiamart.tex
       line:
         startswith: \title{Guide to Using SIAM's \LaTeX\ Style\thanks{Submitted to the editors DATE.
+
+  - description: Guide to Using SIAM's LaTeX Style
+    condition:
+      filename:
+        equals: app-2-writing_sample.tex
+      line:
+        startswith: \usepackage{fontspec}

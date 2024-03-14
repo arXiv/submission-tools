@@ -1,4 +1,5 @@
 ams
+amscls
 aop
 apjfonts
 axodraw4j
@@ -16,6 +17,7 @@ mnras
 ol2
 opex3
 osajnl2
+picins
 pst-hub
 pstricks
 pstricks-add
