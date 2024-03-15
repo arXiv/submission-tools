@@ -1,5 +1,5 @@
-\ProvidesPackage{axodraw4j}[2008/11/19]
-\typeout{Document option: axodraw4j. 19 Nov 2008}
+\ProvidesPackage{axodraw4j}[2011/03/22]
+\typeout{Document option: axodraw4j. 22 Mar 2011}
 
 \typeout{***************************************************************************}
 \typeout{WARNING: use of axodraw4j is recommended only in conjunction with JaxoDraw!}
@@ -16,8 +16,10 @@
 %   Current version maintained by John Collins
 %             collins at phys dot psu dot edu
 %   with code by Daniele Binosi and Lukas Theussl.
-% Copyright J.A.M. Vermaseren, John Collins, Daniele Binosi and Lukas
-% Theussl (1994-2008).
+
+%% axodraw4j.sty
+%% Copyright J.A.M. Vermaseren, John Collins, Daniele Binosi and Lukas Theussl (1994-2011).
+
 %% This package may be distributed under the terms of the LaTeX Project Public
 %% License, as described in lppl.txt in the base LaTeX distribution.
 %% Either version 1.0 or, at your option, any later version.
@@ -1188,21 +1190,59 @@
 } def }
 %
 %               #] ptext : 
+%               #[ ellipse:
+%
+\special{! /ellipse {
+    % Draw an ellipse
+    % RedGrittyBrick 20/10/2003
+    % From http://www.redgrittybrick.org/postscript/ellipse.html. 2011/03/22
+    % draw an ellipse using four bezier curves
+    %
+    /r2 exch def % 2nd parameter
+    /r1 exch def % 1st parameter
+    /kappa 0.5522847498 def
+    %
+    newpath
+    0 r2 moveto % start point of curve
+    %
+    % top clockwise
+    kappa r1 mul r2 % 1st Bezier control point
+    r1 kappa r2 mul % 2nd Bezier control point
+    r1 0 curveto % end point of curve
+    %
+    % right clockwise
+    r1 kappa r2 mul neg
+    kappa r1 mul r2 neg
+    0 r2 neg curveto
+    %
+    % bottom clockwise
+    kappa r1 mul neg r2 neg
+    r1 neg kappa r2 mul neg
+    r1 neg 0 curveto
+    %
+    % left clockwise
+    r1 neg kappa r2 mul
+    kappa r1 mul neg r2
+    0 r2 curveto
+    %
+    } def % ellipse
+}
+%
+%               #] ellipse:
 %               #[ goval :
 %
 \special{! /goval{
 %
-%   Draws a colored oval that overwrites whatever was there.
+%   Draws a gray oval that overwrites whatever was there.
 %   x_center y_center height width rotation color linewidth scale
 %
-    gsw /gcolor ed /x1 ed /x2 ed /radius ed
+    gsw /gcolor ed /angle ed /width ed /height ed
 %
-    translate                               % x and y are still on stack
-    x1 rotate
-    x2 radius div 1.0 scale
-    1 setgray      newpath 0 0 radius 0 360 arc fill
-    gcolor setgray newpath 0 0 radius 0 360 arc fill
-    0 setgray      newpath 0 0 radius 0 360 arc stroke
+    translate                            % x and y are still on stack
+    angle rotate
+    1 setgray      width height ellipse fill
+    gcolor setgray width height ellipse fill
+    0 setgray      width height ellipse stroke
     grestore
 } def }
 %
@@ -1211,15 +1251,14 @@
 %
 \special{! /coval1{
 %
-%   Draws a oval that overwrites whatever was there.
+%   Draws an oval that overwrites whatever was there.
 %   x_center y_center height width rotation linewidth scale
 %
-    gsw /x1 ed /x2 ed /radius ed
+    gsw /angle ed /width ed /height ed
 %
-    translate                               % x and y are still on stack
-    x1 rotate
-    x2 radius div 1.0 scale
-    newpath 0 0 radius 0 360 arc fill
+    translate                            % x and y are still on stack
+    angle rotate
+    width height ellipse fill
     grestore
 } def }
 %
@@ -1231,12 +1270,11 @@
 %   Draws a oval that overwrites whatever was there.
 %   x_center y_center height width rotation linewidth scale
 %
-    gsw /x1 ed /x2 ed /radius ed
+    gsw /angle ed /width ed /height ed
 %
     translate                               % x and y are still on stack
-    x1 rotate
-    x2 radius div 1.0 scale
-    newpath 0 0 radius 0 360 arc stroke
+    angle rotate
+    width height ellipse stroke
     grestore
 } def }
 %
@@ -1248,14 +1286,11 @@
 %   Draws an oval that does not overwrite whatever was there.
 %   x_center y_center height width rotation linewidth scale
 %
-    gsw /x1 ed /x2 ed /radius ed
+    gsw /angle ed /width ed /height ed
 %
-    translate                               % x and y are still on stack
-    x1 rotate
-    x2 radius div 1.0 scale
-%
-    newpath 0 0 radius 0 360 arc stroke
-    grestore
+    translate                         % x and y are still on stack
+    angle rotate
+    width height ellipse stroke
 } def }
 %
 %               #] oval : 
@@ -2295,37 +2330,41 @@
 \fmode \fmodev add \fmodeh add \fsize (#5) \axoscale ptext }}}
 }
 %
-\def\GOval(#1,#2)(#3,#4)(#5)#6{
+\def\GOval(#1,#2)(#3,#4)(#5)#6{%
 %
-%   Draws a colored oval that overwrites whatever was there.
+%   Draws a gray oval that overwrites whatever was there.
 %   Oval(x_center,y_center)(height,width)(rotation)(color)
 %
-\put(\axoxoff,\axoyoff){\special{"#1 \axoxo add #2 \axoyo add #3 #4 #5 #6
-\axowidth \axoscale goval 
-}}
+\put(\axoxoff,\axoyoff)%
+    {\special{"#1 \axoxo add #2 \axoyo add #3 #4 #5 #6
+     \axowidth \axoscale goval 
+    }}%
 }
 %
-\def\COval(#1,#2)(#3,#4)(#5)#6#7{
+\def\COval(#1,#2)(#3,#4)(#5)#6#7{%
 %
 %   Draws a colored oval that overwrites whatever was there.
 %   Oval(x_center,y_center)(height,width)(rotation){color1}{color2}
 %
-\put(\axoxoff,\axoyoff){\special{"#7 #1 \axoxo add #2 \axoyo add #3 #4 #5
-\axowidth \axoscale coval1 
-}}
-\put(\axoxoff,\axoyoff){\special{"#6 #1 \axoxo add #2 \axoyo add #3 #4 #5
-\axowidth \axoscale coval2 
-}}
+\put(\axoxoff,\axoyoff)%
+    {\special{"#7 #1 \axoxo add #2 \axoyo add #3 #4 #5
+       \axowidth \axoscale coval1 
+    }}%
+\put(\axoxoff,\axoyoff)%
+    {\special{"#6 #1 \axoxo add #2 \axoyo add #3 #4 #5
+     \axowidth \axoscale coval2 
+    }}%
 }
 %
-\def\Oval(#1,#2)(#3,#4)(#5){
+\def\Oval(#1,#2)(#3,#4)(#5){%
 %
 %   Draws an oval that does not overwrite whatever was there.
 %   Oval(x_center,y_center)(height,width)(rotation)
 %
-\put(\axoxoff,\axoyoff){\special{"\axocolor #1 \axoxo add #2 \axoyo add #3 #4 #5
-\axowidth \axoscale oval 
-}}
+    \put(\axoxoff,\axoyoff)%
+    {\special{"\axocolor #1 \axoxo add #2 \axoyo add #3 #4 #5
+     \axowidth \axoscale oval 
+    }}%
 }
 %
 \let\eind=]
@@ -2476,11 +2515,11 @@
 %   (x3,y3), (x4,y4)
 %   Assumes options have been set
 %
+\ifAXO@arrow\AXO@NOTIMPLEMENTED{arrow not implemented for Bezier curve}\fi
+\ifAXO@double\AXO@NOTIMPLEMENTED{double line not implemented for Bezier curve}\fi
 \put(\axoxoff,\axoyoff){\special{"\axocolor #1 \axoxo add #2 \axoyo add #3
  \axoxo add #4 \axoyo add #5 \axoxo add #6 \axoyo add #7 \axoxo add #8
  \axoyo add
- \ifAXO@arrow\AXO@NOTIMPLEMENTED{arrow not implemented for Bezier curve}\fi
- \ifAXO@double\AXO@NOTIMPLEMENTED{double line not implemented for Bezier curve}\fi
  \ifAXO@dash 
      \AXO@CurrentDashSize \space
  \else
