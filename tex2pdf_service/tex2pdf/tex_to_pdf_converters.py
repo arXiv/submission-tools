@@ -13,7 +13,7 @@ from tex2pdf.service_logger import get_logger
 from tex2pdf.tex_inspection import (pick_package_names,
                                     ZeroZeroReadMe, is_pdftex_line,
                                     is_pdflatex_line,
-                                    is_vanilla_tex_line, find_pdfoutput_1)
+                                    find_pdfoutput_1)
 
 WITH_SHELL_ESCAPE = False
 
@@ -228,7 +228,12 @@ class BaseConverter:
 def select_converter_classes(in_dir: str) \
         -> typing.Tuple[typing.List[type[BaseConverter]], typing.List[str]]:
     """Create a converter based on the tex file"""
-    candidates = [VanillaTexConverter, PdfTexConverter, PdfLatexConverter, LatexConverter]
+    # candidates = [VanillaTexConverter, PdfTexConverter, PdfLatexConverter, LatexConverter]
+    # https://info.arxiv.org/help/submit_tex.html
+    # arXiv does not presently support PDFTeX.
+    # since this seems to do more harm than good, at least for now, remove PDFTex.
+    # We may revise this if we can come up with better method.
+    candidates = [VanillaTexConverter, PdfLatexConverter, LatexConverter]
     classes = candidates.copy()
     tex_files = []
     reasons = []
@@ -620,69 +625,69 @@ class PdfLatexConverter(BaseConverter):
     pass
 
 
-class PdfTexConverter(BaseConverter):
-    """Runs pdftex command"""
-    to_pdf_args: typing.List[str]
-
-    def __init__(self, conversion_tag: str, **kwargs: typing.Any):
-        super().__init__(conversion_tag, **kwargs)
-        self.to_pdf_args = []
-        pass
-
-    @classmethod
-    def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
-        if test_file_extent(any_file, bad_for_pdftex_file_exts):
-            return True, f"PdfTexConverter cannot handle {any_file}." + \
-                "See the list of excluded extensions."
-        return False, ""
-
-    @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-        if is_pdflatex_line(tex_line) or is_vanilla_tex_line(tex_line):
-            return True, f"PdfTexConverter cannot handle line {line_number}"
-        for package_name in pick_package_names(tex_line):
-            if package_name in bad_for_pdftex_packages:
-                return True, f"PdfTexConverter cannot handle {package_name} at line {line_number}"
-        return False, ""
-
-    def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
-
-        NOTE: It is important to return the outcome so that you can troubleshoot.
-        Do not exception out.
-        """
-
-        # Stem: the filename of the tex file without the extension
-        stem = os.path.splitext(tex_file)[0]
-        self.stem = stem
-        stem_pdf = f"{stem}.pdf"
-        # pdf_filename = os.path.join(in_dir, stem_pdf)
-        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
-
-        args = ["/usr/bin/pdftex", "-interaction=batchmode", "-recorder"]
-        if WITH_SHELL_ESCAPE:
-            args.append("-shell-escape")
-        args.append(tex_file)
-        self.to_pdf_args = args
-
-        #  pdftex run
-        step = "only_run"
-        run = self._pdftex_run(step, work_dir, in_dir, out_dir)
-        pdf_size = run["pdf"]["size"]
-        if not pdf_size:
-            outcome.update({"status": "fail", "step": step,
-                            "reason": "failed to create pdf", "runs": self.runs})
-            return outcome
-        return outcome
-
-    def _pdftex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        log = os.path.join(in_dir, f"{self.stem}.log")
-        return self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, log)
-
-    def converter_name(self) -> str:
-        return "pdftex: %s" % (shlex.join(self.to_pdf_args))
-
-    pass
+# class PdfTexConverter(BaseConverter):
+#     """Runs pdftex command"""
+#     to_pdf_args: typing.List[str]
+#
+#     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
+#         super().__init__(conversion_tag, **kwargs)
+#         self.to_pdf_args = []
+#         pass
+#
+#     @classmethod
+#     def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
+#         if test_file_extent(any_file, bad_for_pdftex_file_exts):
+#             return True, f"PdfTexConverter cannot handle {any_file}." + \
+#                 "See the list of excluded extensions."
+#         return False, ""
+#
+#     @classmethod
+#     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
+#         if is_pdflatex_line(tex_line) or is_vanilla_tex_line(tex_line) or is_usepackage_line(tex_line):
+#             return True, f"PdfTexConverter cannot handle line {line_number}"
+#         for package_name in pick_package_names(tex_line):
+#             if package_name in bad_for_pdftex_packages:
+#                 return True, f"PdfTexConverter cannot handle {package_name} at line {line_number}"
+#         return False, ""
+#
+#     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+#         """Produce PDF
+#
+#         NOTE: It is important to return the outcome so that you can troubleshoot.
+#         Do not exception out.
+#         """
+#
+#         # Stem: the filename of the tex file without the extension
+#         stem = os.path.splitext(tex_file)[0]
+#         self.stem = stem
+#         stem_pdf = f"{stem}.pdf"
+#         # pdf_filename = os.path.join(in_dir, stem_pdf)
+#         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
+#
+#         args = ["/usr/bin/pdftex", "-interaction=batchmode", "-recorder"]
+#         if WITH_SHELL_ESCAPE:
+#             args.append("-shell-escape")
+#         args.append(tex_file)
+#         self.to_pdf_args = args
+#
+#         #  pdftex run
+#         step = "only_run"
+#         run = self._pdftex_run(step, work_dir, in_dir, out_dir)
+#         pdf_size = run["pdf"]["size"]
+#         if not pdf_size:
+#             outcome.update({"status": "fail", "step": step,
+#                             "reason": "failed to create pdf", "runs": self.runs})
+#             return outcome
+#         return outcome
+#
+#     def _pdftex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+#         log = os.path.join(in_dir, f"{self.stem}.log")
+#         return self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, log)
+#
+#     def converter_name(self) -> str:
+#         return "pdftex: %s" % (shlex.join(self.to_pdf_args))
+#
+#     pass
 
 
 class VanillaTexConverter(BaseDviConverter):
