@@ -1,5 +1,5 @@
 """
-GCP GenPdf service main file.
+Tex2PDF FastAPI.
 """
 
 import os
@@ -38,7 +38,7 @@ origins = [
 ]
 
 app = FastAPI(description=DESCRIPTION,
-              summary="PDF Generation Service",
+              summary="TeX source compilation service to generate PDF",
               title="TeX to PDF Service")
 
 app.add_middleware(
@@ -170,10 +170,19 @@ async def texlive_info() -> FileResponse:
     return FileResponse(tlmgr_info, media_type="application/json")
 
 
-@app.get('/robots.txt', summary="robots.txt")
+@app.get('/robots.txt', summary="robots.txt", include_in_schema=False)
 async def robots_txt() -> Response:
     """
     robots.txt
     """
     go_away_robots = "User-agent: *\nDisallow: /\n"
     return Response(go_away_robots, media_type="text/plain")
+
+
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon_ico() -> Response:
+    favicon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico")
+    if os.path.exists(favicon):
+        return FileResponse(favicon, media_type="image/x-icon")
+    return JSONResponse(status_code=STATCODE.HTTP_404_NOT_FOUND,
+                        content={"message": "No favicon found"})

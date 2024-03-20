@@ -1,3 +1,30 @@
+"""
+compile_submissions:
+
+Given a directory of submission tarballs, sends them to tex2pdf API, gets the outcome back and
+writes it out to "outcomes" subdirectory of give submissions directory.
+
+eg:
+python3 compile_submissions.py compile ~/tarballs
+
+When the outcome exists, the submission compilation skips the tarball.
+
+The default endpoint is `http://localhost:6301/convert/`.
+
+"harvest" command opens up the outcome and stores outcome in a sqlite3 database named "score.db"
+
+python3 compile_submissions.py harvest --purge-fails=true ~/tarballs
+
+which in turn creates or updates "score.db".
+
+For example,
+sqlite3 score.db 'select outcome from score where not success' > bad.txt
+
+gives you the all of outcome json files to single file once you run the harvest.
+
+
+"""
+
 import os
 import time
 import typing
