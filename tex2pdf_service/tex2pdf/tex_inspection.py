@@ -50,11 +50,9 @@ class ZeroZeroReadMe:
             pass
         pass
 
-
     def __bool__(self) -> bool:
         """Return True if 00README.XXX is fetched"""
         return self.readme is not None
-
 
     def fetch_00readme(self, filename: str) -> None:
         """Read and parse 00README.XXX file"""
@@ -117,8 +115,8 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
     """
 
     losers = zzrm.ignores | zzrm.includes
-    #loser_re_1 = re.compile(r'\\input\{([^}]+)}')
-    #loser_re_2 = re.compile(r'\\input\s+(.+)')
+    # loser_re_1 = re.compile(r'\\input\{([^}]+)}')
+    # loser_re_2 = re.compile(r'\\input\s+(.+)')
 
     round_0: typing.Set[str] = set()
     round_1: typing.Set[str] = set()
@@ -174,7 +172,7 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
     # If it manages to include multiple tex files with conflicting names, let TEX_FILE_EXTS
     # decide the winner.
     round_3: typing.Set[str] = set()
-    stem_dupes: typing.Dict[str, typing.List[str]]  = {}
+    stem_dupes: typing.Dict[str, typing.List[str]] = {}
     for tex_file in round_2:
         [stem, _ext] = os.path.splitext(tex_file.lower())
         if stem not in stem_dupes:
@@ -191,7 +189,7 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
     round_3s = sorted([tex_file for tex_file in round_3], key=lambda x: x.lower())
 
     return [tex_file for tex_file in zzrm.toplevels if tex_file in round_3s] + \
-        [tex_file for tex_file in round_3s if not tex_file in zzrm.toplevels]
+        [tex_file for tex_file in round_3s if tex_file not in zzrm.toplevels]
 
 
 def is_bib(tex_filename: str) -> bool:
@@ -247,13 +245,13 @@ def find_include_graphics_filename(tex_line: str) -> str | None:
     return find_tex_thing(tex_line, includegraphics_re, ["\\includegraphics"])
 
 
-
 def read_ban_data() -> typing.Any:
     """Read the ban data from the YAML file."""
     ban_list_file = os.path.join(os.path.dirname(__file__), "banned_tex.yaml")
     yaml = YAML()
     with open(ban_list_file, "r", encoding="utf-8") as fd:
         return yaml.load(fd)
+
 
 ban_data = read_ban_data()
 
@@ -284,6 +282,7 @@ def decide_ban(condition: dict, target: str) -> bool:
 
     return False
 
+
 def maybe_banned_tex_file(filename: str) -> bool:
     """Is this TeX file blacklisted?"""
     for ban in ban_data["ban_list"]:
@@ -292,6 +291,7 @@ def maybe_banned_tex_file(filename: str) -> bool:
             return True
         pass
     return False
+
 
 def is_banned_tex_line(line: str) -> bool:
     """Is this TeX line blacklisted? Use this only when maybe_banned_tex_file() returns True. """
@@ -316,18 +316,18 @@ def is_banned_tex(filename: str, line: str) -> bool:
     return False
 
 
-def is_vanilla_tex_line(line: str)-> bool:
+def is_vanilla_tex_line(line: str) -> bool:
     """Check if the line is a vanilla tex line"""
     return line.find('\\special') >= 0
 
 
-def is_pdftex_line(line: str)-> bool:
+def is_pdftex_line(line: str) -> bool:
     """Check if the line is a pdftex line"""
     # return line.startswith('\\def\\') or line.startswith('\\pageno=')
     return line.startswith('\\pageno=')
 
 
-def is_pdflatex_line(line: str)-> bool:
+def is_pdflatex_line(line: str) -> bool:
     """Check if the line is a pdftex line"""
     # Do not check for \usepackage since etex allows
     # \beginpackages

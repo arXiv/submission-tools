@@ -1,5 +1,5 @@
 """
-TeX file patching for the GCP PDF generation.
+TeX file patching for the Tex to PDF generation.
 
 The primary motivation of this is, using Pygmentize for code highlighting, the package option
 for first and second run of latex command needs to be changed.

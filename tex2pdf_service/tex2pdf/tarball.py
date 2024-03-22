@@ -14,9 +14,12 @@ from .service_logger import get_logger
 
 
 class UnsupportedArchive(Exception):
+    """Submitted archive file extension is not recognized"""
     pass
 
+
 class RemovedSubmission(Exception):
+    """Submitted archive contains the removed.txt and cannot proceed"""
     pass
 
 
