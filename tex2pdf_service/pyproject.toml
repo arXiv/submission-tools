@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "arxiv-tex2pdf"
 version = "0.1.0"
-description = "Compiling TeX to PDF"
+description = "Compiling TeX to PDF, and provide HTTP based service"
 authors = ["arxiv.org"]
 packages = [
     { include = "tex2pdf" }

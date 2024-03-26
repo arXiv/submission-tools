@@ -48,7 +48,12 @@ class BaseConverter:
         self.log = ""
         self.log_extra = {ID_TAG: self.conversion_tag}
         self.init_time = time.perf_counter() if init_time is None else init_time
-        self.max_time_budget = float(MAX_TIME_BUDGET) if max_time_budget is None else max_time_budget
+        try:
+            default_max = float(MAX_TIME_BUDGET)
+        except:
+            default_max = 595
+            pass
+        self.max_time_budget = default_max if max_time_budget is None else max_time_budget
         pass
 
     def time_left(self) -> float:
@@ -75,7 +80,7 @@ class BaseConverter:
         pass
 
     def _exec_cmd(self, args: typing.List[str], child_dir: str, work_dir: str,
-                  extra:dict|None=None) -> typing.Tuple[dict[str, typing.Any], str, str]:
+                  extra: dict | None = None) -> typing.Tuple[dict[str, typing.Any], str, str]:
         """Run the command and return the result"""
         logger = get_logger()
         worker_args = self.decorate_args(args)
@@ -151,7 +156,6 @@ class BaseConverter:
             pass
 
         pass
-
 
     def fetch_log(self, log_file: str) -> None:
         if os.path.exists(log_file):
@@ -372,6 +376,18 @@ class BaseDviConverter(BaseConverter):
         self._report_run(run, out, err, tag, in_dir, work_dir, "ps", ps_filename)
         return run
 
+    def _base_to_dvi_run(self, step: str, stem: str, args: typing.List[str],
+                         work_dir: str, in_dir: str) -> dict:
+        """Runs the given command to generate dvi file and returns the run result."""
+        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
+        dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
+        self._check_cmd_run(run, dvi_filename)
+        self._report_run(run, out, err, step, in_dir, work_dir, "dvi", dvi_filename)
+        latex_log_file = os.path.join(in_dir, f"{stem}.log")
+        self.fetch_log(latex_log_file)
+        if self.log:
+            run["log"] = self.log
+        return run
 
     def _base_ps_to_pdf_run(self, stem: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Runs ps2pdf command"""
@@ -458,24 +474,13 @@ class LatexConverter(BaseDviConverter):
         return outcome
 
     def _latex_run(self, tag: str, tex_file: str, work_dir: str, in_dir: str, _out_dir: str) -> dict:
-        stem = self.stem
         # breaks many packages... f"-output-directory=../{bod}"
         args = ["/usr/bin/latex", "-interaction=batchmode", "-file-line-error", "-recorder"]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": "latex"})
-        dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
-        self._check_cmd_run(run, dvi_filename)
-        self._report_run(run, out, err, tag, in_dir, work_dir, "dvi", dvi_filename)
-        latex_log_file = os.path.join(in_dir, f"{stem}.log")
-        self.fetch_log(latex_log_file)
-        if self.log:
-            run["log"] = self.log
-        return run
+        return self._base_to_dvi_run(tag, self.stem, args, work_dir, in_dir)
 
-    #def _dvi_to_ps_run(self, work_dir, in_dir, _out_dir, hyperdvi=False) -> dict:
-    #    return self._base_dvi_to_ps_run(self.stem, work_dir, in_dir, _out_dir, hyperdvi=hyperdvi)
 
     def _ps_to_pdf_run(self, work_dir: str, in_dir: str, out_dir: str) -> dict:
         return super()._base_ps_to_pdf_run(self.stem, work_dir, in_dir, out_dir)
@@ -734,8 +739,8 @@ class VanillaTexConverter(BaseDviConverter):
         self._args = args
 
         # tex run
-        step = "tex_to_ps_run"
-        run = self._tex_run(step, work_dir, in_dir, out_dir)
+        step = "tex_to_dvi_run"
+        run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
         dvi_size = run["dvi"]["size"]
         if not dvi_size:
             outcome.update({"status": "fail", "step": step,
@@ -759,20 +764,6 @@ class VanillaTexConverter(BaseDviConverter):
                         "status": "success" if run["return_code"] == 0 else "fail"})
         logger.debug("tex.ps_to_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
         return outcome
-
-    def _tex_run(self, step: str, work_dir: str, in_dir: str, _out_dir: str) -> dict[str, typing.Any]:
-        """Runs tex command"""
-        args = self._args
-        stem = self.stem
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
-        dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
-        self._check_cmd_run(run, dvi_filename)
-        self._report_run(run, out, err, step, in_dir, work_dir, "dvi", dvi_filename)
-        command_log_file = os.path.join(in_dir, f"{stem}.log")
-        self.fetch_log(command_log_file)
-        if self.log:
-            run["log"] = self.log
-        return run
 
     def _dvi_to_ps_run(self, work_dir: str, in_dir: str, _out_dir: str, hyperdvi: bool=False) -> dict:
         """Run dvips to produce ps."""

@@ -1,7 +1,7 @@
 """
 compile_submissions:
 
-Given a directory of submission tarballs, sends them to tex2pdf API, gets the outcome back and
+Given submissions directory, sends them to tex2pdf API, gets the outcome back and
 writes it out to "outcomes" subdirectory of give submissions directory.
 
 eg:
@@ -21,8 +21,6 @@ For example,
 sqlite3 score.db 'select outcome from score where not success' > bad.txt
 
 gives you the all of outcome json files to single file once you run the harvest.
-
-
 """
 
 import os

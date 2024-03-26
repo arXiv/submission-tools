@@ -72,7 +72,7 @@ class GzipResponse(StreamingResponse):
 
 @app.get("/", response_class=HTMLResponse)
 def healthcheck() -> str:
-    """Health check endpoint. Pinged by GCP."""
+    """Health check endpoint."""
     return '<h1><a href="./docs/">All good!</a></h1>'
 
 
@@ -95,7 +95,7 @@ async def convert_pdf(incoming: UploadFile,
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()
-    logger.info("%s",incoming.filename)
+    logger.info("%s", incoming.filename)
     tag = os.path.basename(filename)
     while True:
         [stem, ext] = os.path.splitext(tag)
@@ -115,7 +115,7 @@ async def convert_pdf(incoming: UploadFile,
                 pass
             pass
         driver = ConverterDriver(tempdir, filename, tag=tag, water=watermark_text,
-                                     max_time_budget=timeout_secs)
+                                 max_time_budget=timeout_secs)
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:
