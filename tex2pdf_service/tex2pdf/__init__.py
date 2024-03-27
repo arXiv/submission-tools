@@ -16,8 +16,6 @@ ID_TAG = "arxiv_id"
 _gexts_ = [".png", ".jpg", ".jpeg", ".gif"]
 graphics_exts = {key: True for key in _gexts_}
 
-# Text file extensions
-TEX_FILE_EXTS = [".tex", ".ltf", ".ltx", ".latex", ".txt"]
 
 MAX_TIME_BUDGET: float = float(os.environ.get("MAX_TIME_BUDGET", "595"))
 MAX_LATEX_RUNS: int = int(os.environ.get("MAX_LATEX_RUNS", "5"))

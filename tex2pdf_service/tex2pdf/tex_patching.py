@@ -14,7 +14,7 @@ import os
 import re
 import typing
 
-from tex2pdf import TEX_FILE_EXTS
+from tex_inspection import TEX_FILE_EXTS
 
 graphicspath_re = re.compile(r"\\graphicspath\{((\{.+?\})+)\}")
 paths_re = re.compile(r'\{(.+?)\}')

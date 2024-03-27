@@ -18,8 +18,7 @@ from tex2pdf.tarball import unpack_tarball, chmod_775
 from tex2pdf.tex_to_pdf_converters import BaseConverter
 from tex2pdf.tex_patching import fix_tex_sources
 from tex2pdf.pdf_watermark import add_watermark_text_to_pdf
-from tex2pdf.tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe,
-                                    find_unused_toplevel_files)
+from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
