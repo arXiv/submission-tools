@@ -1,0 +1,32 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: tex_inspection library
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install dependencies for tex_inspection
+      run: |
+        cd tex_inspection
+        python -m pip install --upgrade pip
+        pip install pytest poetry
+        poetry install
+    - name: pytest for tex_inspection
+      run: |
+        cd tex_inspection
+        export PYTHONPATH=$PWD
+        poetry run pytest tests
