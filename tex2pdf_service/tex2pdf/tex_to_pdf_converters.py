@@ -7,13 +7,11 @@ import shlex
 import time
 import typing
 from abc import abstractmethod
-from tex2pdf import file_props, local_exec, TEX_FILE_EXTS, file_props_in_dir, \
+from tex2pdf import file_props, local_exec, file_props_in_dir, \
     MAX_LATEX_RUNS, ID_TAG, test_file_extent, MAX_TIME_BUDGET
 from tex2pdf.service_logger import get_logger
-from tex2pdf.tex_inspection import (pick_package_names,
-                                    ZeroZeroReadMe, is_pdftex_line,
-                                    is_pdflatex_line,
-                                    find_pdfoutput_1)
+from tex_inspection import (pick_package_names, ZeroZeroReadMe, is_pdftex_line,
+                            is_pdflatex_line, find_pdfoutput_1, TEX_FILE_EXTS)
 
 WITH_SHELL_ESCAPE = False
 
