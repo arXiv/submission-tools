@@ -10,10 +10,11 @@ readme = "README.md"
 python = "^3.10"
 "ruamel.yaml" = "^0.18"
 
-
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.9.0"
 pytest = "^8.1.1"
+mypy = "*"
+mypy-extensions = "*"
+pydantic = "^2.6.4"
 
 [build-system]
 requires = ["poetry-core"]
