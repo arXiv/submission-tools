@@ -14,7 +14,7 @@ python = "^3.10"
 pytest = "^8.1.1"
 mypy = "*"
 mypy-extensions = "*"
-pydantic = "^2.6.4"
+pydantic = "1.10.*"
 
 [build-system]
 requires = ["poetry-core"]
