@@ -1071,7 +1071,7 @@ develop = false
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "8b291fa59b002aed39a7c5b2cfb1847eaf10fa69"
+resolved_reference = "d0b020c0ea981e0cf8c08835408f5e5eeb928a84"
 subdirectory = "tex_inspection"
 
 [[package]]
