@@ -64,9 +64,9 @@ def tarball_to_outcome_path(tarball: str) -> str:
 def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], typing.List[str], typing.List[str]]:
     """Open a compressed outcome tar archive and get the metadata"""
     meta = {}
-    files = []
-    clsfiles = []
-    styfiles = []
+    files = set()
+    clsfiles = set()
+    styfiles = set()
     with tarfile.open(outcome_file, "r:gz") as outcome:
         for name in outcome.getnames():
             if name.startswith("outcome-") and name.endswith(".json"):
@@ -83,18 +83,14 @@ def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], 
                         filename.startswith("INPUT /usr/local/texlive/2023/texmf-local") or
                         filename.startswith("INPUT /usr/local/texlive/2024/texmf-local")
                     ):
-                        files.append(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+                        files.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
                     # only collect class and style files from the texlive tree, not files included in the submission
                     elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".cls"):
-                        clsfiles.append(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+                        clsfiles.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
                     elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".sty"):
-                        styfiles.append(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+                        styfiles.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
 
-    # make list of files unique
-    files = list(set(files))
-    clsfiles = list(set(clsfiles))
-    styfiles = list(set(styfiles))
-    return meta, files, clsfiles, styfiles
+    return meta, list(files), list(clsfiles), list(styfiles)
 
 
 @cli.command()
