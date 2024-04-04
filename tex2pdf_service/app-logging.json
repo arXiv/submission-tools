@@ -38,6 +38,12 @@
       "propagate": false,
       "qualname": "granian"
     },
+    "hypercorn": {
+      "level": "INFO",
+      "handlers": ["access_handler"],
+      "propagate": false,
+      "qualname": "hcorn"
+    },
     "tex2pdf": {
       "level": "DEBUG",
       "handlers": ["access_handler"],

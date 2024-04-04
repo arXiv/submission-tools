@@ -11,16 +11,15 @@ include = ["LICENSE", "README.md"]
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.104.1"
-uvicorn = {extras = ["standard"], version = "^0.23.2"}
 pikepdf = "^8.7.1"
 reportlab = "^4.0.7"
 python-json-logger = "^2.0.7"
 ruamel-yaml = "^0.18.5"
 pillow = "^10.2.0"
 python-multipart = "^0.0.6"
-granian = "^1.1.1"
 psutil = "^5.9.8"
 tex_inspection = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex_inspection"}
+hypercorn = {extras = ["h2"], version = "^0.16.0"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
