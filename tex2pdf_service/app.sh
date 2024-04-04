@@ -1,4 +1,4 @@
-#!/bin/barh
+#!/bin/bash
 cd /home/worker
 if [ -z "$WORKERS" ]; then
     WORKERS=4
