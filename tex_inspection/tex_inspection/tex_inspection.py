@@ -296,9 +296,12 @@ def read_ban_data(ban_list_file: str | None = None) -> typing.Any:
     """Read the ban data from the YAML file."""
     if ban_list_file is None:
         ban_list_file = os.path.join(os.path.dirname(__file__), "banned_tex.yaml")
-    yaml = YAML()
-    with open(ban_list_file, "r", encoding="utf-8") as fd:
-        return yaml.load(fd)
+    if os.path.exists(ban_list_file):
+        yaml = YAML()
+        with open(ban_list_file, "r", encoding="utf-8") as fd:
+            return yaml.load(fd)
+    # Return a stub and don't die
+    return {"ban_list": []}
 
 
 def get_banned_tex_file_data() -> typing.Any:
