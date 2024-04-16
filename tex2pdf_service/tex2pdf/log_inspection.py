@@ -29,24 +29,24 @@ def inspect_log(log: str,
     """Run the list of regex against a blob string and count the matches.
     log: The log blob
     patterns: a list of regex patterns. default is TEX_LOG_ERRORS if not given.
-    break_on_found: stop the counting at first found
+    break_on_found: stop the search at first found
     """
     if patterns is None:
         patterns = TEX_LOG_ERRORS
-    missing_files = AtomicStringSet()
+    matched_results = AtomicStringSet()
     log_lines = log.splitlines()
 
     def _inspect(needle: re.Pattern) -> None:
         for line in log_lines:
             if (matched := needle.search(line)) is not None:
-                missing_files.add(matched.group(1))
+                matched_results.add(matched.group(1))
                 if break_on_found:
                     break
 
     with ThreadPool(processes=len(patterns)) as pool:
         pool.map(_inspect, patterns)
 
-    return list(missing_files.unguarded_value)
+    return list(matched_results.unguarded_value)
 
 
 if __name__ == '__main__':
