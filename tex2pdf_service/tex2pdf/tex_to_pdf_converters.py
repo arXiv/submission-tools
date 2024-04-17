@@ -480,6 +480,8 @@ class LatexConverter(BaseDviConverter):
         logger = get_logger()
 
         outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "dvi")
+        if outcome["status"] == "fail":
+            return outcome
 
         # Third - run dvips
         outcome, run = self._two_try_dvi_to_ps_run(outcome, self.stem, work_dir, in_dir, out_dir)
