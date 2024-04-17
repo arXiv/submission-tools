@@ -12,6 +12,7 @@ from tex2pdf import file_props, local_exec, file_props_in_dir, \
 from tex2pdf.service_logger import get_logger
 from tex_inspection import (pick_package_names, ZeroZeroReadMe, is_pdftex_line,
                             is_pdflatex_line, find_pdfoutput_1, TEX_FILE_EXTS)
+from .log_inspection import inspect_log
 
 WITH_SHELL_ESCAPE = False
 
@@ -224,6 +225,17 @@ class BaseConverter:
                 run["log"] = self.log
         return run
 
+    def check_missing(self, in_dir: str, run: dict, artifact: str) -> dict:
+        """Scoop up the missing files from the tex command log"""
+        name = run[artifact]["name"]
+        artifact_file = os.path.join(in_dir, name)
+        if os.path.exists(artifact_file) and (missings := inspect_log(run["log"])):
+            run["missings"] = missings
+            get_logger().debug(f"Output {name} deleted due to incomplete run.")
+            os.unlink(artifact_file)
+            run[artifact] = file_props(artifact_file)
+            pass
+        return run
     pass
 
 #
@@ -380,11 +392,13 @@ class BaseDviConverter(BaseConverter):
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
         self._check_cmd_run(run, dvi_filename)
-        self._report_run(run, out, err, step, in_dir, work_dir, "dvi", dvi_filename)
         latex_log_file = os.path.join(in_dir, f"{stem}.log")
         self.fetch_log(latex_log_file)
         if self.log:
             run["log"] = self.log
+        artifact = "dvi"
+        self._report_run(run, out, err, step, in_dir, work_dir, artifact, dvi_filename)
+        run = self.check_missing(in_dir, run, artifact)
         return run
 
     def _base_ps_to_pdf_run(self, stem: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
@@ -597,15 +611,13 @@ class PdfLatexConverter(BaseConverter):
             status = "success" if run["return_code"] == 0 else "fail"
             run["iteration"] = iteration
             if return_code in [0, 1]:
-                with open(os.path.join(in_dir, f"{stem}.log"), encoding='iso-8859-1') as src:
-                    for line in src.readlines():
-                        if line.find(rerun_needle) >= 0:
-                            # Need retry
-                            status = "fail"
-                            break
-                    else:
-                        status = "success"
-                        pass
+                for line in run["log"].splitlines():
+                    if line.find(rerun_needle) >= 0:
+                        # Need retry
+                        status = "fail"
+                        break
+                else:
+                    status = "success"
                     pass
                 pass
             outcome.update({"runs": self.runs, "status": status, "step": step})
@@ -619,8 +631,10 @@ class PdfLatexConverter(BaseConverter):
 
     def _pdflatex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         cmd_log = os.path.join(in_dir, f"{self.stem}.log")
-        return self._to_pdf_run(self.to_pdf_args, self.stem,
-                                step, work_dir, in_dir, out_dir, cmd_log)
+        run = self._to_pdf_run(self.to_pdf_args, self.stem,
+                               step, work_dir, in_dir, out_dir, cmd_log)
+        run = self.check_missing(in_dir, run, "pdf")
+        return run
 
     def converter_name(self) -> str:
         return "pdflatex: %s" % (shlex.join(self.to_pdf_args))
