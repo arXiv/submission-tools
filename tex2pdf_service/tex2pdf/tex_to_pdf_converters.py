@@ -77,6 +77,52 @@ class BaseConverter:
         """Produce PDF from the given tex file. Return the outcome dict."""
         pass
 
+    @abstractmethod
+    def _base_runner(self, tex_file:str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        """Run the base engine of the converter."""
+        pass
+
+    def _run_base_engine_necessary_times(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str) -> dict:
+        stem = os.path.splitext(tex_file)[0]
+        self.stem = stem
+        stem_pdf = f"{stem}.pdf"
+        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
+        # first run
+        step = "first_run"
+        run = self._base_runner(step, tex_file, work_dir, in_dir, out_dir)
+        output_size = run[base_format]["size"]
+        if output_size is None:
+            outcome.update({"status": "fail", "step": step,
+                            "reason": f"failed to create {base_format}", "runs": self.runs})
+            return outcome
+
+        # if DVI/PDF is generated, rerun for TOC and references
+        # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
+        for iteration in range(MAX_LATEX_RUNS - 1):
+            step = f"second_run:{iteration}"
+            run = self._base_runner(step, tex_file, work_dir, in_dir, out_dir)
+            # maybe PDF/DVI creating fails on second run, so check output size again
+            output_size = run[base_format]["size"]
+            if output_size is None:
+                outcome.update({"status": "fail", "step": step,
+                                "reason": f"failed to create {base_format}", "runs": self.runs})
+                return outcome
+            status = "success" if run["return_code"] == 0 else "fail"
+            run["iteration"] = iteration
+            for line in run["log"].splitlines():
+                if line.find(rerun_needle) >= 0:
+                    # Need retry
+                    status = "fail"
+                    break
+            else:
+                status = "success"
+            outcome.update({"runs": self.runs, "status": status, "step": step})
+            if status == "success":
+                break
+
+        return outcome
+
+
     def _exec_cmd(self, args: typing.List[str], child_dir: str, work_dir: str,
                   extra: dict | None = None) -> typing.Tuple[dict[str, typing.Any], str, str]:
         """Run the command and return the result"""
@@ -433,33 +479,10 @@ class LatexConverter(BaseDviConverter):
         """
         logger = get_logger()
 
-        # Stem: the filename of the tex file without the extension
-        stem = os.path.splitext(tex_file)[0]
-        self.stem = stem
-        stem_pdf = f"{stem}.pdf"
-        # pdf_filename = os.path.join(in_dir, stem_pdf)
-        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
-
-        # First latex run
-        for iteration in range(MAX_LATEX_RUNS):
-            step = "latex_run %d" % iteration
-            run = self._latex_run(step, tex_file, work_dir, in_dir, out_dir)
-            if run["return_code"] == 0:
-                outcome.update({"runs": self.runs, "status": "success", "step": step})
-            else:
-                outcome.update({"runs": self.runs, "status": "fail", "step": step})
-                return outcome
-            dvi_size = run["dvi"]["size"]
-            if dvi_size is not None:
-                break
-            pass
-        else:
-            outcome.update({"status": "fail", "step": "many latex run",
-                            "reason": "failed to create dvi"})
-            return outcome
+        outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "dvi")
 
         # Third - run dvips
-        outcome, run = self._two_try_dvi_to_ps_run(outcome, stem, work_dir, in_dir, out_dir)
+        outcome, run = self._two_try_dvi_to_ps_run(outcome, self.stem, work_dir, in_dir, out_dir)
         if outcome["status"] == "fail":
             return outcome
 
@@ -478,7 +501,8 @@ class LatexConverter(BaseDviConverter):
             args.append("-shell-escape")
         args.append(tex_file)
         return self._base_to_dvi_run(tag, self.stem, args, work_dir, in_dir)
-
+    
+    _base_runner = _latex_run
 
     def _ps_to_pdf_run(self, work_dir: str, in_dir: str, out_dir: str) -> dict:
         return super()._base_ps_to_pdf_run(self.stem, work_dir, in_dir, out_dir)
@@ -569,58 +593,20 @@ class PdfLatexConverter(BaseConverter):
         # find \pdfoutput=1
         self.pdfoutput_1_seen = find_pdfoutput_1(tex_file, in_dir)
 
-        # With the parent moving all of artifacts to the out_dir, this became a bit weird.
-        # bod = os.path.basename(out_dir)  # bod - *B*asename of the *O*ut_*D*ir
-        stem = os.path.splitext(tex_file)[0]
-        self.stem = stem
-        stem_pdf = f"{stem}.pdf"
-        # pdf_filename = os.path.join(in_dir, stem_pdf)
-        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
-
         # This breaks many packages... f"-output-directory=../{bod}"
         self.to_pdf_args = self._get_pdflatex_args(tex_file)
 
-        # First pdflatex run
-        step = "first_run"
-        run = self._pdflatex_run(step, work_dir, in_dir, out_dir)
-        pdf_size = run["pdf"]["size"]
-        if pdf_size is None:
-            outcome.update({"status": "fail", "step": step,
-                            "reason": "failed to create pdf", "runs": self.runs})
-            return outcome
-
-        # Second - if pdf is generated, run again to get the TOC
-        step = "second_run"
-        for iteration in range(min(3, max(1, MAX_LATEX_RUNS))):
-            run = self._pdflatex_run(step, work_dir, in_dir, out_dir)
-            return_code = run["return_code"]
-            status = "success" if run["return_code"] == 0 else "fail"
-            run["iteration"] = iteration
-            if return_code in [0, 1]:
-                with open(os.path.join(in_dir, f"{stem}.log"), encoding='iso-8859-1') as src:
-                    for line in src.readlines():
-                        if line.find(rerun_needle) >= 0:
-                            # Need retry
-                            status = "fail"
-                            break
-                    else:
-                        status = "success"
-                        pass
-                    pass
-                pass
-            outcome.update({"runs": self.runs, "status": status, "step": step})
-            logger.debug("pdflatex.produce_pdf", extra={ID_TAG: self.conversion_tag,
-                                                        "outcome": outcome})
-            if status == "success":
-                break
-            pass
+        outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "pdf")
+        logger.debug("pdflatex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
 
         return outcome
 
-    def _pdflatex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+    def _pdflatex_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         cmd_log = os.path.join(in_dir, f"{self.stem}.log")
         return self._to_pdf_run(self.to_pdf_args, self.stem,
                                 step, work_dir, in_dir, out_dir, cmd_log)
+
+    _base_runner = _pdflatex_run
 
     def converter_name(self) -> str:
         return "pdflatex: %s" % (shlex.join(self.to_pdf_args))
