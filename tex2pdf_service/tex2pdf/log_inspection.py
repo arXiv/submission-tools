@@ -19,6 +19,7 @@ TEX_LOG_ERRORS: typing.List[Pattern] = [
         r'Error: pdflatex \(file ([^\)]*)\): cannot find image file',
         r': File (.*) not found:\s*$',
         r'! Unable to load picture or PDF file \'([^\\\']+)\'.',
+        r'Package pdftex.def Error: File .* not found: using draft setting\.',
     ]
 ]
 
