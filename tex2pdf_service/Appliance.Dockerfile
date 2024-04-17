@@ -21,6 +21,9 @@ WORKDIR /usr/local/texlive/2023
 COPY texlive/2023/texmf-arxiv/ ./texmf-arxiv/
 COPY texlive/2023/texmf-local/ ./texmf-local/
 COPY texlive/2023/texmf.cnf .
+# apply necessary patches
+COPY texlive/2023/patches/ ./patches
+RUN patch -p0 <patches/0001-pdftex-def.patch
 RUN chown -R worker texmf.cnf ./texmf-arxiv/ ./texmf-local/
 
 USER worker

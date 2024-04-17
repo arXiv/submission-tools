@@ -78,7 +78,7 @@ class BaseConverter:
         pass
 
     @abstractmethod
-    def _base_runner(self, tex_file:str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+    def _base_runner(self, step: str, tex_file:str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Run the base engine of the converter."""
         pass
 
@@ -496,13 +496,13 @@ class LatexConverter(BaseDviConverter):
         logger.debug("latex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
         return outcome
 
-    def _latex_run(self, tag: str, tex_file: str, work_dir: str, in_dir: str, _out_dir: str) -> dict:
+    def _latex_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         # breaks many packages... f"-output-directory=../{bod}"
         args = ["/usr/bin/latex", "-interaction=batchmode", "-file-line-error", "-recorder"]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
-        return self._base_to_dvi_run(tag, self.stem, args, work_dir, in_dir)
+        return self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
     
     _base_runner = _latex_run
 
