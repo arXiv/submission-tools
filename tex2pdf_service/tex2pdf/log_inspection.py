@@ -8,6 +8,7 @@ from .atomic import AtomicStringSet
 # This triggers for .bbl as well
 # r'^No file\s+(.*)\.$',
 
+# make sure there is exactly one group catching the file name
 TEX_LOG_ERRORS: typing.List[Pattern] = [
     re.compile(exp) for exp in [
         r'^\! LaTeX Error: File `([^\\\']*)\\\' not found\.',
@@ -19,7 +20,7 @@ TEX_LOG_ERRORS: typing.List[Pattern] = [
         r'Error: pdflatex \(file ([^\)]*)\): cannot find image file',
         r': File (.*) not found:\s*$',
         r'! Unable to load picture or PDF file \'([^\\\']+)\'.',
-        r'Package pdftex.def Error: File .* not found: using draft setting\.',
+        r'Package pdftex.def Error: File (.*) not found: using draft setting\.',
     ]
 ]
 
