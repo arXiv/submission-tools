@@ -32,6 +32,7 @@ import click
 import requests
 import logging
 import sqlite3
+from tqdm import tqdm
 from multiprocessing.pool import ThreadPool
 import tarfile
 import json
@@ -44,7 +45,7 @@ thread_local = threading.local()
 def score_db(score_path: str) -> Connection:
     """Open scorecard database"""
     db = sqlite3.connect(score_path)
-    db.execute("create table if not exists score (source varchar primary key, outcome TEXT, pdf varchar, status int, success bool)")
+    db.execute("create table if not exists score (source varchar primary key, outcome TEXT, arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, status int, success bool)")
     db.execute("create table if not exists touched (filename varchar primary key)")
     return db
 
@@ -60,10 +61,12 @@ def tarball_to_outcome_path(tarball: str) -> str:
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
-def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str]]:
+def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], typing.List[str], typing.List[str]]:
     """Open a compressed outcome tar archive and get the metadata"""
     meta = {}
-    files = []
+    files = set()
+    clsfiles = set()
+    styfiles = set()
     with tarfile.open(outcome_file, "r:gz") as outcome:
         for name in outcome.getnames():
             if name.startswith("outcome-") and name.endswith(".json"):
@@ -74,18 +77,30 @@ def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str]]:
                 files_fd = outcome.extractfile(name)
                 for files_line in files_fd.readlines():
                     filename = files_line.decode("utf-8").strip()
-                    if filename.startswith("INPUT /usr/local/texlive/2023/texmf-arxiv"):
-                        files.append(filename.split()[1])
-                    elif filename.startswith("INPUT /usr/local/texlive/2023/texmf-local"):
-                        files.append(filename.split()[1])
-    return meta, files
+                    if (
+                        filename.startswith("INPUT /usr/local/texlive/2023/texmf-arxiv") or
+                        filename.startswith("INPUT /usr/local/texlive/2024/texmf-arxiv") or
+                        filename.startswith("INPUT /usr/local/texlive/2023/texmf-local") or
+                        filename.startswith("INPUT /usr/local/texlive/2024/texmf-local")
+                    ):
+                        files.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+                    # only collect class and style files from the texlive tree, not files included in the submission
+                    elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".cls"):
+                        clsfiles.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+                    elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".sty"):
+                        styfiles.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+
+    return meta, list(files), list(clsfiles), list(styfiles)
 
 
 @cli.command()
 @click.argument('submissions', nargs=1)
 @click.option('--service',  default="http://localhost:6301/convert/")
 @click.option('--score',  default="score.db", help="Score card db path")
-def compile(submissions: str, service: str, score: str) -> None:
+@click.option('--tex2pdf-timeout', default=100, help='timeout passed to tex2pdf')
+@click.option('--post-timeout', default=600, help='timeout for the complete post')
+@click.option('--threads', default=64, help='Number of threads requested for threadpool')
+def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int) -> None:
     """Compile submissions in a directory"""
 
     def submit_tarball(tarball: str) -> None:
@@ -101,7 +116,7 @@ def compile(submissions: str, service: str, score: str) -> None:
             uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
             while True:
                 try:
-                    res = requests.post(service + "?timeout=100", files=uploading, timeout=600, allow_redirects=False)
+                    res = requests.post(service + f"?timeout={tex2pdf_timeout}", files=uploading, timeout=post_timeout, allow_redirects=False)
                     status_code = res.status_code
                     if status_code == 504:
                         logging.warning("Got 504 for %s", service)
@@ -112,7 +127,7 @@ def compile(submissions: str, service: str, score: str) -> None:
                         if res.content:
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            meta, lines = get_outcome_meta(outcome_file)
+                            meta, lines, clsfiles, styfiles = get_outcome_meta(outcome_file)
                 except TimeoutError:
                     logging.warning("%s: Connection timed out", tarball)
 
@@ -127,7 +142,7 @@ def compile(submissions: str, service: str, score: str) -> None:
     source_dir = os.path.expanduser(submissions)
     tarballs = [os.path.join(source_dir, tarball) for tarball in os.listdir(source_dir) if tarball.endswith(".tar.gz") and not tarball.startswith("outcome-")]
     logging.info("Got %d tarballs", len(tarballs))
-    with ThreadPool(processes=int(64)) as pool:
+    with ThreadPool(processes=int(threads)) as pool:
         pool.map(submit_tarball, tarballs)
     logging.info("Finished")
 
@@ -151,7 +166,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
     skipped = 0
     updated = 0
     good = 0
-    for tarball in tarballs:
+    for tarball in tqdm(tarballs):
         tarball_path = os.path.join(submissions, tarball)
         if not update:
             # If the success is already reported, no need to update
@@ -171,7 +186,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         pdf_file = None
         if os.path.exists(outcome_file):
             try:
-                meta, files = get_outcome_meta(outcome_file)
+                meta, files, clsfiles, styfiles = get_outcome_meta(outcome_file)
                 pdf_file = meta.get("pdf_file")
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
@@ -180,7 +195,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         # Upsert the result
         cursor = sdb.cursor()
         cursor.execute("begin")
-        cursor.execute("insert into score (source, outcome, pdf, success) values (?, ?, ?, ?) on conflict(source) do update set outcome=excluded.outcome, pdf=excluded.pdf, success=excluded.success", (tarball_path, json.dumps(meta, indent=2), pdf_file, success))
+        cursor.execute("insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, success) values (?, ?, ?, ?, ?, ?, ?) on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles, clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf, success=excluded.success", (tarball_path, json.dumps(meta, indent=2), json.dumps(files, indent=2), json.dumps(clsfiles, indent=2), json.dumps(styfiles, indent=2), pdf_file, success))
         cursor.execute("commit")
         cursor.close()
 
