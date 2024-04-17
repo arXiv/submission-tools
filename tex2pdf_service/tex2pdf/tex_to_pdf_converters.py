@@ -79,7 +79,7 @@ class BaseConverter:
         pass
 
     @abstractmethod
-    def _base_runner(self, step: str, tex_file:str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+    def _latexen_run(self, step: str, tex_file:str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Run the base engine of the converter."""
         pass
 
@@ -90,7 +90,7 @@ class BaseConverter:
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
         # first run
         step = "first_run"
-        run = self._base_runner(step, tex_file, work_dir, in_dir, out_dir)
+        run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
         output_size = run[base_format]["size"]
         if output_size is None:
             outcome.update({"status": "fail", "step": step,
@@ -101,7 +101,7 @@ class BaseConverter:
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
         for iteration in range(MAX_LATEX_RUNS - 1):
             step = f"second_run:{iteration}"
-            run = self._base_runner(step, tex_file, work_dir, in_dir, out_dir)
+            run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
             # maybe PDF/DVI creating fails on second run, so check output size again
             output_size = run[base_format]["size"]
             if output_size is None:
@@ -510,7 +510,7 @@ class LatexConverter(BaseDviConverter):
         logger.debug("latex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
         return outcome
 
-    def _latex_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+    def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         # breaks many packages... f"-output-directory=../{bod}"
         args = ["/usr/bin/latex", "-interaction=batchmode", "-file-line-error", "-recorder"]
         if WITH_SHELL_ESCAPE:
@@ -518,8 +518,6 @@ class LatexConverter(BaseDviConverter):
         args.append(tex_file)
         return self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
     
-    _base_runner = _latex_run
-
     def _ps_to_pdf_run(self, work_dir: str, in_dir: str, out_dir: str) -> dict:
         return super()._base_ps_to_pdf_run(self.stem, work_dir, in_dir, out_dir)
 
@@ -616,14 +614,13 @@ class PdfLatexConverter(BaseConverter):
         logger.debug("pdflatex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
         return outcome
 
-    def _pdflatex_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+    def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         cmd_log = os.path.join(in_dir, f"{self.stem}.log")
         run = self._to_pdf_run(self.to_pdf_args, self.stem,
                                step, work_dir, in_dir, out_dir, cmd_log)
         run = self.check_missing(in_dir, run, "pdf")
         return run
 
-    _base_runner = _pdflatex_run
 
     def converter_name(self) -> str:
         return "pdflatex: %s" % (shlex.join(self.to_pdf_args))
