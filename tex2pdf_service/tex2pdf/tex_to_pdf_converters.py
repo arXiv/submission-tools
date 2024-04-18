@@ -34,14 +34,16 @@ class BaseConverter:
     runs: typing.List[dict]  # Each run generates an output
     log: str
     log_extra: dict
+    use_addon_tree: bool
     zzrm: ZeroZeroReadMe | None
     init_time: float
     max_time_budget: float
     stem: str
 
-    def __init__(self, conversion_tag: str, zzrm: ZeroZeroReadMe | None = None,
+    def __init__(self, conversion_tag: str, use_addon_tree: bool = False, zzrm: ZeroZeroReadMe | None = None,
                  max_time_budget: float | None = None, init_time: float | None = None):
         self.conversion_tag = conversion_tag
+        self.use_addon_tree = use_addon_tree
         self.zzrm = zzrm
         self.runs = []
         self.log = ""
@@ -155,6 +157,11 @@ class BaseConverter:
         cmdenv = {"WORKDIR": work_dir, "SECRETS": "?", "GOOGLE_APPLICATION_CREDENTIALS": "?",
                   "PATH": PATH, "HOME": homedir,
                   "max_print_line": "4096", "error_line": "254", "half_error_line": "238"}
+        # get location of addon trees
+        if self.use_addon_tree:
+            sap = subprocess.run(["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True).stdout.rstrip()
+            addon_tree = os.path.join(sap, "texmf-arxiv")
+            cmdenv["TEXMFAUXTREES"] = addon_tree + "," # we need a final comma!
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
                               cwd=child_dir, encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False
@@ -171,6 +178,7 @@ class BaseConverter:
             timestamp1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             run = {"args": args, "stdout": out, "stderr": err,
                    "return_code": child.returncode,
+                   "run_env": cmdenv,
                    "start_time": timestamp0, "end_time": timestamp1,
                    "elapse_time": elapse_time,
                    "process_completion": process_completion,

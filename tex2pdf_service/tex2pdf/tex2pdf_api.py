@@ -85,6 +85,9 @@ def healthcheck() -> str:
              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
          })
 async def convert_pdf(incoming: UploadFile,
+                      use_addon_tree: typing.Annotated[bool | None,
+                                                       Query(title="Use addon tree",
+                                                             description="Determines whether an addon tree is used.")] = None,
                       timeout: typing.Annotated[int | None,
                                                 Query(title="Time out",
                                                       description="Time out in seconds.")] = None,
@@ -114,8 +117,8 @@ async def convert_pdf(incoming: UploadFile,
             except ValueError:
                 pass
             pass
-        driver = ConverterDriver(tempdir, filename, tag=tag, water=watermark_text,
-                                 max_time_budget=timeout_secs)
+        driver = ConverterDriver(tempdir, filename, use_addon_tree=use_addon_tree, tag=tag,
+                                 water=watermark_text, max_time_budget=timeout_secs)
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:
