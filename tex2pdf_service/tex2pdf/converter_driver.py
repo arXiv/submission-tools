@@ -49,10 +49,11 @@ class ConverterDriver:
     converter_logs: typing.List[str]
     tag: str
     note: str
+    use_addon_tree: bool
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, water: str | None = None,
-                 max_time_budget: float|None=None):
+                 max_time_budget: float | None = None):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
         self.out_dir = os.path.join(work_dir, "out")
@@ -155,7 +156,7 @@ class ConverterDriver:
                         del t0_files[pdf_file]
                     pass
 
-                # the converter returns the multiple runs of latex command so it is named runs.
+                # the converter returns the multiple runs of latex command, so it is named runs.
                 runs = self.converter.produce_pdf(tex_file, self.work_dir, self.in_dir, self.out_dir)
 
                 elapse_time = time.perf_counter() - self.t0
@@ -224,7 +225,7 @@ class ConverterDriver:
                 pass
             pass
 
-        # Keep the all of converter runs (except the files created)
+        # Keep the all of converters' runs (except the files created)
         outcome["total_time"] = time.perf_counter() - self.t0
         outcome["total_cpu_time"] = time.process_time() - start_process_time
 
@@ -369,7 +370,7 @@ class ConversionOutcomeMaker:
             more_files = []
             pass
         taring = more_files + [f"{bod}/{fname}" for fname in outcome_files]
-        # double check the files exist
+        # double-check the files exist
         taring = [ofile for ofile in taring if os.path.exists(os.path.join(self.work_dir, ofile))]
         tar_cmd = ["tar", "czf", self.outcome_file, outcome_meta_file] + taring
         logger.debug(f"Creating outcome: {shlex.join(tar_cmd)}", extra=self.log_extra)

@@ -111,14 +111,15 @@ class BaseConverter:
                                 "reason": f"failed to create {base_format}", "runs": self.runs})
                 return outcome
             status = "success" if run["return_code"] == 0 else "fail"
+            if status == "success":
+                for line in run["log"].splitlines():
+                    if line.find(rerun_needle) >= 0:
+                        # Need retry
+                        status = "fail"
+                        break
+                else:
+                    status = "success"
             run["iteration"] = iteration
-            for line in run["log"].splitlines():
-                if line.find(rerun_needle) >= 0:
-                    # Need retry
-                    status = "fail"
-                    break
-            else:
-                status = "success"
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
                 break

@@ -23,6 +23,8 @@ MAX_LATEX_RUNS: int = int(os.environ.get("MAX_LATEX_RUNS", "5"))
 # Log level name may be different depending on the service provider
 LOG_LEVEL_NAME = os.environ.get("LOG_LEVEL_NAME", "severity")
 
+USE_ADDON_TREE: bool = os.environ.get("USE_ADDON_TREE", "y") == "y"
+
 
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger"""

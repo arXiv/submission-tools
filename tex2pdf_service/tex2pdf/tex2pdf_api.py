@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from tex2pdf import MAX_TIME_BUDGET
+from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
@@ -85,9 +85,9 @@ def healthcheck() -> str:
              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
          })
 async def convert_pdf(incoming: UploadFile,
-                      use_addon_tree: typing.Annotated[bool | None,
+                      use_addon_tree: typing.Annotated[bool,
                                                        Query(title="Use addon tree",
-                                                             description="Determines whether an addon tree is used.")] = None,
+                                                             description="Determines whether an addon tree is used.")] = USE_ADDON_TREE,
                       timeout: typing.Annotated[int | None,
                                                 Query(title="Time out",
                                                       description="Time out in seconds.")] = None,
