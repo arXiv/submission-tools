@@ -27,6 +27,11 @@ class RunFail(Exception):
     pass
 
 
+class BadTexmfTree(Exception):
+    """texmf tree does not exist """
+    pass
+
+
 class BaseConverter:
     """Base class for tex-to-pdf converters.
     """
@@ -34,16 +39,16 @@ class BaseConverter:
     runs: typing.List[dict]  # Each run generates an output
     log: str
     log_extra: dict
-    use_addon_tree: bool
+    texmf_addon_trees: list[str]
     zzrm: ZeroZeroReadMe | None
     init_time: float
     max_time_budget: float
     stem: str
 
-    def __init__(self, conversion_tag: str, use_addon_tree: bool = False, zzrm: ZeroZeroReadMe | None = None,
+    def __init__(self, conversion_tag: str, texmf_addon_trees: list[str] = [], zzrm: ZeroZeroReadMe | None = None,
                  max_time_budget: float | None = None, init_time: float | None = None):
         self.conversion_tag = conversion_tag
-        self.use_addon_tree = use_addon_tree
+        self.texmf_addon_trees = texmf_addon_trees
         self.zzrm = zzrm
         self.runs = []
         self.log = ""
@@ -159,10 +164,12 @@ class BaseConverter:
                   "PATH": PATH, "HOME": homedir,
                   "max_print_line": "4096", "error_line": "254", "half_error_line": "238"}
         # get location of addon trees
-        if self.use_addon_tree:
-            sap = subprocess.run(["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True).stdout.rstrip()
-            addon_tree = os.path.join(sap, "texmf-arxiv")
-            cmdenv["TEXMFAUXTREES"] = addon_tree + "," # we need a final comma!
+        if self.texmf_addon_trees:
+            for tmf in self.texmf_addon_trees:
+                if not os.path.exists(tmf):
+                    raise BadTexmfTree(f"{tmf} directory does not exist")
+            # We are still here, so all the trees exist
+            cmdenv["TEXMFAUXTREES"] = ",".join(self.texmf_addon_trees) + "," # we need a final comma!
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
                               cwd=child_dir, encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False

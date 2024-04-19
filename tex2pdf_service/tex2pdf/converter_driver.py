@@ -49,9 +49,9 @@ class ConverterDriver:
     converter_logs: typing.List[str]
     tag: str
     note: str
-    use_addon_tree: bool
+    texmf_addon_trees: list[str]
 
-    def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
+    def __init__(self, work_dir: str, source: str, texmf_addon_trees: list[str] = [],
                  tag: str | None = None, water: str | None = None,
                  max_time_budget: float | None = None):
         self.work_dir = work_dir
@@ -69,7 +69,7 @@ class ConverterDriver:
         self.t0 = time.perf_counter()
         self.max_time_budget = MAX_TIME_BUDGET if max_time_budget is None else max_time_budget
         self.tag = tag if tag else "unknown driver"
-        self.use_addon_tree = use_addon_tree if use_addon_tree else False
+        self.texmf_addon_trees = texmf_addon_trees
         pass
 
     @property
@@ -90,7 +90,7 @@ class ConverterDriver:
                         "timeout": str(self.max_time_budget),
                         "watermark": self.water,
                         "zzrm": self.zzrm.readme,
-                        "use_addon_tree": self.use_addon_tree}
+                        "texmf_addon_trees": self.texmf_addon_trees}
         # Find the starting point
         fix_tex_sources(self.in_dir)
         self.tex_files = find_primary_tex(self.in_dir, self.zzrm)
@@ -140,7 +140,7 @@ class ConverterDriver:
             outcome["pdf_files"] = []
             outcome["include_figures"] = converter_class.yes_pix()
             for tex_file in ordered_tex_files:
-                self.converter = converter_class(self.tag, use_addon_tree=self.use_addon_tree,
+                self.converter = converter_class(self.tag, texmf_addon_trees=self.texmf_addon_trees,
                                                  zzrm=self.zzrm, init_time=self.t0,
                                                  max_time_budget=self.max_time_budget)
                 cpu_t0 = time.process_time()
