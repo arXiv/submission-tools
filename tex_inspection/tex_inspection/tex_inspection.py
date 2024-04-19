@@ -210,6 +210,12 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
                             test_file_extent(loser, TEX_FILE_EXTS, no_ext=".tex"))
                         if loser:
                             maybe_losers.add(loser)
+            if stripped.startswith(r"\usepackage"):
+                for pname in pick_package_names(stripped):
+                    normalized_pkg = normalized_texs.get(pname.lower(),
+                        test_file_extent(pname, TEX_FILE_EXTS, no_ext=".tex"))
+                    if normalized_pkg:
+                        maybe_losers.add(normalized_pkg)
         losers |= maybe_losers
     # End of round 1
 
