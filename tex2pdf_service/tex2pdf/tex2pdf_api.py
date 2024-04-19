@@ -85,7 +85,7 @@ def healthcheck() -> str:
              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
          })
 async def convert_pdf(incoming: UploadFile,
-                      texmf_addon_trees: typing.Annotated[list[str] | None,
+                      texmf_addon_trees: typing.Annotated[list[str],
                                                        Query(title="Addon tree(s)",
                                                              description="Adds argument as addon texmf tree.")] = TEXMF_ADDON_TREES,
                       timeout: typing.Annotated[int | None,
