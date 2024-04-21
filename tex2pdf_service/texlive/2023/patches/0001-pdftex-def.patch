@@ -1,0 +1,21 @@
+https://arxiv-org.atlassian.net/browse/ARXIVCE-1493
+https://github.com/latex3/graphics-def/issues/38
+https://github.com/latex3/graphics-def/pull/39
+
+--- texmf-dist/tex/latex/graphics-def/pdftex.def.orig	2024-04-15 21:54:17.000000000 +0900
++++ texmf-dist/tex/latex/graphics-def/pdftex.def	2024-04-15 21:55:48.382179359 +0900
+@@ -681,11 +681,12 @@
+         \@ifpackageloaded{pst-pdf}{}{%
+           \@ifpackageloaded{pdftricks}{}{%
+             \@ifpackageloaded{graphics}{%
+-              \ifnum\pdfshellescape>0 %
++%              \ifnum\pdfshellescape>0 %
+           % only add .eps to file extension list if epstopdf is loaded
+                 \edef\Gin@extensions{\Gin@extensions,.eps}%
+                 \RequirePackage{epstopdf-base}[2009/07/12]%
+-              \fi}{}
++%              \fi
++           }{}
+           }% pdftricks not loaded
+         }% pst-pdf not loaded
+         \fi
