@@ -181,9 +181,6 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
                     continue
 
         outcome_file = tarball_to_outcome_path(tarball_path)
-        meta = {}
-        files = []
-        pdf_file = None
         if os.path.exists(outcome_file):
             try:
                 meta, files, clsfiles, styfiles = get_outcome_meta(outcome_file)
@@ -191,16 +188,18 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
                 os.unlink(outcome_file)
+                skipped += 1
+                continue
+        else:
+            skipped += 1
+            continue
         success = meta.get("status") == "success"
         # Upsert the result
         cursor = sdb.cursor()
         cursor.execute("begin")
-        cursor.execute("insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, success) values (?, ?, ?, ?, ?, ?, ?) on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles, clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf, success=excluded.success", (tarball_path, json.dumps(meta, indent=2), json.dumps(files, indent=2), json.dumps(clsfiles, indent=2), json.dumps(styfiles, indent=2), pdf_file, success))
-        cursor.execute("commit")
-        cursor.close()
-
-        cursor = sdb.cursor()
-        cursor.execute("begin")
+        cursor.execute("insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, success) values (?, ?, ?, ?, ?, ?, ?)"
+                       " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles, clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf, success=excluded.success",
+                       (tarball_path, json.dumps(meta, indent=2), json.dumps(files, indent=2), json.dumps(clsfiles, indent=2), json.dumps(styfiles, indent=2), pdf_file, success))
         cursor.executemany("insert or ignore into touched(filename) values (?) ", [(filename,) for filename in files])
         cursor.execute("commit")
         cursor.close()
