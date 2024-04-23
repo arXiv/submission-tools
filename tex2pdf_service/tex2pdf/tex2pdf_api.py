@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE
+from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
@@ -86,11 +86,16 @@ def healthcheck() -> str:
          })
 async def convert_pdf(incoming: UploadFile,
                       use_addon_tree: typing.Annotated[bool,
-                                                       Query(title="Use addon tree",
-                                                             description="Determines whether an addon tree is used.")] = USE_ADDON_TREE,
+                          Query(title="Use addon tree",
+                                description="Determines whether an addon tree is used.")] = USE_ADDON_TREE,
                       timeout: typing.Annotated[int | None,
-                                                Query(title="Time out",
-                                                      description="Time out in seconds.")] = None,
+                          Query(title="Time out", description="Time out in seconds.")] = None,
+                      max_tex_files: typing.Annotated[int | None,
+                          Query(title="Max Tex File count",
+                                description=f"Maximum number of TeX files processed in the input. Default is {MAX_TOPLEVEL_TEX_FILES}")] = None,
+                      max_appending_files: typing.Annotated[int | None,
+                          Query(title="Max Extra File count",
+                                description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
                       watermark_text: str | None = None) -> Response:
     """
     get a tarball, and convert to PDF
@@ -107,6 +112,12 @@ async def convert_pdf(incoming: UploadFile,
             continue
         break
 
+    if max_tex_files is None:
+        max_tex_files = MAX_TOPLEVEL_TEX_FILES
+
+    if max_appending_files is None:
+        max_appending_files = MAX_APPENDING_FILES
+
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
         await save_stream(in_dir, incoming, filename, log_extra)
@@ -118,7 +129,10 @@ async def convert_pdf(incoming: UploadFile,
                 pass
             pass
         driver = ConverterDriver(tempdir, filename, use_addon_tree=use_addon_tree, tag=tag,
-                                 water=watermark_text, max_time_budget=timeout_secs)
+                                 water=watermark_text, max_time_budget=timeout_secs,
+                                 max_tex_files=max_tex_files,
+                                 max_appending_files=max_appending_files
+                                 )
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:

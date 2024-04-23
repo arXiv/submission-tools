@@ -25,6 +25,8 @@ LOG_LEVEL_NAME = os.environ.get("LOG_LEVEL_NAME", "severity")
 
 USE_ADDON_TREE: bool = os.environ.get("USE_ADDON_TREE") in ["y", "true"]
 
+MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
+MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger"""

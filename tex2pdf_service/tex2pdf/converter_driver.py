@@ -50,10 +50,14 @@ class ConverterDriver:
     tag: str
     note: str
     use_addon_tree: bool
+    max_tex_files: int
+    max_appending_files: int
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, water: str | None = None,
-                 max_time_budget: float | None = None):
+                 max_time_budget: float | None = None,
+                 max_tex_files: int = 1,  max_appending_files: int = 0
+                 ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
         self.out_dir = os.path.join(work_dir, "out")
@@ -70,6 +74,8 @@ class ConverterDriver:
         self.max_time_budget = MAX_TIME_BUDGET if max_time_budget is None else max_time_budget
         self.tag = tag if tag else "unknown driver"
         self.use_addon_tree = use_addon_tree if use_addon_tree else False
+        self.max_tex_files = max_tex_files
+        self.max_appending_files = max_appending_files
         pass
 
     @property
@@ -90,11 +96,17 @@ class ConverterDriver:
                         "timeout": str(self.max_time_budget),
                         "watermark": self.water,
                         "zzrm": self.zzrm.readme,
-                        "use_addon_tree": self.use_addon_tree}
+                        "use_addon_tree": self.use_addon_tree,
+                        "max_tex_files": self.max_tex_files,
+                        "max_appending_files": self.max_appending_files
+                        }
         # Find the starting point
         fix_tex_sources(self.in_dir)
-        self.tex_files = find_primary_tex(self.in_dir, self.zzrm)
+        tex_files = find_primary_tex(self.in_dir, self.zzrm)
+        self.tex_files = tex_files[:self.max_tex_files]
+        self.outcome["possible_tex_files"] = tex_files
         self.outcome["tex_files"] = self.tex_files
+        self.outcome["unused_tex_files"] = tex_files[self.max_tex_files:]
         if not self.tex_files:
             in_file: dict
             in_files = ["%s (%s)" % (in_file["name"], str(in_file["size"]))
@@ -257,15 +269,16 @@ class ConverterDriver:
         try:
             # artifact moving has moved the pdfs to out_dir while unused pics still in in_dir
             docs = [f"out/{pdf_file}" for pdf_file in pdf_files]
+            pic_adds = self.unused_pics()[:self.max_appending_files]
             if self.converter and self.converter.__class__.yes_pix():
-                docs += [f"in/{pic}" for pic in self.unused_pics()]
+                docs += [f"in/{pic}" for pic in pic_adds]
             outcome["documents"] = docs
             docs = [os.path.join(self.work_dir, doc) for doc in docs]
             final_pdf, used_gfx, unused_gfx = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
-            outcome["unused_figures"] = unused_gfx
+            outcome["unused_figures"] =  self.unused_pics()[self.max_appending_files:] + unused_gfx
         except PdfError as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
