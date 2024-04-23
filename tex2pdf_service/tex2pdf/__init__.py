@@ -23,8 +23,12 @@ MAX_LATEX_RUNS: int = int(os.environ.get("MAX_LATEX_RUNS", "5"))
 # Log level name may be different depending on the service provider
 LOG_LEVEL_NAME = os.environ.get("LOG_LEVEL_NAME", "severity")
 
-TEXMF_ADDON_TREES: list[str] = os.environ.get("TEXMF_ADDON_TREES", "").split(",")
-
+TEXMF_ENV_VARS: list[str] = os.environ.get("TEXMF_ENV_VARS", "").split(",")
+ALLOWED_TEXMF_ENV_VARS: list[str] = [
+    "TEXMFAUXTREES",
+    "SOURCE_DATE_EPOCH",
+    "FORCE_SOURCE_DATE",
+]
 
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger"""

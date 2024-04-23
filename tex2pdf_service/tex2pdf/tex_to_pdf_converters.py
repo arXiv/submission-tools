@@ -39,16 +39,16 @@ class BaseConverter:
     runs: typing.List[dict]  # Each run generates an output
     log: str
     log_extra: dict
-    texmf_addon_trees: list[str]
+    texmf_env_vars: dict[str, str]
     zzrm: ZeroZeroReadMe | None
     init_time: float
     max_time_budget: float
     stem: str
 
-    def __init__(self, conversion_tag: str, texmf_addon_trees: list[str] = [], zzrm: ZeroZeroReadMe | None = None,
+    def __init__(self, conversion_tag: str, texmf_env_vars: dict[str, str] | None = None, zzrm: ZeroZeroReadMe | None = None,
                  max_time_budget: float | None = None, init_time: float | None = None):
         self.conversion_tag = conversion_tag
-        self.texmf_addon_trees = texmf_addon_trees
+        self.texmf_env_vars = texmf_env_vars if texmf_env_vars else {}
         self.zzrm = zzrm
         self.runs = []
         self.log = ""
@@ -164,12 +164,25 @@ class BaseConverter:
                   "PATH": PATH, "HOME": homedir,
                   "max_print_line": "4096", "error_line": "254", "half_error_line": "238"}
         # get location of addon trees
-        if self.texmf_addon_trees:
-            for tmf in self.texmf_addon_trees:
-                if not os.path.exists(tmf):
-                    raise BadTexmfTree(f"{tmf} directory does not exist")
-            # We are still here, so all the trees exist
-            cmdenv["TEXMFAUXTREES"] = ",".join(self.texmf_addon_trees) + "," # we need a final comma!
+        if self.texmf_env_vars:
+            for key, val in self.texmf_env_vars.items():
+                if key == "TEXMFAUXTREES":
+                    # check that all passed in trees exist
+                    # is this really necessary? kpathsea does not care!
+                    for t in val.rstrip(",").split(","):
+                        if not os.path.exists(t):
+                            raise BadTexmfTree(f"{t} directory does not exist")
+                    # update TEXMFAUXTREES value to have a final ","
+                    self.texmf_env_vars[key] = val.rstrip(",") + ","
+                elif key == "SOURCE_DATE_EPOCH":
+                    # this value must be an integer >=0 
+                    if not val.isdecimal():
+                        raise ValueError(f"Value for SOURCE_DATE_EPOCH must be a non-negative integer, not {val}")
+                elif key == "FORCE_SOURCE_DATE":
+                    if val not in ["0", "1"]:
+                        raise ValueError(f"Value of FORCE_SOURCE_DATE must be either 0 or 1, not {val}")
+                # still here, so all fine -- the val are already shell quoted at api entry point
+                cmdenv[key] = val
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
                               cwd=child_dir, encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False

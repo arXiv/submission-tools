@@ -3,6 +3,7 @@ Tex2PDF FastAPI.
 """
 
 import os
+import shlex
 import subprocess
 import tempfile
 import traceback
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from tex2pdf import MAX_TIME_BUDGET, TEXMF_ADDON_TREES
+from tex2pdf import MAX_TIME_BUDGET, TEXMF_ENV_VARS, ALLOWED_TEXMF_ENV_VARS
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
@@ -85,9 +86,9 @@ def healthcheck() -> str:
              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
          })
 async def convert_pdf(incoming: UploadFile,
-                      texmf_addon_trees: typing.Annotated[list[str],
-                                                       Query(title="Addon tree(s)",
-                                                             description="Adds argument as addon texmf tree.")] = TEXMF_ADDON_TREES,
+                      texmf_env_vars: typing.Annotated[list[str],
+                                                       Query(title="Additional TeX environment variables",
+                                                             description="Adds argument as addon texmf tree.")] = TEXMF_ENV_VARS,
                       timeout: typing.Annotated[int | None,
                                                 Query(title="Time out",
                                                       description="Time out in seconds.")] = None,
@@ -117,7 +118,18 @@ async def convert_pdf(incoming: UploadFile,
             except ValueError:
                 pass
             pass
-        driver = ConverterDriver(tempdir, filename, texmf_addon_trees=texmf_addon_trees, tag=tag,
+        # check and convert env vars
+        texmf_env_vars_parsed: dict[str, str] = {}
+        if texmf_env_vars:
+            # each element of the list is VAR=VALUE where we only allow certain VAR
+            for assignment in texmf_env_vars:
+                key, val = assignment.split("=", 1)
+                if key not in ALLOWED_TEXMF_ENV_VARS:
+                    logger.info("Environment variable not allowed: %s", key)
+                    JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                 content={"message": f"Environment variable not allowed: {key}"})
+                texmf_env_vars_parsed[key] = shlex.quote(val)
+        driver = ConverterDriver(tempdir, filename, texmf_env_vars=texmf_env_vars_parsed, tag=tag,
                                  water=watermark_text, max_time_budget=timeout_secs)
         try:
             _pdf_file = driver.generate_pdf()
