@@ -2,9 +2,11 @@
 FastAPI utilities
 """
 
-from typing import BinaryIO, TextIO
 from io import BufferedIOBase
+from typing import BinaryIO, TextIO
+
 from fastapi import BackgroundTasks
+
 from tex2pdf.service_logger import get_logger
 
 

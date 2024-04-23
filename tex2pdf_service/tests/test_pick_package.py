@@ -1,5 +1,6 @@
 import unittest
-from tex2pdf.tex_to_pdf_converters import (pick_package_names)
+
+from tex2pdf.tex_to_pdf_converters import pick_package_names
 
 
 class TestPickPackage(unittest.TestCase):

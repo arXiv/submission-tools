@@ -13,7 +13,7 @@ class MyPyTest(TestCase):
         """Run mypy on all module sources."""
         mypy = shutil.which("mypy")
         if mypy is None:
-            raise EnvironmentError("mypy not found in PATH")
+            raise OSError("mypy not found in PATH")
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         result: int = subprocess.call([mypy, "-p", "tex2pdf"],
                                       env=os.environ, cwd=root_dir)

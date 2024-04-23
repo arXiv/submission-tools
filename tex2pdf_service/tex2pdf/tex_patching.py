@@ -32,11 +32,11 @@ def correct_graphicspath(line: str) -> str:
 
     corrected_paths = []
     for path in paths:
-        if path.startswith("./"):
-            path = path[2:]
-        corrected_paths.append(path)
-        if not path.endswith("/"):
-            corrected = path + "/"
+        normalized_path = path
+        if normalized_path.startswith("./"):
+            normalized_path = normalized_path[2:]
+        if not normalized_path.endswith("/"):
+            corrected = normalized_path + "/"
             if corrected not in paths and corrected not in corrected_paths:
                 corrected_paths.append(corrected)
                 pass
@@ -68,8 +68,8 @@ def set_overleafhome_and_homepath(line: str) -> str:
 
 
 def fix_tex_sources(in_dir: str,
-                    fixers: typing.List[typing.Callable]|None = None,
-                    toplevels: typing.List[str]|None = None) -> None:
+                    fixers: list[typing.Callable]|None = None,
+                    toplevels: list[str]|None = None) -> None:
     """Fix the tex sources in the given directory."""
     if toplevels is None:
         toplevels = os.listdir(in_dir)
@@ -101,7 +101,7 @@ def fix_tex_sources(in_dir: str,
             [_stem, fext] = os.path.splitext(filename)
             if fext.lower() not in TEX_FILE_EXTS:
                 continue
-            with open(os.path.join(parent_dir, filename), "r", encoding="iso-8859-1") as fd:
+            with open(os.path.join(parent_dir, filename), encoding="iso-8859-1") as fd:
                 original = fd.readlines()
                 pass
 

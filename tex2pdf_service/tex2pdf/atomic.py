@@ -2,7 +2,6 @@
 Atomic: sugar for threading
 """
 import threading
-import typing
 
 
 class AtomicInteger:
@@ -60,28 +59,28 @@ class AtomicStrings:
 
 class AtomicStringSet:
     """Atomic integer increment/decrement variable"""
-    _value: typing.Set[str]
+    _value: set[str]
 
     def __init__(self) -> None:
         self._value = set()
         self._lock = threading.Lock()
 
 
-    def add(self, value: str) -> typing.Set[str]:
+    def add(self, value: str) -> set[str]:
         with self._lock:
             self._value.add(value)
             return self._value
 
     @property
-    def value(self) -> typing.Set[str]:
+    def value(self) -> set[str]:
         with self._lock:
             return self._value
 
     @value.setter
-    def value(self, value: typing.Set[str]) -> None:
+    def value(self, value: set[str]) -> None:
         with self._lock:
             self._value = value
 
     @property
-    def unguarded_value(self) -> typing.Set[str]:
+    def unguarded_value(self) -> set[str]:
         return self._value

@@ -8,17 +8,18 @@ import tempfile
 import traceback
 import typing
 
-from fastapi import FastAPI, status as STATCODE, UploadFile, Query
-from fastapi.responses import StreamingResponse, Response, JSONResponse
+from fastapi import FastAPI, Query, UploadFile
+from fastapi import status as STATCODE
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse, FileResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
+from starlette.responses import FileResponse, HTMLResponse
 
 from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE
-from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
-from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
+from tex2pdf.converter_driver import ConversionOutcomeMaker, ConverterDriver
 from tex2pdf.fastapi_util import closer
+from tex2pdf.service_logger import get_logger
+from tex2pdf.tarball import RemovedSubmission, UnsupportedArchive, prep_tempdir, save_stream
 
 log_level = os.environ.get("LOGLEVEL", "INFO").upper()
 get_logger().info("Starting: uid=%d gid=%d", os.getuid(), os.getgid())
@@ -131,11 +132,11 @@ async def convert_pdf(incoming: UploadFile,
             return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
                                 content={"message": "The archive is unsupported"})
         except Exception as exc:
-            logger.error(f"Exception %s", str(exc), exc_info=True)
+            logger.error("Exception %s", str(exc), exc_info=True)
             return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
                                 content={"message": traceback.format_exc()})
 
-        more_files: typing.List[str] = []
+        more_files: list[str] = []
         # if pdf_file:
         #     more_files.append(pdf_file)
         out_dir_files = os.listdir(out_dir)

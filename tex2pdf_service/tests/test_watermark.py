@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from tex2pdf.pdf_watermark import gen_watermark_pdf, add_watermark_text_to_pdf
+from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, gen_watermark_pdf
 
 watermark_pdf = "tests/test-output/watermark.pdf"
 in_pdf = "tests/fixture/smoke/Test.pdf"

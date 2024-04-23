@@ -32,3 +32,27 @@ tqdm = "^4.66.2"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 120
+
+lint.select = [
+    "F", # Pyflakes
+    "E", # pycodestyle errors
+    # "W", # pycodestyle warnings
+    # "C90", # McCabe
+    "I", # isort
+    "UP", # pyupgrade
+    "PLC", "PLE", "PLW", # Pylint
+    # "PLR", # Pylint refactoring
+    "PD", # pandas checks
+    "NPY", # numpy checks
+    "RUF", # ruff internal check
+]
+
+output-format = "concise"
+
+# Assume Python 3.11
+# Note: helps prevent breaking autofixes from, e.g., pyupgrade
+target-version = "py311"
+

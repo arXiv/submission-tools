@@ -4,9 +4,9 @@ Sets up the tempdir for unpacking the archive file, and unpacks the archive.
 
 """
 import os
+import shlex
 import stat
 import subprocess
-import shlex
 
 from fastapi import UploadFile
 
