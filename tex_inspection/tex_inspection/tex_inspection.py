@@ -384,7 +384,7 @@ def is_vanilla_tex_line(line: str)-> bool:
 def is_pdftex_line(line: str)-> bool:
     """Check if the line is a pdftex line"""
     # return line.startswith('\\def\\') or line.startswith('\\pageno=')
-    return line.startswith('\\pageno=')
+    return line.lstrip().startswith('\\pageno=')
 
 
 def is_pdflatex_line(line: str)-> bool:
@@ -394,7 +394,7 @@ def is_pdflatex_line(line: str)-> bool:
     #    \usepackage{...}
     # \endpackages
     # return line.startswith('\\documentclass') or line.startswith('\\usepackage')
-    return line.startswith('\\documentclass')
+    return line.lstrip().startswith('\\documentclass')
 
 
 _tex_input_1 = re.compile(r'\\input\{([^}]+)}')
