@@ -32,11 +32,11 @@ def correct_graphicspath(line: str) -> str:
 
     corrected_paths = []
     for path in paths:
-        if path.startswith("./"):
-            path = path[2:]
-        corrected_paths.append(path)
-        if not path.endswith("/"):
-            corrected = path + "/"
+        normalized_path = path
+        if normalized_path.startswith("./"):
+            normalized_path = normalized_path[2:]
+        if not normalized_path.endswith("/"):
+            corrected = normalized_path + "/"
             if corrected not in paths and corrected not in corrected_paths:
                 corrected_paths.append(corrected)
                 pass

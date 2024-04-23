@@ -102,7 +102,6 @@ class ConverterDriver:
         self.tex_files = find_primary_tex(self.in_dir, self.zzrm)
         self.outcome["tex_files"] = self.tex_files
         if not self.tex_files:
-            in_file: dict
             in_files = ["{} ({})".format(in_file["name"], str(in_file["size"]))
                         for in_file in self.outcome.get("in_files", [])]
             self.note = "No tex file found. " + ", ".join(in_files)

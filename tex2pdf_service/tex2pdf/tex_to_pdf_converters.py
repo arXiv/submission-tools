@@ -59,7 +59,7 @@ class BaseConverter:
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
-        except:
+        except ValueError:
             default_max = 595
             pass
         self.max_time_budget = default_max if max_time_budget is None else max_time_budget
@@ -93,7 +93,9 @@ class BaseConverter:
         """Run the base engine of the converter."""
         pass
 
-    def _run_base_engine_necessary_times(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str) -> dict:
+    def _run_base_engine_necessary_times(
+            self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
+        ) -> dict:
         stem = os.path.splitext(tex_file)[0]
         self.stem = stem
         stem_pdf = f"{stem}.pdf"
@@ -168,7 +170,9 @@ class BaseConverter:
                   "max_print_line": "4096", "error_line": "254", "half_error_line": "238"}
         # get location of addon trees
         if self.use_addon_tree:
-            sap = subprocess.run(["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True, check=False).stdout.rstrip()
+            sap = subprocess.run(
+                ["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True, check=False
+            ).stdout.rstrip()
             addon_tree = os.path.join(sap, "texmf-arxiv")
             cmdenv["TEXMFAUXTREES"] = addon_tree + "," # we need a final comma!
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
