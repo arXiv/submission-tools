@@ -23,20 +23,19 @@ sqlite3 score.db 'select outcome from score where not success' > bad.txt
 gives you the all of outcome json files to single file once you run the harvest.
 """
 
+import json
+import logging
 import os
+import sqlite3
+import tarfile
+import threading
 import time
-import typing
+from multiprocessing.pool import ThreadPool
 from sqlite3 import Connection
 
 import click
 import requests
-import logging
-import sqlite3
 from tqdm import tqdm
-from multiprocessing.pool import ThreadPool
-import tarfile
-import json
-import threading
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -61,7 +60,7 @@ def tarball_to_outcome_path(tarball: str) -> str:
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
-def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], typing.List[str], typing.List[str]]:
+def get_outcome_meta(outcome_file: str) -> tuple[dict, list[str], list[str], list[str]]:
     """Open a compressed outcome tar archive and get the metadata"""
     meta = {}
     files = set()

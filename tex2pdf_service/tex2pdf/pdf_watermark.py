@@ -3,16 +3,17 @@ Adding the watermark string to the PDF file.
 """
 import io
 import os
-import tempfile
 
 # from tex2pdf.accessor import BaseAccessor
 import pathlib
+import tempfile
+
 import pikepdf
 import reportlab
-import reportlab.pdfgen
-import reportlab.pdfgen.canvas
 import reportlab.lib.pagesizes
 import reportlab.lib.units
+import reportlab.pdfgen
+import reportlab.pdfgen.canvas
 from reportlab.pdfgen.textobject import PDFTextObject
 
 # This is how it is done in arxiv-lib/lib/TeX/AutoTeX/StampPDF.pm

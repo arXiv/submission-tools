@@ -1,5 +1,6 @@
 import os
 import unittest
+
 from tex2pdf.tex_patching import fix_tex_sources
 
 test1 = r"""
@@ -21,7 +22,7 @@ first_expected = r"""
 """
 
 def read_file(filename) -> str:
-    with open(filename, "r", encoding="utf-8") as fd:
+    with open(filename, encoding="utf-8") as fd:
         return fd.read()
 
 class TestTexPatch(unittest.TestCase):

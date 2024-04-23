@@ -1,7 +1,6 @@
-import typing
-from multiprocessing.pool import ThreadPool
 import re
-from typing import Pattern
+from multiprocessing.pool import ThreadPool
+from re import Pattern
 
 from .atomic import AtomicStringSet
 
@@ -9,7 +8,7 @@ from .atomic import AtomicStringSet
 # r'^No file\s+(.*)\.$',
 
 # make sure there is exactly one group catching the file name
-TEX_LOG_ERRORS: typing.List[Pattern] = [
+TEX_LOG_ERRORS: list[Pattern] = [
     re.compile(exp) for exp in [
         r'^\! LaTeX Error: File `([^\\\']*)\\\' not found\.',
         r'^\! I can\'t find file `([^\\\']*)\\\'\.',
@@ -26,7 +25,7 @@ TEX_LOG_ERRORS: typing.List[Pattern] = [
 
 
 def inspect_log(log: str,
-                patterns: typing.List[Pattern] | None = None,
+                patterns: list[Pattern] | None = None,
                 break_on_found: bool = True) -> list[str]:
     """Run the list of regex against a blob string and count the matches.
     log: The log blob

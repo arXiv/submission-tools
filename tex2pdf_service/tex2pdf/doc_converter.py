@@ -3,14 +3,14 @@ Turn multiple documents into one PDF.
 """
 import os
 import shutil
-import typing
 
 import pikepdf
-from PIL import Image, UnidentifiedImageError
 from pikepdf import PdfError
+from PIL import Image, UnidentifiedImageError
 
 from tex2pdf import graphics_exts
 from tex2pdf.service_logger import get_logger
+
 
 def convert_image_to_pdf(image_path: str, pdf_path: str) -> str:
     """Convert an image to a PDF."""
@@ -25,13 +25,13 @@ def convert_image_to_pdf(image_path: str, pdf_path: str) -> str:
     return pdf_path
 
 
-def strip_to_basename(path_list: typing.List[str]) -> typing.List[str]:
+def strip_to_basename(path_list: list[str]) -> list[str]:
     """Strip the path to the basename."""
     return [os.path.basename(path) for path in path_list]
 
 
-def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: str,
-                      log_extra: dict|None=None) -> typing.Tuple[str, list, list]:
+def combine_documents(doc_list: list[str], out_dir: str, out_filename: str,
+                      log_extra: dict|None=None) -> tuple[str, list, list]:
     """Combine multiple PDFs and maybe some pictures, and images into one PDF.
 
     Args:
@@ -41,8 +41,8 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
         log_extra (dict): Extra logging information.
     """
     output_path = os.path.join(out_dir, out_filename)
-    converted_docs: typing.List[str] = []
-    failed_docs: typing.List[str] = []
+    converted_docs: list[str] = []
+    failed_docs: list[str] = []
     if len(doc_list) == 1 and doc_list[0].endswith(".pdf"):
         if doc_list[0] != output_path:
             shutil.move(doc_list[0], output_path)

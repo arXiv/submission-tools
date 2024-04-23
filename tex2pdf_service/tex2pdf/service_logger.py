@@ -6,9 +6,9 @@ The primary reason is to have the CustomJsonFormatter to tailor the log output.
 This works in conjunction with the logging configuration - logging.conf.
 """
 
+import logging
 import logging.config
 import logging.handlers
-import logging
 
 logger_name: str = "tex2pdf"
 

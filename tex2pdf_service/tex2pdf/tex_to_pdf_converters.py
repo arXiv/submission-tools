@@ -2,16 +2,24 @@
 This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
 """
 import os
-import subprocess
 import shlex
+import subprocess
 import time
 import typing
 from abc import abstractmethod
-from tex2pdf import file_props, local_exec, file_props_in_dir, \
-    MAX_LATEX_RUNS, ID_TAG, test_file_extent, MAX_TIME_BUDGET
+
+from tex_inspection import (
+    TEX_FILE_EXTS,
+    ZeroZeroReadMe,
+    find_pdfoutput_1,
+    is_pdflatex_line,
+    is_pdftex_line,
+    pick_package_names,
+)
+
+from tex2pdf import ID_TAG, MAX_LATEX_RUNS, MAX_TIME_BUDGET, file_props, file_props_in_dir, local_exec, test_file_extent
 from tex2pdf.service_logger import get_logger
-from tex_inspection import (pick_package_names, ZeroZeroReadMe, is_pdftex_line,
-                            is_pdflatex_line, find_pdfoutput_1, TEX_FILE_EXTS)
+
 from .log_inspection import inspect_log
 
 WITH_SHELL_ESCAPE = False
@@ -31,7 +39,7 @@ class BaseConverter:
     """Base class for tex-to-pdf converters.
     """
     conversion_tag: str
-    runs: typing.List[dict]  # Each run generates an output
+    runs: list[dict]  # Each run generates an output
     log: str
     log_extra: dict
     use_addon_tree: bool
@@ -62,12 +70,12 @@ class BaseConverter:
         return self.max_time_budget - (time.perf_counter() - self.init_time)
 
     @classmethod
-    def decline_file(cls, _tex_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
+    def decline_file(cls, _tex_file: str, _parent_dir: str) -> tuple[bool, str]:
         """Decline the file if the converter cannot handle it"""
         return True, "The base class has no capability to handle any file"
 
     @classmethod
-    def decline_tex(cls, _tex_line: str, _line_number: int) -> typing.Tuple[bool, str]:
+    def decline_tex(cls, _tex_line: str, _line_number: int) -> tuple[bool, str]:
         """Decline the tex line if the converter cannot handle it"""
         return True, "The base class has no capability to handle any file"
 
@@ -127,8 +135,8 @@ class BaseConverter:
         return outcome
 
 
-    def _exec_cmd(self, args: typing.List[str], child_dir: str, work_dir: str,
-                  extra: dict | None = None) -> typing.Tuple[dict[str, typing.Any], str, str]:
+    def _exec_cmd(self, args: list[str], child_dir: str, work_dir: str,
+                  extra: dict | None = None) -> tuple[dict[str, typing.Any], str, str]:
         """Run the command and return the result"""
         logger = get_logger()
         worker_args = self.decorate_args(args)
@@ -160,7 +168,7 @@ class BaseConverter:
                   "max_print_line": "4096", "error_line": "254", "half_error_line": "238"}
         # get location of addon trees
         if self.use_addon_tree:
-            sap = subprocess.run(["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True).stdout.rstrip()
+            sap = subprocess.run(["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True, check=False).stdout.rstrip()
             addon_tree = os.path.join(sap, "texmf-arxiv")
             cmdenv["TEXMFAUXTREES"] = addon_tree + "," # we need a final comma!
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -204,7 +212,7 @@ class BaseConverter:
                      extra={ID_TAG: self.conversion_tag, "step": step, "run": run})
 
         if err or out_size is None:
-            logger.warning(f"{step}: {output_tag} size = {str(out_size)} - {str(err)}",
+            logger.warning(f"{step}: {output_tag} size = {out_size!s} - {err!s}",
                            extra={ID_TAG: self.conversion_tag, "step": step,
                                   "stdout": out, "stderr": err})
             pass
@@ -219,13 +227,13 @@ class BaseConverter:
             pass
         pass
 
-    def decorate_args(self, args: typing.List[str]) -> typing.List[str]:
+    def decorate_args(self, args: list[str]) -> list[str]:
         """Adjust the command args for TexLive commands.
 
         When running TexLive command in PyCharm, prepend the command that runs TL command
         in docker."""
         if local_exec:
-            return ["/usr/local/bin/docker_pdflatex.sh"] + args
+            return ["/usr/local/bin/docker_pdflatex.sh", *args]
         return args
 
     @abstractmethod
@@ -239,7 +247,7 @@ class BaseConverter:
         return False
 
     @classmethod
-    def order_tex_files(cls, tex_files: typing.List[str]) -> typing.List[str]:
+    def order_tex_files(cls, tex_files: list[str]) -> list[str]:
         """Order the tex files so that the main tex file comes first"""
         return tex_files
 
@@ -259,11 +267,11 @@ class BaseConverter:
             if artifact:
                 if os.path.exists(artifact):
                     os.unlink(artifact)
-                    logger.debug(f"'{artifact}' deleted. Return code: {str(return_code)}")
+                    logger.debug(f"'{artifact}' deleted. Return code: {return_code!s}")
                 else:
-                    logger.debug(f"'{artifact}' does not exist. Return code: {str(return_code)}")
+                    logger.debug(f"'{artifact}' does not exist. Return code: {return_code!s}")
             else:
-                logger.debug(f"Return code: {str(return_code)}")
+                logger.debug(f"Return code: {return_code!s}")
 
     def _to_pdf_run(self, args: list[str], stem: str,
                     step: str, work_dir: str, in_dir: str, out_dir: str,
@@ -295,7 +303,7 @@ class BaseConverter:
 
 #
 def select_converter_classes(in_dir: str) \
-        -> typing.Tuple[typing.List[type[BaseConverter]], typing.List[str]]:
+        -> tuple[list[type[BaseConverter]], list[str]]:
     """Create a converter based on the tex file"""
     # candidates = [VanillaTexConverter, PdfTexConverter, PdfLatexConverter, LatexConverter]
     # https://info.arxiv.org/help/submit_tex.html
@@ -389,7 +397,7 @@ class BaseDviConverter(BaseConverter):
 
     def _two_try_dvi_to_ps_run(self, outcome: dict[str, typing.Any], stem: str, work_dir: str,
                                in_dir: str, out_dir: str) \
-            -> typing.Tuple[dict[str, typing.Any], dict[str, typing.Any]]:
+            -> tuple[dict[str, typing.Any], dict[str, typing.Any]]:
         """Run dvips twice. The first run with hyperdvi. If success, it stops. If not, the
         2nd run without hyperdvi."""
         run = {}
@@ -400,9 +408,8 @@ class BaseDviConverter(BaseConverter):
                                 "step": "dvips", "hyperdvi": hyperdvi})
                 return outcome, run
             pass
-        else:
-            outcome.update({"runs": self.runs, "status": "fail", "step": "dvips"})
-            return outcome, run
+        outcome.update({"runs": self.runs, "status": "fail", "step": "dvips"})
+        return outcome, run
 
     def _base_dvi_to_ps_run(self, stem: str, work_dir: str, in_dir: str, _out_dir: str,
                             hyperdvi: bool=False) -> dict:
@@ -433,7 +440,7 @@ class BaseDviConverter(BaseConverter):
         if hyperdvi:
             dvi_options.append("-z")
             pass
-        args = ["/usr/bin/dvips"] + dvi_options + ["-o", f"{stem}.ps", dvi_file]
+        args = ["/usr/bin/dvips", *dvi_options, "-o", f"{stem}.ps", dvi_file]
 
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": tag})
         ps_filename = os.path.join(in_dir, f"{stem}.ps")
@@ -441,7 +448,7 @@ class BaseDviConverter(BaseConverter):
         self._report_run(run, out, err, tag, in_dir, work_dir, "ps", ps_filename)
         return run
 
-    def _base_to_dvi_run(self, step: str, stem: str, args: typing.List[str],
+    def _base_to_dvi_run(self, step: str, stem: str, args: list[str],
                          work_dir: str, in_dir: str) -> dict:
         """Runs the given command to generate dvi file and returns the run result."""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
@@ -471,7 +478,7 @@ class LatexConverter(BaseDviConverter):
         pass
 
     @classmethod
-    def decline_file(cls, any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
+    def decline_file(cls, any_file: str, _parent_dir: str) -> tuple[bool, str]:
         # Cannot handle files other than .ps and .eps
         # if test_file_extent(any_file, bad_for_latex_file_exts):
         #     return True, f"LatexConverter cannot handle {any_file}." + \
@@ -479,7 +486,7 @@ class LatexConverter(BaseDviConverter):
         return False, ""
 
     @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
+    def decline_tex(cls, tex_line: str, line_number: int) -> tuple[bool, str]:
         if is_pdftex_line(tex_line):
             return True, f"LatexConverter cannot handle pdftex at line {line_number}"
         # if is_vanilla_tex _line(tex_line):
@@ -534,7 +541,7 @@ class LatexConverter(BaseDviConverter):
         return "latex-dvi-ps-pdf"
 
     @classmethod
-    def order_tex_files(cls, tex_files: typing.List[str]) -> typing.List[str]:
+    def order_tex_files(cls, tex_files: list[str]) -> list[str]:
         """Order the tex files so that the main tex file comes first"""
         if "ms.tex" in tex_files:
             tex_files.remove("ms.tex")
@@ -551,7 +558,7 @@ class LatexConverter(BaseDviConverter):
 
 class PdfLatexConverter(BaseConverter):
     """Runs pdflatex command"""
-    to_pdf_args: typing.List[str]
+    to_pdf_args: list[str]
     pdfoutput_1_seen: bool
 
     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
@@ -561,7 +568,7 @@ class PdfLatexConverter(BaseConverter):
         pass
 
     @classmethod
-    def decline_file(cls, _any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
+    def decline_file(cls, _any_file: str, _parent_dir: str) -> tuple[bool, str]:
         # if any_file == ms_dot_tex:
         #     return True
 
@@ -577,7 +584,7 @@ class PdfLatexConverter(BaseConverter):
         return False, ""
 
     @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
+    def decline_tex(cls, tex_line: str, line_number: int) -> tuple[bool, str]:
         if is_pdftex_line(tex_line):
             return True, f"PdfLatexConverter cannot handle pdftex at line {line_number}"
         # filename = find_include_graphics_filename(tex_line)
@@ -591,12 +598,9 @@ class PdfLatexConverter(BaseConverter):
 
         return False, ""
 
-    def _get_pdflatex_args(self, tex_file: str) -> typing.List[str]:
+    def _get_pdflatex_args(self, tex_file: str) -> list[str]:
         """Return the pdflatex command line arguments"""
-        args = ["/usr/bin/pdflatex"] + [
-            "-interaction=batchmode",
-            "-recorder",
-            "-file-line-error"]
+        args = ["/usr/bin/pdflatex", "-interaction=batchmode", "-recorder", "-file-line-error"]
         # You need this sometimes, and harmful sometimes.
         if not self.pdfoutput_1_seen:
             args.append("-output-format=pdf")
@@ -704,7 +708,7 @@ class PdfLatexConverter(BaseConverter):
 
 class VanillaTexConverter(BaseDviConverter):
     """Runs tex command"""
-    _args: typing.List[str]
+    _args: list[str]
 
     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
         super().__init__(conversion_tag, **kwargs)
@@ -712,11 +716,11 @@ class VanillaTexConverter(BaseDviConverter):
         pass
 
     @classmethod
-    def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
+    def decline_file(cls, any_file: str, parent_dir: str) -> tuple[bool, str]:
         return False, ""
 
     @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
+    def decline_tex(cls, tex_line: str, line_number: int) -> tuple[bool, str]:
         if is_pdflatex_line(tex_line):
             return True, f"VanillaTexConverter cannot handle line {line_number}"
         for package_name in pick_package_names(tex_line):

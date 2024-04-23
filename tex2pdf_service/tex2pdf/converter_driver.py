@@ -6,20 +6,26 @@ import os
 import shlex
 import subprocess
 import time
-import typing
 
 from pikepdf import PdfError
+from tex_inspection import ZeroZeroReadMe, find_primary_tex, find_unused_toplevel_files, maybe_bbl
 
-from tex2pdf import file_props, file_props_in_dir, catalog_files, \
-    ID_TAG, graphics_exts, test_file_extent, MAX_TIME_BUDGET
+from tex2pdf import (
+    ID_TAG,
+    MAX_TIME_BUDGET,
+    catalog_files,
+    file_props,
+    file_props_in_dir,
+    graphics_exts,
+    test_file_extent,
+)
 from tex2pdf.doc_converter import combine_documents
-from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import unpack_tarball, chmod_775
-from tex2pdf.tex_to_pdf_converters import BaseConverter
-from tex2pdf.tex_patching import fix_tex_sources
 from tex2pdf.pdf_watermark import add_watermark_text_to_pdf
-from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files)
-from tex2pdf.tex_to_pdf_converters import select_converter_classes
+from tex2pdf.service_logger import get_logger
+from tex2pdf.tarball import chmod_775, unpack_tarball
+from tex2pdf.tex_patching import fix_tex_sources
+from tex2pdf.tex_to_pdf_converters import BaseConverter, select_converter_classes
+
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
                   "the conflicting names. (eg, both main.tex and main.latex exist.) This should "
@@ -37,16 +43,16 @@ class ConverterDriver:
     source: str
     in_dir: str
     out_dir: str
-    runs: typing.List[dict]
+    runs: list[dict]
     work_dir: str
     converter: BaseConverter | None
-    converters: typing.List[type[BaseConverter]]
-    tex_files: typing.List[str]
+    converters: list[type[BaseConverter]]
+    tex_files: list[str]
     zzrm: ZeroZeroReadMe
     t0: float
     max_time_budget: float
     outcome: dict
-    converter_logs: typing.List[str]
+    converter_logs: list[str]
     tag: str
     note: str
     use_addon_tree: bool
@@ -97,7 +103,7 @@ class ConverterDriver:
         self.outcome["tex_files"] = self.tex_files
         if not self.tex_files:
             in_file: dict
-            in_files = ["%s (%s)" % (in_file["name"], str(in_file["size"]))
+            in_files = ["{} ({})".format(in_file["name"], str(in_file["size"]))
                         for in_file in self.outcome.get("in_files", [])]
             self.note = "No tex file found. " + ", ".join(in_files)
             logger.error("Cannot find tex file for %s.", self.tag,
@@ -372,7 +378,7 @@ class ConversionOutcomeMaker:
         taring = more_files + [f"{bod}/{fname}" for fname in outcome_files]
         # double-check the files exist
         taring = [ofile for ofile in taring if os.path.exists(os.path.join(self.work_dir, ofile))]
-        tar_cmd = ["tar", "czf", self.outcome_file, outcome_meta_file] + taring
+        tar_cmd = ["tar", "czf", self.outcome_file, outcome_meta_file, *taring]
         logger.debug(f"Creating outcome: {shlex.join(tar_cmd)}", extra=self.log_extra)
         subprocess.call(tar_cmd, cwd=self.work_dir)
         return
@@ -386,7 +392,7 @@ class ConversionOutcomeMaker:
         # os.unlink(self.outcome_file)
         meta = None
         files = os.listdir(self.work_dir)
-        logger.debug(f"Unpacked files of {self.outcome_file}: {repr(files)}", extra=self.log_extra)
+        logger.debug(f"Unpacked files of {self.outcome_file}: {files!r}", extra=self.log_extra)
         outcome_meta_file = f"outcome-{self.tag}.json"
         try:
             for filename in files:
