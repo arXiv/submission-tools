@@ -1,0 +1,28 @@
+[compilation]
+compiler = "pdflatex"
+fontmaps = ["myfonts1.map", "myfonts2.map"]
+
+[[sources]]
+filename = "fake-file-1.tex"
+included = "YES"
+
+[[sources]]
+filename = "fake-file-2.tex"
+
+[[sources]]
+filename = "fake-file-3.TEX"
+ignored = true
+
+[[sources]]
+filename = "fake-file-2.dvi"
+orientation = "landscape"
+
+[[sources]]
+filename = "fake-file-4.dvi"
+keep_comments = "yes"
+
+[[sources]]
+filename = "toml-5.tex"
+
+[post_process]
+stamp = "no"
