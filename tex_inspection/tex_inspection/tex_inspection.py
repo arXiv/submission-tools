@@ -369,7 +369,7 @@ class ZeroZeroReadMe:
 
     @property
     def fontmaps(self) -> typing.List[str]:
-        return list(self.compilation.get("fontmaps", set()))
+        return sorted(list(self.compilation.get("fontmaps", set())))
 
     @property
     def nohyperref(self) -> bool:
@@ -385,7 +385,8 @@ class ZeroZeroReadMe:
 
     @property
     def assembling_files(self) -> typing.List[str]:
-        return self.postprocess.get("assembling_files", [])
+        result = self.postprocess.get("assembling_files", [])
+        return result if isinstance(result, list) else []
 
 
 def maybe_bbl(tex: str, in_dir: str) -> str | None:
