@@ -1,0 +1,19 @@
+compilation:
+  compiler: pdflatex
+  fontmaps:
+  - myfonts1.map
+  - myfonts2.map
+sources:
+  - filename: fake-file-1.tex
+    included: YES
+  - filename: fake-file-2.tex
+  - filename: fake-file-3.TEX
+    ignored: true
+  - filename: fake-file-2.dvi
+    orientation: landscape
+  - filename: fake-file-4.dvi
+    keep_comments: yes
+  - filename: yaml1.tex
+  - filename: yaml2.tex
+post_process:
+  stamp: no

@@ -68,3 +68,10 @@ ban_list:
         equals: diff.tex
       line:
         contains: "%DIF LATEXDIFF DIFFERENCE FILE"
+
+  - description: Copyright 2019 Elsevier Ltd,  This file is part of the 'CAS Bundle'
+    condition:
+      filename:
+        equals: cas-sc-template.tex
+      line:
+        startswith: \title [mode = title]{This is a specimen $a_b$ title}

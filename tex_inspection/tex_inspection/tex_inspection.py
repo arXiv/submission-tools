@@ -1,14 +1,21 @@
 """
 Inspect input tex files
 """
+import json
 import os
 import re
 import stat
 import typing
+from collections import OrderedDict
 from ruamel.yaml import YAML
+import tomli
 
 # Text file extensions
 TEX_FILE_EXTS = [".tex", ".ltf", ".ltx", ".latex", ".txt"]
+
+# 00README file extensions - earlier wins
+ZZRM_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
+
 
 def file_props(filename: str) -> dict:
     """fstat the file and return the size and name."""
@@ -45,6 +52,10 @@ def catalog_files(root_dir: str) -> dict[str, typing.Any]:
     return catalog
 
 
+def file_stem(filename: str) -> str:
+    """Returns the stem of the filename."""
+    return os.path.splitext(os.path.basename(filename))[0]
+
 
 def test_file_extent(filename: str, exts: list | dict, no_ext: str | None = None) -> None | str:
     """Test if the filename ends with any of the extensions."""
@@ -62,40 +73,153 @@ class BadBib(Exception):
     pass
 
 
+class InvalidSourceMetadata(Exception):
+    """Invalid source metadata"""
+    pass
+
+def intern_value(value: bool | str | None, value_default: bool | str) -> bool | str:
+    if value is None:
+        return value_default
+    if isinstance(value, value_default.__class__):
+        return value
+    if isinstance(value_default, bool) and isinstance(value, str):
+        if value.lower() in ["true", "yes", "on", "1"]:
+            return True
+        if value.lower() in ["false", "no", "off", "0"]:
+            return False
+        return value_default
+    # if isinstance(value_default, str):
+    return str(value)
+
+
+class SourceFileMeta:
+    """Input file metadata"""
+    filename: str
+    readme_filename: str | None
+    order: int
+    toplevel: bool
+    ignored: bool
+    included: bool
+    appended: bool
+    orientation: str
+    keep_comments: bool
+
+    defaults: typing.Dict[str, bool | str] = {
+        "toplevel": True,
+        "ignored": False,
+        "included": False,
+        "appended": False,
+        "orientation": "",
+        "keep_comments": False
+    }
+
+    def __init__(self, filename: str = "", order: int = 0):
+        self.filename = filename
+        self.order = order
+        for key, value in self.defaults.items():
+            setattr(self, key, value)
+
+    def from_spec(self, spec: dict) -> "SourceFileMeta":
+        valid_keys = self.defaults.keys()
+        for key, value in spec.items():
+            if key not in valid_keys:
+                continue
+            val = intern_value(spec[key], self.defaults[key])
+            setattr(self, key, val)
+            if val is True and key in ["ignored", "included", "appended"]:
+                self.toplevel = False
+            if key in ["orientation", "keep_comments"]:
+                self.toplevel = False
+
+        return self
+
+    def to_dict(self) -> dict:
+        result: typing.Dict[str, str | bool] = {"filename": self.filename}
+        for key, default_value in SourceFileMeta.defaults.items():
+            value: str | bool | None = getattr(self, key, default_value)
+            if value and value != default_value:
+                result[key] = value
+        return result
+
+
 class ZeroZeroReadMe:
     """Representation of 00README.XXX file"""
 
     readme: typing.List[str] | None
-    ignores: set[str]
-    includes: set[str]
-    toplevels: list[str]
-    landscapes: set[str]
-    keepcomments: set[str]
-    fontmaps: set[str]
-    nohyperref: bool
-    nostamp: bool
+    version: int
+    compilation: dict
+    sources: typing.OrderedDict[str, SourceFileMeta]
+    postprocess: dict
+
+    compilation_defaults = {
+        "compiler": "pdflatex",
+        "fontmaps": set(),
+        "nohyperref": False
+    }
+
+    postprocess_defaults = {
+        "stamp": True
+    }
 
     def __init__(self, in_dir: str | None = None):
+        self.version = 1  # classic 00README.XXX
+        self.readme_filename = None
         self.readme = None
-        self.ignores = set()
-        self.includes = set()
-        self.toplevels = []  # should preserve the order
-        self.landscapes = set()
-        self.keepcomments = set()
-        self.fontmaps = set()
-        self.nohyperref = False
-        self.nostamp = False
+        self.compilation = {}
+        self.ensure_compilation_defaults()
+        self.sources = OrderedDict()
+        self.postprocess = {}
+        self.ensure_postprocess_defaults()
         if in_dir:
-            # If there are 00README.XXX and 00readme.xxx, 00README.XXX is used.
-            for filename in sorted(os.listdir(in_dir)):
-                if filename[0] > '0':  # Should I use ord()?
-                    break
-                if filename.upper() == "00README.XXX":
-                    self.fetch_00readme(os.path.join(in_dir, filename))
-                    break
+            self.intern_00readme(in_dir)
+
+    def intern_00readme(self, in_dir: str):
+        # If there are 00README.XXX and 00readme.xxx, 00README.XXX is used.
+        files = sorted(os.listdir(in_dir))
+
+        zzrms: typing.List[typing.Tuple[str, str, str]] = []
+        for filename in files:
+            if filename[0] > '0':  # Should I use ord()?
+                break
+            (stem, ext) = os.path.splitext(filename)
+            if stem.lower() != "00readme":
+                continue
+            zzrms.append((stem, ext, filename))
+
+        def ext_order(zz: typing.Tuple[str, str, str]):
+            try:
+                return ZZRM_EXTS.index(zz[1])
+            except ValueError:
                 pass
-            pass
-        pass
+            return len(ZZRM_EXTS) + 1000  # Any positive integer would work
+
+        if len(zzrms) > 0:
+            if len(zzrms) > 1:
+                zzrm = sorted([zz for zz in zzrms if zz[1] in ZZRM_EXTS],
+                              key=ext_order)[0]
+            else:
+                zzrm = zzrms[0]
+            stem, ext, filename = zzrm
+            match ext.lower():
+                case ".xxx":
+                    self.fetch_00readme(os.path.join(in_dir, filename))
+                case ".yml" | ".yaml" | ".json" | ".jsn" | ".ndjson" | ".toml":
+                    self.fetch_00readme_v2(os.path.join(in_dir, filename))
+
+
+    def ensure_compilation_defaults(self) -> None:
+        for item, value in ZeroZeroReadMe.compilation_defaults.items():
+            if item not in self.compilation:
+                self.compilation[item] = value
+        fontmaps = self.compilation.get("fontmaps")
+        if fontmaps and isinstance(fontmaps, list):
+            self.compilation["fontmaps"] = set(fontmaps)
+
+    def ensure_postprocess_defaults(self) -> None:
+        for item, value in ZeroZeroReadMe.postprocess_defaults.items():
+            if item not in self.postprocess:
+                self.postprocess[item] = value
+
 
     def __bool__(self) -> bool:
         """Return True if 00README.XXX is fetched"""
@@ -103,7 +227,7 @@ class ZeroZeroReadMe:
 
     def fetch_00readme(self, filename: str) -> None:
         """Read and parse 00README.XXX file"""
-
+        self.readme_filename = filename
         for enc in ["utf-8", "iso-8859-1"]:
             try:
                 with open(filename, encoding=enc) as src:
@@ -114,33 +238,131 @@ class ZeroZeroReadMe:
         if self.readme is None:
             return
 
+        index = 0
         for line in self.readme:
             idioms = [idiom for idiom in line.strip().split(' ') if idiom]
             if len(idioms) == 2:
+                filename = idioms[0]
+                meta = self.find_metadata(filename)
                 match idioms[1]:
                     case "ignore":
-                        self.ignores.add(idioms[0])
+                        meta.ignored = True
+                        meta.toplevel = False
                     case "include":
-                        self.includes.add(idioms[0])
+                        meta.included = True
+                        meta.toplevel = False
                     case "toplevelfile":
                         # may need to check the file extension
-                        self.toplevels.append(idioms[0])
+                        meta.toplevel = True
+                        meta.order = index
+                        index += 1
                     case "landscape":
-                        self.landscapes.add(idioms[0])
+                        meta.toplevel = False
+                        meta.orientation = "landscape"
                     case "keepcomments":
-                        self.keepcomments.add(idioms[0])
+                        meta.toplevel = False
+                        meta.keep_comments = True
                     case "fontmap":
+                        meta.toplevel = False
                         name = idioms[0]
                         if name.endswith(".map"):
                             name = name[:-4]
                         if re.match(r"[A-Za-z]+", name):
-                            self.fontmaps.add(idioms[0])
+                            self.compilation["fontmaps"].add(idioms[0])
             elif len(idioms) == 1:
                 if idioms[0] == "nostamp":
-                    self.nostamp = True
+                    self.compilation["nostamp"] = True
                 elif idioms[0] == "nohyperref":
-                    self.nohyperref = True
+                    self.compilation["nohyperref"] = True
 
+    def find_metadata(self, filename: str) -> SourceFileMeta:
+        meta = self.sources.get(filename)
+        if meta is None:
+            meta = SourceFileMeta(filename, order=len(self.sources)+1)
+            self.sources[filename] = meta
+        return meta
+
+    def fetch_00readme_v2(self, filename: str) -> None:
+        """Read and parse 00README.XXX file, v2"""
+        stem, ext = os.path.splitext(filename)
+        zzrm = None
+        with open(filename, "rb") as fd:
+            match ext:
+                case ".yml" | ".yaml":
+                    loader = YAML()
+                    zzrm = loader.load(fd)
+                case ".json" | ".jsn" | ".ndjson":
+                    zzrm = json.load(fd)
+                case ".toml":
+                    zzrm = tomli.load(fd)
+        if zzrm:
+            self.readme_filename = filename
+            self.version = 2
+            self.compilation = zzrm.get("compilation", {})
+            self.ensure_compilation_defaults()
+            self.sources = OrderedDict()
+            for index, source in enumerate(zzrm.get("sources", [])):
+                filename = source.get("filename")
+                if not filename:
+                    raise InvalidSourceMetadata(f"filename missing from the source. at entry {index+1}")
+                meta = self.find_metadata(filename)
+                meta.from_spec(source)
+            self.postprocess = zzrm.get("postprocess", {})
+            self.ensure_postprocess_defaults()
+
+    def to_dict(self, output: typing.TextIO) -> OrderedDict:
+        """Export the 00README as dict"""
+        result = OrderedDict()
+        if dict(self.compilation) != dict(ZeroZeroReadMe.compilation_defaults):
+            result["compilation"] = self.compilation
+        result["sources"] = [source.to_dict() for _filename, source in self.sources.items()] # type: ignore
+        if dict(self.postprocess) != dict(ZeroZeroReadMe.postprocess_defaults):
+            result["postprocess"] = self.postprocess
+        return result
+
+    def is_landscape(self, testing: str) -> bool:
+        """landscape orientation - only cares the file stem unlike other predicates"""
+        for filename, source in self.sources.items():
+            if testing.lower() == filename.lower():
+                return source.orientation == "landscape"
+        return False
+
+    def is_keep_comments(self, testing: str) -> bool:
+        """Matches the file stem for landscape orientation."""
+        for filename, source in self.sources.items():
+            if testing.lower() == filename.lower():
+                return source.orientation == "landscape"
+        return False
+
+    @property
+    def toplevels(self) -> typing.List[str]:
+        return [filename for filename, source in self.sources.items() if source.toplevel]
+
+    @property
+    def ignores(self) -> typing.Set[str]:
+        return set([filename for filename, source in self.sources.items() if source.ignored])
+
+    @property
+    def includes(self) -> typing.Set[str]:
+        return set([filename for filename, source in self.sources.items() if source.included])
+
+    @property
+    def keepcomments(self) -> typing.Set[str]:
+        """Returns a set of keep_comments designated files. Obsolete, do not use if possible.
+        Use is_keep_comments instead.
+        """
+        return set([filename for filename, source in self.sources.items() if source.keep_comments])
+
+    @property
+    def landscapes(self) -> typing.Set[str]:
+        """Returns a set of landscape designated files. Obsolete, do not use if possible.
+        Use is_landscape instead.
+        """
+        return set([filename for filename, source in self.sources.items() if source.orientation == "landscape"])
+
+    @property
+    def fontmaps(self) -> typing.List[str]:
+        return list(self.compilation.get("fontmaps", set()))
 
 def maybe_bbl(tex: str, in_dir: str) -> str | None:
     """Look for .bbl file"""
@@ -160,6 +382,10 @@ def find_primary_tex(in_dir: str, zzrm: ZeroZeroReadMe) -> typing.List[str]:
 
     The order of tex file is alphabetical order, and then treated with zzr top-levels.
     """
+
+    # When ZZRM is defined, take it
+    if zzrm.version == 2:
+        return zzrm.toplevels
 
     losers = zzrm.ignores | zzrm.includes
     #loser_re_1 = re.compile(r'\\input\{([^}]+)}')
