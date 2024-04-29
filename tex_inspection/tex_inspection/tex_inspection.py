@@ -158,7 +158,8 @@ class ZeroZeroReadMe:
     }
 
     postprocess_defaults = {
-        "stamp": True
+        "stamp": True,
+        "assembling_files": []
     }
 
     def __init__(self, in_dir: str | None = None):
@@ -212,6 +213,8 @@ class ZeroZeroReadMe:
         for item, value in ZeroZeroReadMe.compilation_defaults.items():
             if item not in self.compilation:
                 self.compilation[item] = value
+            elif not isinstance(self.compilation[item], value.__class__):
+                self.compilation[item] = value
         fontmaps = self.compilation.get("fontmaps")
         if fontmaps and isinstance(fontmaps, list):
             self.compilation["fontmaps"] = set(fontmaps)
@@ -221,7 +224,8 @@ class ZeroZeroReadMe:
         for item, value in ZeroZeroReadMe.postprocess_defaults.items():
             if item not in self.postprocess:
                 self.postprocess[item] = value
-
+            elif not isinstance(self.postprocess[item], value.__class__):
+                self.postprocess[item] = value
 
     def __bool__(self) -> bool:
         """Return True if 00README.XXX is fetched"""
@@ -366,6 +370,23 @@ class ZeroZeroReadMe:
     @property
     def fontmaps(self) -> typing.List[str]:
         return list(self.compilation.get("fontmaps", set()))
+
+    @property
+    def nohyperref(self) -> bool:
+        return False
+
+    @property
+    def hyperref(self) -> bool:
+        return False
+
+    @property
+    def nostamp(self) -> bool:
+        return not self.postprocess.get("stamp", True)
+
+    @property
+    def assembling_files(self) -> typing.List[str]:
+        return self.postprocess.get("assembling_files", [])
+
 
 def maybe_bbl(tex: str, in_dir: str) -> str | None:
     """Look for .bbl file"""
