@@ -95,7 +95,6 @@ def intern_value(value: bool | str | None, value_default: bool | str) -> bool | 
 class SourceFileMeta:
     """Input file metadata"""
     filename: str
-    readme_filename: str | None
     order: int
     toplevel: bool
     ignored: bool
@@ -146,6 +145,7 @@ class ZeroZeroReadMe:
     """Representation of 00README.XXX file"""
 
     readme: typing.List[str] | None
+    readme_filename: str | None
     version: int
     compilation: dict
     sources: typing.OrderedDict[str, SourceFileMeta]
@@ -173,7 +173,8 @@ class ZeroZeroReadMe:
         if in_dir:
             self.intern_00readme(in_dir)
 
-    def intern_00readme(self, in_dir: str):
+    def intern_00readme(self, in_dir: str) -> None:
+        """Read 00README.XXX v1 format and populate values"""
         # If there are 00README.XXX and 00readme.xxx, 00README.XXX is used.
         files = sorted(os.listdir(in_dir))
 
@@ -186,7 +187,7 @@ class ZeroZeroReadMe:
                 continue
             zzrms.append((stem, ext, filename))
 
-        def ext_order(zz: typing.Tuple[str, str, str]):
+        def ext_order(zz: typing.Tuple[str, str, str]) -> int:
             try:
                 return ZZRM_EXTS.index(zz[1])
             except ValueError:
@@ -206,8 +207,8 @@ class ZeroZeroReadMe:
                 case ".yml" | ".yaml" | ".json" | ".jsn" | ".ndjson" | ".toml":
                     self.fetch_00readme_v2(os.path.join(in_dir, filename))
 
-
     def ensure_compilation_defaults(self) -> None:
+        """After intern 00README, make sure things line up"""
         for item, value in ZeroZeroReadMe.compilation_defaults.items():
             if item not in self.compilation:
                 self.compilation[item] = value
@@ -216,6 +217,7 @@ class ZeroZeroReadMe:
             self.compilation["fontmaps"] = set(fontmaps)
 
     def ensure_postprocess_defaults(self) -> None:
+        """After intern 00README, make sure things line up"""
         for item, value in ZeroZeroReadMe.postprocess_defaults.items():
             if item not in self.postprocess:
                 self.postprocess[item] = value
@@ -276,6 +278,7 @@ class ZeroZeroReadMe:
                     self.compilation["nohyperref"] = True
 
     def find_metadata(self, filename: str) -> SourceFileMeta:
+        """Get an instance of a SourceFileMeta from filename, and create one if it doesn't exist.'"""
         meta = self.sources.get(filename)
         if meta is None:
             meta = SourceFileMeta(filename, order=len(self.sources)+1)
