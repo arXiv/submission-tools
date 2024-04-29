@@ -52,6 +52,7 @@ class ConverterDriver:
     use_addon_tree: bool
     max_tex_files: int
     max_appending_files: int
+    artifact_order: dict
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, water: str | None = None,
@@ -103,10 +104,13 @@ class ConverterDriver:
         # Find the starting point
         fix_tex_sources(self.in_dir)
         tex_files = find_primary_tex(self.in_dir, self.zzrm)
-        self.tex_files = tex_files[:self.max_tex_files]
+        # When using 00README v2, obey the tex files designation
+        max_tex_files = self.max_tex_files if self.zzrm.version == 1 else len(tex_files)
+        self.tex_files = tex_files[:max_tex_files]
         self.outcome["possible_tex_files"] = tex_files
         self.outcome["tex_files"] = self.tex_files
-        self.outcome["unused_tex_files"] = tex_files[self.max_tex_files:]
+        self.outcome["unused_tex_files"] = tex_files[max_tex_files:]
+
         if not self.tex_files:
             in_file: dict
             in_files = ["%s (%s)" % (in_file["name"], str(in_file["size"]))
@@ -255,7 +259,13 @@ class ConverterDriver:
         Second, we want the PDF watermarked.
 
         Note that, 00README.XXX can suppress the graphics addition, and watermarking.
+
+https://info.arxiv.org/help/submit_tex.html#latex
+Note that adding a 00README.XXX with a toplevelfile directive will only effect the processing order and not the final assembly order of the pdf.
+
+        This is true for V1. When using v2 00README, the doc order honors the order of compiled texs.
         """
+
         logger = get_logger()
         outcome = self.outcome
         # When the converter is successful, ship the pdf and the outcome.
@@ -268,17 +278,43 @@ class ConverterDriver:
         outcome["pdf_file"] = merged_pdf  # init
         try:
             # artifact moving has moved the pdfs to out_dir while unused pics still in in_dir
-            docs = [f"out/{pdf_file}" for pdf_file in pdf_files]
-            pic_adds = self.unused_pics()[:self.max_appending_files]
+
+            # Docs v2 does not change the compiled order
+            docs_v2 = [f"out/{pdf_file}" for pdf_file in pdf_files]
+            if self.zzrm and self.zzrm.version == 1:
+                docs = sorted(docs_v2)
+                pic_adds = self.unused_pics()[:self.max_appending_files]
+            else:
+                docs = docs_v2
+                pic_adds = self.unused_pics()[:self.max_appending_files]
+
+            # Does the converter class support pic additions?
             if self.converter and self.converter.__class__.yes_pix():
                 docs += [f"in/{pic}" for pic in pic_adds]
+
+            # Note the available documents that can be bombined.
+            outcome["available_documents"] = docs
+
+            # After all the trouble, if assembling_files is designated in post process, use it.
+            # Here, instead of taking the raw, match the basenames and list the docs in the
+            # order that appears in the assembling files. If it is missing in either, it is
+            # ignored.
+            if self.zzrm and self.zzrm.version > 1 and self.zzrm.assembling_files:
+                basenames = {os.path.basename(filename): filename for filename in docs}
+                docs = []
+                for filename in self.zzrm.assembling_files:
+                    doc = basenames.get(os.path.basename(filename))
+                    if doc:
+                        docs.append(doc)
+
+            # Docs decided
             outcome["documents"] = docs
             docs = [os.path.join(self.work_dir, doc) for doc in docs]
             final_pdf, used_gfx, unused_gfx = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
-            outcome["unused_figures"] =  self.unused_pics()[self.max_appending_files:] + unused_gfx
+            outcome["unused_figures"] = self.unused_pics()[self.max_appending_files:] + unused_gfx
         except PdfError as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
