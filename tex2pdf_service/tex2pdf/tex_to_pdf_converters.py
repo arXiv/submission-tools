@@ -173,16 +173,17 @@ class BaseConverter:
                         if not os.path.exists(t):
                             raise BadTexmfTree(f"{t} directory does not exist")
                     # update TEXMFAUXTREES value to have a final ","
-                    self.texmf_env_vars[key] = val.rstrip(",") + ","
+                    cmdenv[key] = val.rstrip(",") + ","
                 elif key == "SOURCE_DATE_EPOCH":
-                    # this value must be an integer >=0 
+                    # this value must be an integer >=0
                     if not val.isdecimal():
                         raise ValueError(f"Value for SOURCE_DATE_EPOCH must be a non-negative integer, not {val}")
+                    cmdenv[key] = val
                 elif key == "FORCE_SOURCE_DATE":
                     if val not in ["0", "1"]:
                         raise ValueError(f"Value of FORCE_SOURCE_DATE must be either 0 or 1, not {val}")
-                # still here, so all fine -- the val are already shell quoted at api entry point
-                cmdenv[key] = val
+                    cmdenv[key] = val
+        logger.debug("Running subprocess with cmdenv = {cmdenv}")
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
                               cwd=child_dir, encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False
