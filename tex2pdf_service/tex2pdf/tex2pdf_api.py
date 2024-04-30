@@ -86,9 +86,9 @@ def healthcheck() -> str:
              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
          })
 async def convert_pdf(incoming: UploadFile,
-                      texmf_env_vars: typing.Annotated[list[str],
+                      texmf_env_vars: typing.Annotated[list[str] | None,
                           Query(title="Additional TeX environment variables",
-                                description="Adds argument as addon texmf tree.")] = TEXMF_ENV_VARS,
+                                description="Define additional TeX environment variables.")] = TEXMF_ENV_VARS,
                       timeout: typing.Annotated[int | None,
                           Query(title="Time out", description="Time out in seconds.")] = None,
                       max_tex_files: typing.Annotated[int | None,
@@ -134,7 +134,12 @@ async def convert_pdf(incoming: UploadFile,
         if texmf_env_vars:
             # each element of the list is VAR=VALUE where we only allow certain VAR
             for assignment in texmf_env_vars:
-                key, val = assignment.split("=", 1)
+                # split into maximal two items
+                presumed_key_val = assignment.split("=", 1)
+                if len(presumed_key_val) < 2:
+                    return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                        content={"message": f"Malformed TEXMF_ENV_VAR entry: {assignment}"})
+                key, val = presumed_key_val[0:2]
                 if key not in ALLOWED_TEXMF_ENV_VARS:
                     logger.info("Environment variable not allowed: %s", key)
                     return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
