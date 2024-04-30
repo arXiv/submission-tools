@@ -30,6 +30,9 @@ ALLOWED_TEXMF_ENV_VARS: list[str] = [
     "FORCE_SOURCE_DATE",
 ]
 
+MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
+MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
+
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger"""
     def __init__(self, *args: list, **kwargs: Any):

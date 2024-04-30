@@ -1,0 +1,43 @@
+{
+  "compilation": {
+    "compiler": "pdflatex",
+    "fontmaps": [
+      {
+        "fontmap": "myfonts1.map"
+      },
+      {
+        "fontmap": "myfonts2.map"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "filename": "fake-file-1.tex",
+      "included": "YES"
+    },
+    {
+      "filename": "fake-file-2.tex"
+    },
+    {
+      "filename": "fake-file-3.TEX",
+      "ignored": true
+    },
+    {
+      "filename": "fake-file-2.dvi",
+      "orientation": "landscape"
+    },
+    {
+      "filename": "fake-file-4.dvi",
+      "keep_comments": "yes"
+    },
+    {
+      "filename": "fake-file-5.tex",
+    },
+    {
+      "filename": "fake-file-6.tex",
+    }
+  ],
+  "post_process": {
+    "stamp": "no"
+  }
+}
