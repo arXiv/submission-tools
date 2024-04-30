@@ -137,8 +137,8 @@ async def convert_pdf(incoming: UploadFile,
                 key, val = assignment.split("=", 1)
                 if key not in ALLOWED_TEXMF_ENV_VARS:
                     logger.info("Environment variable not allowed: %s", key)
-                    JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
-                                 content={"message": f"Environment variable not allowed: {key}"})
+                    return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                        content={"message": f"Environment variable not allowed: {key}"})
                 texmf_env_vars_parsed[key] = shlex.quote(val)
         driver = ConverterDriver(tempdir, filename, texmf_env_vars=texmf_env_vars_parsed, tag=tag,
                                  water=watermark_text, max_time_budget=timeout_secs,
