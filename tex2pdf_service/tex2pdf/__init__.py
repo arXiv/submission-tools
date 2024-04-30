@@ -23,7 +23,7 @@ MAX_LATEX_RUNS: int = int(os.environ.get("MAX_LATEX_RUNS", "5"))
 # Log level name may be different depending on the service provider
 LOG_LEVEL_NAME = os.environ.get("LOG_LEVEL_NAME", "severity")
 
-TEXMF_ENV_VARS: list[str] | None = os.environ.get("TEXMF_ENV_VARS").split(",") if os.environ.get("TEXMF_ENV_VARS") else None
+TEXMF_ENV_VARS: list[str] | None = os.environ.get("TEXMF_ENV_VARS", "").split(",") if os.environ.get("TEXMF_ENV_VARS") else None
 ALLOWED_TEXMF_ENV_VARS: list[str] = [
     "TEXMFAUXTREES",
     "SOURCE_DATE_EPOCH",
