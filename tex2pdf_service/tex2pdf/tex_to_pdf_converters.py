@@ -158,6 +158,10 @@ class BaseConverter:
         cmdenv = {"WORKDIR": work_dir, "SECRETS": "?", "GOOGLE_APPLICATION_CREDENTIALS": "?",
                   "PATH": PATH, "HOME": homedir,
                   "max_print_line": "4096", "error_line": "254", "half_error_line": "238"}
+        # support SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE set in the environment
+        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE"]:
+            if os.getenv(senv):
+                cmdenv[senv] = os.getenv(senv, "") # the "" is only here to placate mypy :-(
         # get location of addon trees
         if self.use_addon_tree:
             sap = subprocess.run(["kpsewhich", "-var-value", "SELFAUTOPARENT"], capture_output=True, text=True).stdout.rstrip()
