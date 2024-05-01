@@ -110,8 +110,11 @@ class BaseConverter:
                 outcome.update({"status": "fail", "step": step,
                                 "reason": f"failed to create {base_format}", "runs": self.runs})
                 return outcome
-            # return code is not a good indication, unfortunately.
-            # status = "success" if run["return_code"] == 0 else "fail"
+            # check for error return code
+            if run["return_code"] != 0:
+                outcome.update({"status": "fail", "step": step,
+                                "reason": f"converter returned error exit code {run['return_code']}", "runs": self.runs})
+                return outcome
             for line in run["log"].splitlines():
                 if line.find(rerun_needle) >= 0:
                     # Need retry
