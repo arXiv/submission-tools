@@ -23,6 +23,7 @@ sqlite3 score.db 'select outcome from score where not success' > bad.txt
 gives you the all of outcome json files to single file once you run the harvest.
 """
 
+import hashlib
 import os
 import time
 import typing
@@ -45,7 +46,7 @@ thread_local = threading.local()
 def score_db(score_path: str) -> Connection:
     """Open scorecard database"""
     db = sqlite3.connect(score_path)
-    db.execute("create table if not exists score (source varchar primary key, outcome TEXT, arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, status int, success bool)")
+    db.execute("create table if not exists score (source varchar primary key, outcome TEXT, arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, pdfchecksum TEXT, status int, success bool)")
     db.execute("create table if not exists touched (filename varchar primary key)")
     return db
 
@@ -61,7 +62,7 @@ def tarball_to_outcome_path(tarball: str) -> str:
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
-def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], typing.List[str], typing.List[str]]:
+def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], typing.List[str], typing.List[str], str]:
     """Open a compressed outcome tar archive and get the metadata"""
     meta = {}
     files = set()
@@ -89,8 +90,18 @@ def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], 
                         clsfiles.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
                     elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".sty"):
                         styfiles.add(filename.split()[1].removeprefix("/usr/local/texlive/2023/").removeprefix("/usr/local/texlive/2024/"))
+        arxiv_id = meta.get("arxiv_id")
+        pdfchecksum = hashlib.sha256()
+        for name in outcome.getnames():
+            if name == f"out/{arxiv_id}.pdf":
+                pdffile = outcome.extractfile(name)
+                pdfchecksum.update(pdffile.read())
+        # this is the checksum of the empty hash
+        pdfchecksum_digest = pdfchecksum.hexdigest()
+        if pdfchecksum_digest == 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
+            pdfchecksum_digest = ''
 
-    return meta, list(files), list(clsfiles), list(styfiles)
+    return meta, list(files), list(clsfiles), list(styfiles), pdfchecksum_digest
 
 
 @cli.command()
@@ -127,7 +138,7 @@ def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, po
                         if res.content:
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            meta, lines, clsfiles, styfiles = get_outcome_meta(outcome_file)
+                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
                 except TimeoutError:
                     logging.warning("%s: Connection timed out", tarball)
 
@@ -183,7 +194,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         outcome_file = tarball_to_outcome_path(tarball_path)
         if os.path.exists(outcome_file):
             try:
-                meta, files, clsfiles, styfiles = get_outcome_meta(outcome_file)
+                meta, files, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
                 pdf_file = meta.get("pdf_file")
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
@@ -197,9 +208,9 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         # Upsert the result
         cursor = sdb.cursor()
         cursor.execute("begin")
-        cursor.execute("insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, success) values (?, ?, ?, ?, ?, ?, ?)"
-                       " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles, clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf, success=excluded.success",
-                       (tarball_path, json.dumps(meta, indent=2), json.dumps(files, indent=2), json.dumps(clsfiles, indent=2), json.dumps(styfiles, indent=2), pdf_file, success))
+        cursor.execute("insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, pdfchecksum, success) values (?, ?, ?, ?, ?, ?, ?, ?)"
+                       " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles, clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf, pdfchecksum=excluded.pdfchecksum, success=excluded.success",
+                       (tarball_path, json.dumps(meta, indent=2), json.dumps(files, indent=2), json.dumps(clsfiles, indent=2), json.dumps(styfiles, indent=2), pdf_file, pdfchecksum, success))
         cursor.executemany("insert or ignore into touched(filename) values (?) ", [(filename,) for filename in files])
         cursor.execute("commit")
         cursor.close()
