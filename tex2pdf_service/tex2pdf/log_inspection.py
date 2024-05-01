@@ -21,6 +21,7 @@ TEX_LOG_ERRORS: typing.List[Pattern] = [
         r': File `(.*)\' not found:\s*$',
         r'! Unable to load picture or PDF file \'([^\\\']+)\'.',
         r'Package pdftex.def Error: File (.*) not found: using draft setting\.',
+        r'.*?:\d*: LaTeX Error:  Unknown graphics extension: (.*)\.',
     ]
 ]
 
