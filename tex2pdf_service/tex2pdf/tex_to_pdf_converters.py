@@ -27,6 +27,11 @@ class RunFail(Exception):
     pass
 
 
+class ImplementationError(Exception):
+    """Bug!?"""
+    pass
+
+
 class BaseConverter:
     """Base class for tex-to-pdf converters.
     """
@@ -417,12 +422,12 @@ class BaseDviConverter(BaseConverter):
         # backticks ' ) and config files (via the E option), and opening of any absolute filenames.
         # -z: Pass html hyperdvi specials through to the output for eventual distillation into PDF
         dvi_options = ["-R2"]
-        if self.zzrm and dvi_file in self.zzrm.landscapes:
+        if self.zzrm and self.zzrm.is_landscape(stem):
             dvi_options.append("-t")
             dvi_options.append("landscape")
             pass
 
-        if self.zzrm and dvi_file in self.zzrm.keepcomments:
+        if self.zzrm and self.zzrm.is_keep_comments(stem):
             dvi_options.append("-K")
             pass
 
@@ -708,6 +713,7 @@ class PdfLatexConverter(BaseConverter):
 
 class VanillaTexConverter(BaseDviConverter):
     """Runs tex command"""
+
     _args: typing.List[str]
 
     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
@@ -787,4 +793,7 @@ class VanillaTexConverter(BaseDviConverter):
     def converter_name(self) -> str:
         return "tex: %s" % (shlex.join(self._args))
 
-    pass
+    def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str,
+                     out_dir: str) -> dict:
+        """plain tex is not latex."""
+        raise ImplementationError("_latexen_run() not implemented")
