@@ -11,6 +11,7 @@ import toml
 from ruamel.yaml import YAML, ScalarNode, MappingNode
 from ruamel.yaml.representer import RoundTripRepresenter
 import copy
+from enum import Enum
 
 def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
     if '\n' in data:
@@ -101,34 +102,38 @@ def intern_value(value: bool | str | None, value_default: bool | str) -> bool | 
     # if isinstance(value_default, str):
     return str(value)
 
+class SubmissionFileType(Enum):
+    none = "none"
+    toplevel = "toplevelfile"
+    ignored = "ignore"
+    included = "include"
+    appended = "appended"
+    fontmap = "fontmap"
+    keep_comments = "keepcomments"  # weird - marker for .dvi
+    orientation = "orientation"     # weird - marker for .dvi
 
 class SourceFileMeta:
     """Input file metadata"""
     filename: str
     order: int
-    toplevel: bool
-    ignored: bool
-    included: bool
-    appended: bool
+    _file_type: SubmissionFileType
     orientation: str
-    keep_comments: bool
-    fontmap: bool
 
     defaults: typing.Dict[str, bool | str] = {
         "toplevel": True,
         "ignored": False,
         "included": False,
         "appended": False,
-        "orientation": "",
         "keep_comments": False,
         "fontmap": False,
+        "orientation": "",
     }
 
     def __init__(self, filename: str = "", order: int = 0):
         self.filename = filename
         self.order = order
-        for key, value in self.defaults.items():
-            setattr(self, key, value)
+        self.orientation = ""
+        self._file_type = SubmissionFileType.toplevel
 
     def from_spec(self, spec: dict) -> "SourceFileMeta":
         valid_keys = self.defaults.keys()
@@ -136,21 +141,55 @@ class SourceFileMeta:
             if key not in valid_keys:
                 continue
             val = intern_value(spec[key], self.defaults[key])
-            setattr(self, key, val)
-            if val is True and key in ["ignored", "included", "appended", "fontmap"]:
-                self.toplevel = False
-            if key in ["orientation", "keep_comments"]:
-                self.toplevel = False
+            if key == "orientation" and value == "landscape":
+                self.orientation = value
+                self.set_file_type(SubmissionFileType.orientation)
+                continue
+            for file_type in SubmissionFileType:
+                if file_type.name == "none":
+                    continue
+                if file_type.name == key:
+                    self.set_file_type(file_type)
+                    break
+            else:
+                raise ValueError(key)
 
         return self
 
+    def set_file_type(self, file_type: SubmissionFileType) -> None:
+        self._file_type = file_type
+
     def to_dict(self) -> dict:
         result: typing.Dict[str, str | bool] = {"filename": self.filename}
-        for key, default_value in SourceFileMeta.defaults.items():
-            value: str | bool | None = getattr(self, key, default_value)
-            if value and value != default_value:
-                result[key] = copy.deepcopy(value)
+        if not self.toplevel:
+            result[self._file_type.name] = True
+        if self.orientation:
+            result["orientation"] = self.orientation
         return result
+
+    @property
+    def toplevel(self) -> bool:
+        return self._file_type == SubmissionFileType.toplevel
+
+    @property
+    def ignored(self) -> bool:
+        return self._file_type == SubmissionFileType.ignored
+
+    @property
+    def included(self) -> bool:
+        return self._file_type == SubmissionFileType.included
+
+    @property
+    def appended(self) -> bool:
+        return self._file_type == SubmissionFileType.appended
+
+    @property
+    def keep_comments(self) -> bool:
+        return self._file_type == SubmissionFileType.keep_comments
+
+    @property
+    def fontmap(self) -> bool:
+        return self._file_type == SubmissionFileType.fontmap
 
 
 class ZeroZeroReadMe:
@@ -257,28 +296,23 @@ class ZeroZeroReadMe:
             idioms = [idiom for idiom in line.strip().split(' ') if idiom]
             if len(idioms) == 2:
                 filename = idioms[0]
+                keyword = idioms[1]
                 meta = self.find_metadata(filename)
-                match idioms[1]:
-                    case "ignore":
-                        meta.ignored = True
-                        meta.toplevel = False
-                    case "include":
-                        meta.included = True
-                        meta.toplevel = False
-                    case "toplevelfile":
-                        # may need to check the file extension
-                        meta.toplevel = True
-                        meta.order = index
-                        index += 1
-                    case "landscape":
-                        meta.toplevel = False
-                        meta.orientation = "landscape"
-                    case "keepcomments":
-                        meta.toplevel = False
-                        meta.keep_comments = True
-                    case "fontmap":
-                        meta.toplevel = False
-                        meta.fontmap = True
+                if keyword == "landscape":
+                    meta.set_file_type(SubmissionFileType.orientation)
+                    meta.orientation = keyword
+                    continue
+
+                for file_type in SubmissionFileType:
+                    if keyword == file_type.value:
+                        meta.set_file_type(file_type)
+                        if file_type is SubmissionFileType.toplevel:
+                            meta.order = index
+                            index += 1
+                        break
+                else:
+                    raise KeyError(keyword)
+
             elif len(idioms) == 1:
                 if idioms[0] == "nostamp":
                     self.postprocess["stamp"] = False
@@ -323,8 +357,7 @@ class ZeroZeroReadMe:
             if "fontmaps" in self.compilation:
                 for fontmap in self.compilation.get("fontmaps", []):
                     meta = self.find_metadata(fontmap)
-                    meta.toplevel = False
-                    meta.fontmap = True
+                    meta.set_file_type(SubmissionFileType.fontmap)
                 del self.compilation["fontmaps"]
             self.postprocess = zzrm.get("postprocess", {})
             self.ensure_postprocess_defaults()
