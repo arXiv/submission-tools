@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Inspecting TeX in arXiv submissions"
 authors = ["arxiv.org"]
 license = "BSD-3 License"
-readme = "README.md"
+readme = "README.rst"
 packages = [
     { include = "tex_inspection" }
 ]
