@@ -7,15 +7,26 @@ import re
 import stat
 import typing
 from collections import OrderedDict
-from ruamel.yaml import YAML
-import tomli
+import toml
+from ruamel.yaml import YAML, ScalarNode, MappingNode
+from ruamel.yaml.representer import RoundTripRepresenter
+import copy
+from enum import Enum
+
+def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
+    if '\n' in data:
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+def yaml_repr_ordered_dict(dumper: RoundTripRepresenter, data: OrderedDict) -> MappingNode:
+    return dumper.represent_mapping('tag:yaml.org,2002:map', dict(data))
+
 
 # Text file extensions
 TEX_FILE_EXTS = [".tex", ".ltf", ".ltx", ".latex", ".txt"]
 
 # 00README file extensions - earlier wins
 ZZRM_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
-
 
 def file_props(filename: str) -> dict:
     """fstat the file and return the size and name."""
@@ -91,32 +102,38 @@ def intern_value(value: bool | str | None, value_default: bool | str) -> bool | 
     # if isinstance(value_default, str):
     return str(value)
 
+class SubmissionFileType(Enum):
+    none = "none"
+    toplevel = "toplevelfile"
+    ignored = "ignore"
+    included = "include"
+    appended = "appended"
+    fontmap = "fontmap"
+    keep_comments = "keepcomments"  # weird - marker for .dvi
+    orientation = "orientation"     # weird - marker for .dvi
 
 class SourceFileMeta:
     """Input file metadata"""
     filename: str
     order: int
-    toplevel: bool
-    ignored: bool
-    included: bool
-    appended: bool
+    _file_type: SubmissionFileType
     orientation: str
-    keep_comments: bool
 
     defaults: typing.Dict[str, bool | str] = {
         "toplevel": True,
         "ignored": False,
         "included": False,
         "appended": False,
+        "keep_comments": False,
+        "fontmap": False,
         "orientation": "",
-        "keep_comments": False
     }
 
     def __init__(self, filename: str = "", order: int = 0):
         self.filename = filename
         self.order = order
-        for key, value in self.defaults.items():
-            setattr(self, key, value)
+        self.orientation = ""
+        self._file_type = SubmissionFileType.toplevel
 
     def from_spec(self, spec: dict) -> "SourceFileMeta":
         valid_keys = self.defaults.keys()
@@ -124,21 +141,55 @@ class SourceFileMeta:
             if key not in valid_keys:
                 continue
             val = intern_value(spec[key], self.defaults[key])
-            setattr(self, key, val)
-            if val is True and key in ["ignored", "included", "appended"]:
-                self.toplevel = False
-            if key in ["orientation", "keep_comments"]:
-                self.toplevel = False
+            if key == "orientation" and value == "landscape":
+                self.orientation = value
+                self.set_file_type(SubmissionFileType.orientation)
+                continue
+            for file_type in SubmissionFileType:
+                if file_type.name == "none":
+                    continue
+                if file_type.name == key:
+                    self.set_file_type(file_type)
+                    break
+            else:
+                raise ValueError(key)
 
         return self
 
+    def set_file_type(self, file_type: SubmissionFileType) -> None:
+        self._file_type = file_type
+
     def to_dict(self) -> dict:
         result: typing.Dict[str, str | bool] = {"filename": self.filename}
-        for key, default_value in SourceFileMeta.defaults.items():
-            value: str | bool | None = getattr(self, key, default_value)
-            if value and value != default_value:
-                result[key] = value
+        if not self.toplevel:
+            result[self._file_type.name] = True
+        if self.orientation:
+            result["orientation"] = self.orientation
         return result
+
+    @property
+    def toplevel(self) -> bool:
+        return self._file_type == SubmissionFileType.toplevel
+
+    @property
+    def ignored(self) -> bool:
+        return self._file_type == SubmissionFileType.ignored
+
+    @property
+    def included(self) -> bool:
+        return self._file_type == SubmissionFileType.included
+
+    @property
+    def appended(self) -> bool:
+        return self._file_type == SubmissionFileType.appended
+
+    @property
+    def keep_comments(self) -> bool:
+        return self._file_type == SubmissionFileType.keep_comments
+
+    @property
+    def fontmap(self) -> bool:
+        return self._file_type == SubmissionFileType.fontmap
 
 
 class ZeroZeroReadMe:
@@ -151,19 +202,18 @@ class ZeroZeroReadMe:
     sources: typing.OrderedDict[str, SourceFileMeta]
     postprocess: dict
 
-    compilation_defaults = {
+    _compilation_defaults = {
         "compiler": "pdflatex",
-        "fontmaps": set(),
         "nohyperref": False
     }
 
-    postprocess_defaults = {
+    _postprocess_defaults = {
         "stamp": True,
         "assembling_files": []
     }
 
-    def __init__(self, in_dir: str | None = None):
-        self.version = 1  # classic 00README.XXX
+    def __init__(self, in_dir: str | None = None, version: int = 1):
+        self.version = version  # classic 00README.XXX is v1, dict i/o is v2.
         self.readme_filename = None
         self.readme = None
         self.compilation = {}
@@ -210,22 +260,19 @@ class ZeroZeroReadMe:
 
     def ensure_compilation_defaults(self) -> None:
         """After intern 00README, make sure things line up"""
-        for item, value in ZeroZeroReadMe.compilation_defaults.items():
+        for item, value in ZeroZeroReadMe._compilation_defaults.items():
             if item not in self.compilation:
-                self.compilation[item] = value
+                self.compilation[item] = copy.deepcopy(value)
             elif not isinstance(self.compilation[item], value.__class__):
-                self.compilation[item] = value
-        fontmaps = self.compilation.get("fontmaps")
-        if fontmaps and isinstance(fontmaps, list):
-            self.compilation["fontmaps"] = set(fontmaps)
+                self.compilation[item] = copy.deepcopy(value)
 
     def ensure_postprocess_defaults(self) -> None:
         """After intern 00README, make sure things line up"""
-        for item, value in ZeroZeroReadMe.postprocess_defaults.items():
+        for item, value in ZeroZeroReadMe._postprocess_defaults.items():
             if item not in self.postprocess:
-                self.postprocess[item] = value
+                self.postprocess[item] = copy.deepcopy(value)
             elif not isinstance(self.postprocess[item], value.__class__):
-                self.postprocess[item] = value
+                self.postprocess[item] = copy.deepcopy(value)
 
     def __bool__(self) -> bool:
         """Return True if 00README.XXX is fetched"""
@@ -249,40 +296,31 @@ class ZeroZeroReadMe:
             idioms = [idiom for idiom in line.strip().split(' ') if idiom]
             if len(idioms) == 2:
                 filename = idioms[0]
+                keyword = idioms[1]
                 meta = self.find_metadata(filename)
-                match idioms[1]:
-                    case "ignore":
-                        meta.ignored = True
-                        meta.toplevel = False
-                    case "include":
-                        meta.included = True
-                        meta.toplevel = False
-                    case "toplevelfile":
-                        # may need to check the file extension
-                        meta.toplevel = True
-                        meta.order = index
-                        index += 1
-                    case "landscape":
-                        meta.toplevel = False
-                        meta.orientation = "landscape"
-                    case "keepcomments":
-                        meta.toplevel = False
-                        meta.keep_comments = True
-                    case "fontmap":
-                        meta.toplevel = False
-                        name = idioms[0]
-                        if name.endswith(".map"):
-                            name = name[:-4]
-                        if re.match(r"[A-Za-z]+", name):
-                            self.compilation["fontmaps"].add(idioms[0])
+                if keyword == "landscape":
+                    meta.set_file_type(SubmissionFileType.orientation)
+                    meta.orientation = keyword
+                    continue
+
+                for file_type in SubmissionFileType:
+                    if keyword == file_type.value:
+                        meta.set_file_type(file_type)
+                        if file_type is SubmissionFileType.toplevel:
+                            meta.order = index
+                            index += 1
+                        break
+                else:
+                    raise KeyError(keyword)
+
             elif len(idioms) == 1:
                 if idioms[0] == "nostamp":
-                    self.compilation["nostamp"] = True
+                    self.postprocess["stamp"] = False
                 elif idioms[0] == "nohyperref":
                     self.compilation["nohyperref"] = True
 
     def find_metadata(self, filename: str) -> SourceFileMeta:
-        """Get an instance of a SourceFileMeta from filename, and create one if it doesn't exist.'"""
+        """Get an instance of a SourceFileMeta from filename, and create one if it doesn't exist."""
         meta = self.sources.get(filename)
         if meta is None:
             meta = SourceFileMeta(filename, order=len(self.sources)+1)
@@ -293,38 +331,61 @@ class ZeroZeroReadMe:
         """Read and parse 00README.XXX file, v2"""
         stem, ext = os.path.splitext(filename)
         zzrm = None
-        with open(filename, "rb") as fd:
-            match ext:
-                case ".yml" | ".yaml":
-                    loader = YAML()
+        match ext:
+            case ".yml" | ".yaml":
+                loader = YAML()
+                with open(filename, "rb") as fd:
                     zzrm = loader.load(fd)
-                case ".json" | ".jsn" | ".ndjson":
+            case ".json" | ".jsn" | ".ndjson":
+                with open(filename, "rb") as fd:
                     zzrm = json.load(fd)
-                case ".toml":
-                    zzrm = tomli.load(fd)
+            case ".toml":
+                zzrm = toml.load(filename)
         if zzrm:
             self.readme_filename = filename
             self.version = 2
             self.compilation = zzrm.get("compilation", {})
             self.ensure_compilation_defaults()
             self.sources = OrderedDict()
+            meta: SourceFileMeta
             for index, source in enumerate(zzrm.get("sources", [])):
                 filename = source.get("filename")
                 if not filename:
                     raise InvalidSourceMetadata(f"filename missing from the source. at entry {index+1}")
                 meta = self.find_metadata(filename)
                 meta.from_spec(source)
+            if "fontmaps" in self.compilation:
+                for fontmap in self.compilation.get("fontmaps", []):
+                    meta = self.find_metadata(fontmap)
+                    meta.set_file_type(SubmissionFileType.fontmap)
+                del self.compilation["fontmaps"]
             self.postprocess = zzrm.get("postprocess", {})
             self.ensure_postprocess_defaults()
 
-    def to_dict(self, output: typing.TextIO) -> OrderedDict:
+    def to_dict(self) -> OrderedDict:
         """Export the 00README as dict"""
         result = OrderedDict()
-        if dict(self.compilation) != dict(ZeroZeroReadMe.compilation_defaults):
-            result["compilation"] = self.compilation
-        result["sources"] = [source.to_dict() for _filename, source in self.sources.items()] # type: ignore
-        if dict(self.postprocess) != dict(ZeroZeroReadMe.postprocess_defaults):
+        result["compilation"] = copy.deepcopy(self.compilation)
+        fontmaps = self.fontmaps
+        if fontmaps:
+            result["compilation"]["fontmaps"] = sorted(list(fontmaps))
+        for key, value in self._compilation_defaults.items():
+            if result["compilation"].get(key) != value:
+                break
+        else:
+            if not result["compilation"].get("fontmaps"):
+                del result["compilation"]
+        if "compilation" in result:
+            if "nohyperref" in result["compilation"]:
+                del result["compilation"]["nohyperref"]
+
+        result["sources"] = [source.to_dict() for _filename, source in self.sources.items() if not source.fontmap] # type: ignore
+        if dict(self.postprocess) != dict(ZeroZeroReadMe._postprocess_defaults):
             result["postprocess"] = self.postprocess
+            if result["postprocess"].get("stamp") is True:
+                del result["postprocess"]["stamp"]
+            if not result["postprocess"].get("assembling_files"):
+                del result["postprocess"]["assembling_files"]
         return result
 
     def is_landscape(self, testing: str) -> bool:
@@ -369,7 +430,7 @@ class ZeroZeroReadMe:
 
     @property
     def fontmaps(self) -> typing.List[str]:
-        return sorted(list(self.compilation.get("fontmaps", set())))
+        return sorted([filename for filename, source in self.sources.items() if source.fontmap])
 
     @property
     def nohyperref(self) -> bool:
@@ -387,6 +448,33 @@ class ZeroZeroReadMe:
     def assembling_files(self) -> typing.List[str]:
         result = self.postprocess.get("assembling_files", [])
         return result if isinstance(result, list) else []
+
+    def register_primary_tex_files(self, primaries: typing.List[str]) -> typing.List[SourceFileMeta]:
+        """Registers the primary tex files"""
+        return [self.find_metadata(prime).from_spec({"toplevel": True}) for prime in primaries]
+
+    def set_tex_compiler(self, tc: str) -> None:
+        """Set TeX compiler"""
+        self.compilation["compiler"] = tc
+
+    def set_assembling_files(self, artifacts: typing.List[str]) -> None:
+        """Set assembling files"""
+        self.postprocess["assembling_files"] = artifacts
+
+    def to_yaml(self, output: typing.TextIO) -> typing.TextIO:
+        yaml = YAML()
+        yaml.representer.add_representer(str, yaml_repr_str)
+        yaml.representer.add_representer(OrderedDict, yaml_repr_ordered_dict)
+        yaml.dump(self.to_dict(), output)
+        return output
+
+    def to_json(self, output: typing.TextIO, indent: int|None = 4) -> typing.TextIO:
+        json.dump(self.to_dict(), output, indent=indent)
+        return output
+
+    def to_toml(self, output: typing.TextIO) -> typing.TextIO:
+        toml.dump(self.to_dict(), output)
+        return output
 
 
 def maybe_bbl(tex: str, in_dir: str) -> str | None:

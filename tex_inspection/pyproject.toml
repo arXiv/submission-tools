@@ -13,13 +13,14 @@ include = ["LICENSE", "README.md"]
 [tool.poetry.dependencies]
 python = "^3.10"
 "ruamel.yaml" = "^0.18"
-tomli = "^2.0.1"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 mypy = "*"
 mypy-extensions = "*"
 pydantic = "1.10.*"
+types-toml = "^0.10.8.20240310"
 
 [build-system]
 requires = ["poetry-core"]
