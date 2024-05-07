@@ -44,6 +44,8 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
 
 @pytest.fixture(scope="module")
 def docker_container():
+    os.makedirs("tests/output", exist_ok=True)
+
     image_name = "arxiv-tex2pdf-app"
     container_name = "test-arxiv-tex2pdf"
     dockerport = "8080"
@@ -135,3 +137,17 @@ def test_api_test3(docker_container):
     assert meta.get("pdf_files") == ['fake-file-2.pdf', 'fake-file-1.pdf', 'fake-file-3.pdf']
     # v2 keeps the order which is what we'd expect
     assert meta.get("documents") == ['out/fake-file-2.pdf', 'out/fake-file-1.pdf', 'out/fake-file-3.pdf']
+
+
+def test_api_test4(docker_container):
+    url = docker_container + "/convert"
+    tarball = "tests/fixture/tarballs/test4/test4.tar.gz"
+    outcome = "tests/output/test4.outcome.tar.gz"
+    meta = submit_tarball(url, tarball, outcome)
+    assert meta is not None
+    assert meta.get("pdf_file") == "test4.pdf"
+    assert meta.get("tex_files") == ['main.tex', 'gdp.tex']
+    # There is no reasons given for designating latex
+    assert meta.get("reasons") == []
+    assert len(meta.get("converters", [])) == 2
+    assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf

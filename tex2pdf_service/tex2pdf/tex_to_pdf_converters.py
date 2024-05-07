@@ -1,6 +1,7 @@
 """
 This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
 """
+import copy
 import os
 import subprocess
 import shlex
@@ -331,6 +332,8 @@ def select_converter_classes(in_dir: str, zzrm: ZeroZeroReadMe | None = None) \
                 pass
             else:
                 raise ValueError(f"compiler {compiler} is not in " + repr(cc_list.keys()))
+            # Just return the designated class and give no reason since there were no judgement
+            return copy.copy(candidates), []
 
     classes = candidates.copy()
     tex_files = []
