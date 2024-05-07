@@ -94,7 +94,7 @@ def docker_container():
         subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
     subprocess.call(["docker", "kill", container_name])
 
-
+@pytest.mark.integration
 def test_api_hello(docker_container):
     url = docker_container
     response = requests.get(url)
@@ -105,6 +105,7 @@ def test_api_hello(docker_container):
     pass
 
 
+@pytest.mark.integration
 def test_api_smoke(docker_container):
     """00README.XXX is bad, so make sure it does not die or anything."""
     url = docker_container + "/convert"
@@ -114,6 +115,7 @@ def test_api_smoke(docker_container):
     assert meta is not None
 
 
+@pytest.mark.integration
 def test_api_test2(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test2/test2.tar.gz"
@@ -126,6 +128,7 @@ def test_api_test2(docker_container):
     assert meta.get("documents") == ['out/fake-file-1.pdf', 'out/fake-file-2.pdf']
 
 
+@pytest.mark.integration
 def test_api_test3(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
@@ -139,6 +142,7 @@ def test_api_test3(docker_container):
     assert meta.get("documents") == ['out/fake-file-2.pdf', 'out/fake-file-1.pdf', 'out/fake-file-3.pdf']
 
 
+@pytest.mark.integration
 def test_api_test4(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test4/test4.tar.gz"
