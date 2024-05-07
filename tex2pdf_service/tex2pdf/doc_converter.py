@@ -25,9 +25,11 @@ def convert_image_to_pdf(image_path: str, pdf_path: str) -> str:
     return pdf_path
 
 
-def strip_to_basename(path_list: typing.List[str]) -> typing.List[str]:
+def strip_to_basename(path_list: typing.List[str], extent: None | str = None) -> typing.List[str]:
     """Strip the path to the basename."""
-    return [os.path.basename(path) for path in path_list]
+    if extent is None:
+        return [os.path.basename(path) for path in path_list]
+    return [os.path.splitext(os.path.basename(path))[0] + extent for path in path_list]
 
 
 def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: str,
@@ -37,7 +39,7 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
     Args:
         doc_list (list): List of documents. (can be in any dir)
         out_dir (str): Output directory.
-        out_filename (str): Namef of output PDF.
+        out_filename (str): Name of output PDF.
         log_extra (dict): Extra logging information.
     """
     output_path = os.path.join(out_dir, out_filename)
