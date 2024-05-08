@@ -28,6 +28,8 @@ click = "^8.1.7"
 mypy = "*"
 mypy-extensions = "*"
 tqdm = "^4.66.2"
+uvicorn = "^0.29.0"
+requests = "^2.31.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

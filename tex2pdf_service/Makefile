@@ -1,3 +1,4 @@
+
 app_tag := arxiv-tex2pdf-app
 app_name := tex2pdf_app
 app_port := 6301
@@ -117,7 +118,6 @@ app.docker: ${ADDITIONS}
 	@echo "PLATFORM: ${PLATFORM}"
 	@echo "dockerport: ${app_port}"
 	@echo "tag: ${appl_tag}"
-	@echo "name: ${app_name}"
 	docker buildx build -f ./Appliance.Dockerfile  --platform=${TEX2PDF_DOCKER_PLATFORM} -t ${app_tag} .
 
 #-#

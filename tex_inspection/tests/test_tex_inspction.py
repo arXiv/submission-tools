@@ -33,6 +33,12 @@ class TestTexInspection(unittest.TestCase):
         primary_tex = find_primary_tex(dir_path, zzrm)
         self.assertEqual(["fake-file-1.tex"], primary_tex)
 
+    def test_primary_single_tex_5(self):
+        dir_path = os.path.join(self.fixture_dir, "inspection", "single_tex_5")
+        zzrm = ZeroZeroReadMe(dir_path)
+        primary_tex = find_primary_tex(dir_path, zzrm)
+        self.assertEqual(["fake-file-2.TEX", "fake-file-1.tex"], primary_tex)
+
     def test_primary_multi_tex_1(self):
         dir_path = os.path.join(self.fixture_dir, "inspection", "multi_tex_1")
         zzrm = ZeroZeroReadMe(dir_path)

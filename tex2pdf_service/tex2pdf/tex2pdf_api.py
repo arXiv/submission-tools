@@ -96,6 +96,8 @@ async def convert_pdf(incoming: UploadFile,
                       max_appending_files: typing.Annotated[int | None,
                           Query(title="Max Extra File count",
                                 description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
+                      preflight: typing.Annotated[bool,
+                          Query(title="Preflight", description="Preflight check")] = False,
                       watermark_text: str | None = None) -> Response:
     """
     get a tarball, and convert to PDF
@@ -131,7 +133,8 @@ async def convert_pdf(incoming: UploadFile,
         driver = ConverterDriver(tempdir, filename, use_addon_tree=use_addon_tree, tag=tag,
                                  water=watermark_text, max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
-                                 max_appending_files=max_appending_files
+                                 max_appending_files=max_appending_files,
+                                 preflight=preflight
                                  )
         try:
             _pdf_file = driver.generate_pdf()

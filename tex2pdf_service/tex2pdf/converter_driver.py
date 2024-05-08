@@ -1,6 +1,7 @@
 """
 This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
 """
+import io
 import json
 import os
 import shlex
@@ -12,19 +13,25 @@ from pikepdf import PdfError
 
 from tex2pdf import file_props, file_props_in_dir, catalog_files, \
     ID_TAG, graphics_exts, test_file_extent, MAX_TIME_BUDGET
-from tex2pdf.doc_converter import combine_documents
+from tex2pdf.doc_converter import combine_documents, strip_to_basename
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import unpack_tarball, chmod_775
 from tex2pdf.tex_to_pdf_converters import BaseConverter
 from tex2pdf.tex_patching import fix_tex_sources
 from tex2pdf.pdf_watermark import add_watermark_text_to_pdf
-from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files)
+from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
+                            SubmissionFileType)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
                   "the conflicting names. (eg, both main.tex and main.latex exist.) This should "
                   "have been resolved by find_primary_tex()."
                   " In any rate, the tarball needs clarification.")
+
+
+class AssemblingFileNotFound(Exception):
+    """Designated file in assembling is not found"""
+    pass
 
 
 class ConverterDriver:
@@ -53,11 +60,14 @@ class ConverterDriver:
     max_tex_files: int
     max_appending_files: int
     artifact_order: dict
+    today: str | None
+    preflight: bool
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, water: str | None = None,
                  max_time_budget: float | None = None,
-                 max_tex_files: int = 1,  max_appending_files: int = 0
+                 max_tex_files: int = 1,  max_appending_files: int = 0,
+                 preflight: bool = False,
                  ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -77,6 +87,8 @@ class ConverterDriver:
         self.use_addon_tree = use_addon_tree if use_addon_tree else False
         self.max_tex_files = max_tex_files
         self.max_appending_files = max_appending_files
+        self.today = None
+        self.preflight = preflight
         pass
 
     @property
@@ -91,12 +103,16 @@ class ConverterDriver:
         self.t0 = time.perf_counter()
 
         self._unpack_tarball()
-        self.zzrm = ZeroZeroReadMe(self.in_dir)
+        try:
+            self.zzrm = ZeroZeroReadMe(self.in_dir)
+        except KeyError:
+            self.zzrm = ZeroZeroReadMe(None)
+            logger.warning("Input directory %s contains an invalid 00README file, and ignored", self.in_dir)
+            pass
         self.outcome = {ID_TAG: self.tag, "status": None, "converters": [],
                         "start_time": str(self.t0),
                         "timeout": str(self.max_time_budget),
                         "watermark": self.water,
-                        "zzrm": self.zzrm.readme,
                         "use_addon_tree": self.use_addon_tree,
                         "max_tex_files": self.max_tex_files,
                         "max_appending_files": self.max_appending_files
@@ -104,12 +120,17 @@ class ConverterDriver:
         # Find the starting point
         fix_tex_sources(self.in_dir)
         tex_files = find_primary_tex(self.in_dir, self.zzrm)
-        # When using 00README v2, obey the tex files designation
-        max_tex_files = self.max_tex_files if self.zzrm.version == 1 else len(tex_files)
-        self.tex_files = tex_files[:max_tex_files]
+        # If 00README input exists, obey the designation
+        max_tex_files = len(tex_files) if self.zzrm.readme or self.zzrm.version > 1 else self.max_tex_files
+        self.tex_files = tex_files[:max_tex_files]  # Used tex files
+        unused_tex_files = tex_files[max_tex_files:]
         self.outcome["possible_tex_files"] = tex_files
         self.outcome["tex_files"] = self.tex_files
-        self.outcome["unused_tex_files"] = tex_files[max_tex_files:]
+        self.outcome["unused_tex_files"] = unused_tex_files
+        for tex_file in self.tex_files:
+            self.zzrm.find_metadata(tex_file).set_file_type(SubmissionFileType.toplevel)
+        for tex_file in unused_tex_files:
+            self.zzrm.find_metadata(tex_file).set_file_type(SubmissionFileType.ignored)
 
         if not self.tex_files:
             in_file: dict
@@ -120,33 +141,49 @@ class ConverterDriver:
                          extra=self.log_extra)
             self.outcome.update({"status": "fail", "tex_file": None,
                                  "in_files": file_props_in_dir(self.in_dir)})
+            return None
+
+        if self.preflight:
+            self.report_preflight()
+            return None
+
+        # Once no-hyperref is implemented, change here - future fixme
+        if self.zzrm.nohyperref:
+            self.outcome["status"] = "fail"
+            self.outcome["reason"] = "nohyperref is not supported yet"
+            self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         else:
-            # Once no-hyperref is implemented, change here - future fixme
-            if self.zzrm.nohyperref:
-                self.outcome["status"] = "fail"
-                self.outcome["reason"] = "nohyperref is not supported yet"
-                self.outcome["in_files"] = file_props_in_dir(self.in_dir)
+            self._run_tex_commands()
+            pdf_files = self.outcome.get("pdf_files", [])
+            if pdf_files:
+                self._finalize_pdf()
+                self.outcome["status"] = "success"
             else:
-                self._run_tex_commands()
-                pdf_files = self.outcome.get("pdf_files", [])
-                if pdf_files:
-                    self._finalize_pdf()
-                    self.outcome["status"] = "success"
-                else:
-                    self.outcome["status"] = "fail"
-                    pass
+                self.outcome["status"] = "fail"
                 pass
             pass
-
         return self.outcome.get("pdf_file")
 
+
+    def report_preflight(self) -> None:
+        """Set the values to zzrm"""
+        converters, reasons = select_converter_classes(self.in_dir, zzrm=self.zzrm)
+        self.outcome["converters"] = [converter.tex_compiler_name() for converter in converters]
+        self.outcome["reasons"] = reasons
+        self.outcome["pdf_files"] = strip_to_basename(self.tex_files, extent=".pdf")
+        self.zzrm.register_primary_tex_files(self.tex_files)
+        if len(self.converters) == 1:
+            self.zzrm.set_tex_compiler(self.converters[0].tex_compiler_name())
+        # Generally, the assembling files are the compiled tex files and the unused graphics
+        self.zzrm.set_assembling_files(self.outcome["pdf_files"] + strip_to_basename(self.unused_pics()))
+        pass
 
     def _run_tex_commands(self) -> None:
         logger = get_logger()
         t0_files = catalog_files(self.in_dir)
         start_process_time = time.process_time()
 
-        self.converters, reasons = select_converter_classes(self.in_dir)
+        self.converters, reasons = select_converter_classes(self.in_dir, zzrm=self.zzrm)
         outcome = self.outcome # just an alias
         outcome["reasons"] = reasons
 
@@ -195,6 +232,9 @@ class ConverterDriver:
                 pdf_file_props = file_props(made_pdf_file)
                 if pdf_file_props["size"]:
                     outcome["pdf_files"].append(pdf_file)
+                    # Remember the compiler if it's not set
+                    if self.zzrm.compilation.get("compiler") is None:
+                        self.zzrm.set_tex_compiler(self.converter.tex_compiler_name())
                     pass
                 else:
                     logger.warning("PDF file error: %s", repr(pdf_file_props), extra=self.log_extra)
@@ -300,22 +340,35 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             # order that appears in the assembling files. If it is missing in either, it is
             # ignored.
             if self.zzrm and self.zzrm.version > 1 and self.zzrm.assembling_files:
-                basenames = {os.path.basename(filename): filename for filename in docs}
-                docs = []
-                for filename in self.zzrm.assembling_files:
-                    doc = basenames.get(os.path.basename(filename))
+                # Lay out the ingredients
+                ingredients = {os.path.basename(doc) : doc for doc in docs}
+                cooked = []
+                # Follow the recipe
+                for ingredient in self.zzrm.assembling_files:
+                    doc = ingredients.get(ingredient)
                     if doc:
-                        docs.append(doc)
+                        cooked.append(doc)
+                    else:
+                        # If an ingredient is missing, error
+                        raise AssemblingFileNotFound(f'File {ingredient} is not found in ' + repr(ingredients.keys()))
+                # Replace the docs to make with the cooked ingredients
+                docs = cooked
+                # When the assembling is designated, don't truncate
+                self.max_appending_files = len(docs)
 
             # Docs decided
             outcome["documents"] = docs
             docs = [os.path.join(self.work_dir, doc) for doc in docs]
             final_pdf, used_gfx, unused_gfx = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
+            self.zzrm.set_assembling_files(used_gfx)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
             outcome["unused_figures"] = self.unused_pics()[self.max_appending_files:] + unused_gfx
         except PdfError as exc:
+            logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
+            pass
+        except AssemblingFileNotFound as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
 
@@ -339,7 +392,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         chmod_775(self.work_dir)
         pass
 
-    def _watermark(self, pdf_file: str, watered: str| None =None) -> str:
+    def _watermark(self, pdf_file: str, watered: str | None = None) -> str:
         """Watermark the PDF file. Watered is the result filename."""
         output = pdf_file
         if self.water:
@@ -395,12 +448,22 @@ class ConversionOutcomeMaker:
             outcome_files = [fname for fname in out_dir_files if not fname.endswith(".pdf")]
             pass
 
+        zzrm = converter_driver.zzrm
+        zzrm_generated = io.StringIO()
+        zzrm.to_yaml(zzrm_generated)
+        zzrm_generated.seek(0)
+        zzrm_text = zzrm_generated.read()
         outcome_meta = {
             "version": 1,  # outcome format version
             "in_directory": os.path.basename(in_dir),
             "out_directory": os.path.basename(out_dir),
             "in_files": catalog_files(in_dir),
             "out_files": catalog_files(out_dir),
+            "zzrm": {
+                "input": zzrm.readme,
+                "content": zzrm.to_dict(),
+                "generated": zzrm_text,
+            },
         }
         if conversion_meta:
             outcome_meta["conversion"] = conversion_meta

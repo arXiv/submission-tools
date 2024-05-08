@@ -1,6 +1,7 @@
 """
 This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
 """
+import copy
 import os
 import subprocess
 import shlex
@@ -61,6 +62,12 @@ class BaseConverter:
             pass
         self.max_time_budget = default_max if max_time_budget is None else max_time_budget
         pass
+
+    @classmethod
+    def tex_compiler_name(cls) -> str:
+        """TeX Compiler """
+        return "Unknown"
+
 
     def time_left(self) -> float:
         """Returns the time left before the timeout"""
@@ -304,7 +311,7 @@ class BaseConverter:
     pass
 
 #
-def select_converter_classes(in_dir: str) \
+def select_converter_classes(in_dir: str, zzrm: ZeroZeroReadMe | None = None) \
         -> typing.Tuple[typing.List[type[BaseConverter]], typing.List[str]]:
     """Create a converter based on the tex file"""
     # candidates = [VanillaTexConverter, PdfTexConverter, PdfLatexConverter, LatexConverter]
@@ -312,7 +319,22 @@ def select_converter_classes(in_dir: str) \
     # arXiv does not presently support PDFTeX.
     # since this seems to do more harm than good, at least for now, remove PDFTex.
     # We may revise this if we can come up with better method.
-    candidates = [VanillaTexConverter, PdfLatexConverter, LatexConverter]
+    candidates: typing.List[typing.Type[BaseConverter]] = [VanillaTexConverter, PdfLatexConverter, LatexConverter]
+    if zzrm is not None and zzrm.version > 1:
+        # If zzrm designates
+        comp = "compiler"
+        compiler: str = zzrm.compilation.get(comp, "auto")
+        # not sure this is a good idea to have "auto", seems like having an escape hatch is okay.
+        if compiler != "auto":
+            cc_list: dict[str, typing.Type[BaseConverter]] = {cc.tex_compiler_name(): cc for cc in candidates}
+            if compiler in cc_list:
+                candidates = [cc_list[compiler]]
+                pass
+            else:
+                raise ValueError(f"compiler {compiler} is not in " + repr(cc_list.keys()))
+            # Just return the designated class and give no reason since there were no judgement
+            return copy.copy(candidates), []
+
     classes = candidates.copy()
     tex_files = []
     reasons = []
@@ -481,6 +503,11 @@ class LatexConverter(BaseDviConverter):
         pass
 
     @classmethod
+    def tex_compiler_name(cls) -> str:
+        """TeX Compiler """
+        return "latex"
+
+    @classmethod
     def decline_file(cls, any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
         # Cannot handle files other than .ps and .eps
         # if test_file_extent(any_file, bad_for_latex_file_exts):
@@ -571,6 +598,12 @@ class PdfLatexConverter(BaseConverter):
         pass
 
     @classmethod
+    def tex_compiler_name(cls) -> str:
+        """TeX Compiler """
+        return "pdflatex"
+
+
+    @classmethod
     def decline_file(cls, _any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
         # if any_file == ms_dot_tex:
         #     return True
@@ -642,7 +675,7 @@ class PdfLatexConverter(BaseConverter):
 
 
     def converter_name(self) -> str:
-        return "pdflatex: %s" % (shlex.join(self.to_pdf_args))
+        return "%s: %s" % (self.tex_compiler_name(), shlex.join(self.to_pdf_args))
 
     pass
 
@@ -655,6 +688,11 @@ class PdfLatexConverter(BaseConverter):
 #         super().__init__(conversion_tag, **kwargs)
 #         self.to_pdf_args = []
 #         pass
+#
+#    @classmethod
+#    def tex_compiler_name(cls) -> str:
+#        """TeX Compiler name"""
+#        return "pdftex"
 #
 #     @classmethod
 #     def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
@@ -721,6 +759,11 @@ class VanillaTexConverter(BaseDviConverter):
         super().__init__(conversion_tag, **kwargs)
         self._args = []
         pass
+
+    @classmethod
+    def tex_compiler_name(cls) -> str:
+        """TeX Compiler """
+        return "tex"
 
     @classmethod
     def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
