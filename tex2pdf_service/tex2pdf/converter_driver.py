@@ -21,7 +21,7 @@ from tex2pdf.tex_patching import fix_tex_sources
 from tex2pdf.pdf_watermark import add_watermark_text_to_pdf
 from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
                             SubmissionFileType)
-from tex2pdf.tex_to_pdf_converters import select_converter_classes
+from tex2pdf.tex_to_pdf_converters import select_converter_classes, LuaLatexConverter
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
                   "the conflicting names. (eg, both main.tex and main.latex exist.) This should "
@@ -67,7 +67,7 @@ class ConverterDriver:
                  tag: str | None = None, water: str | None = None,
                  max_time_budget: float | None = None,
                  max_tex_files: int = 1,  max_appending_files: int = 0,
-                 preflight: bool = False,
+                 preflight: bool = False, create_ua2: bool = False
                  ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -89,6 +89,7 @@ class ConverterDriver:
         self.max_appending_files = max_appending_files
         self.today = None
         self.preflight = preflight
+        self.create_ua2 = create_ua2
         pass
 
     @property
@@ -184,6 +185,10 @@ class ConverterDriver:
         start_process_time = time.process_time()
 
         self.converters, reasons = select_converter_classes(self.in_dir, zzrm=self.zzrm)
+        if self.create_ua2 and LuaLatexConverter not in self.converters:
+            logger.warning("Cannot generate PDF/UA2 without lualatex - LuaLatexConverter not found")
+            return
+
         outcome = self.outcome # just an alias
         outcome["reasons"] = reasons
 

@@ -319,7 +319,7 @@ def select_converter_classes(in_dir: str, zzrm: ZeroZeroReadMe | None = None) \
     # arXiv does not presently support PDFTeX.
     # since this seems to do more harm than good, at least for now, remove PDFTex.
     # We may revise this if we can come up with better method.
-    candidates: typing.List[typing.Type[BaseConverter]] = [VanillaTexConverter, PdfLatexConverter, LatexConverter]
+    candidates: typing.List[typing.Type[BaseConverter]] = [VanillaTexConverter, LuaLatexConverter, PdfLatexConverter, LatexConverter]
     if zzrm is not None and zzrm.version > 1:
         # If zzrm designates
         comp = "compiler"
@@ -678,6 +678,100 @@ class PdfLatexConverter(BaseConverter):
         return "%s: %s" % (self.tex_compiler_name(), shlex.join(self.to_pdf_args))
 
     pass
+
+class LuaLatexConverter(BaseConverter):
+    """Runs pdflatex command"""
+    to_pdf_args: typing.List[str]
+    pdfoutput_1_seen: bool
+
+    def __init__(self, conversion_tag: str, **kwargs: typing.Any):
+        self.pdfoutput_1_seen = kwargs.pop("pdfoutput_1_seen", False)
+        super().__init__(conversion_tag, **kwargs)
+        self.to_pdf_args = []
+        pass
+
+    @classmethod
+    def tex_compiler_name(cls) -> str:
+        """TeX Compiler """
+        return "lualatex-dev"
+
+
+    @classmethod
+    def decline_file(cls, _any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
+        # if any_file == ms_dot_tex:
+        #     return True
+
+        # Just having .ps file does not mean that it is bad for pdflatex.
+        #
+        # it = os.path.splitext(any_file)
+        # # Cannot handle .ps file but alt may exist.
+        # if it[1] in bad_for_pdflatex_file_exts:
+        #     for alt_ext in bad_for_latex_file_exts:
+        #         if os.path.exists(os.path.join(parent_dir, it[0] + alt_ext)):
+        #             return False
+        #     return True
+        return False, ""
+
+    @classmethod
+    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
+        if is_pdftex_line(tex_line):
+            return True, f"PdfLatexConverter cannot handle pdftex at line {line_number}"
+        # filename = find_include_graphics_filename(tex_line)
+        # if filename:
+        #     if test_file_extent(filename, bad_for_pdflatex_file_exts):
+        #         return True, f"PdfLatexConverter cannot handle {filename} at {line_number}."
+        #     pass
+        for package_name in pick_package_names(tex_line):
+            if package_name in bad_for_pdflatex_packages:
+                return True, f"LuaLatexConverter cannot handle {package_name} at line {line_number}"
+
+        return False, ""
+
+    def _get_lualatex_args(self, tex_file: str) -> typing.List[str]:
+        """Return the pdflatex command line arguments"""
+        args = ["/usr/bin/lualatex-dev"] + [
+            "-interaction=batchmode",
+            "-recorder",
+            "-file-line-error"]
+        # You need this sometimes, and harmful sometimes.
+        if not self.pdfoutput_1_seen:
+            args.append("-output-format=pdf")
+        if WITH_SHELL_ESCAPE:
+            args.append("-shell-escape")
+        args.append(tex_file)
+        return args
+
+    def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        """Produce PDF
+
+        NOTE: It is important to return the outcome so that you can troubleshoot.
+        Do not exception out.
+        """
+        logger = get_logger()
+
+        # find \pdfoutput=1
+        self.pdfoutput_1_seen = find_pdfoutput_1(tex_file, in_dir)
+
+        # This breaks many packages... f"-output-directory=../{bod}"
+        self.to_pdf_args = self._get_lualatex_args(tex_file)
+        
+        outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "pdf")
+        logger.debug("lualatex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
+        return outcome
+
+    def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        cmd_log = os.path.join(in_dir, f"{self.stem}.log")
+        run = self._to_pdf_run(self.to_pdf_args, self.stem,
+                               step, work_dir, in_dir, out_dir, cmd_log)
+        run = self.check_missing(in_dir, run, "pdf")
+        return run
+
+
+    def converter_name(self) -> str:
+        return "%s: %s" % (self.tex_compiler_name(), shlex.join(self.to_pdf_args))
+
+    pass
+
 
 
 # class PdfTexConverter(BaseConverter):

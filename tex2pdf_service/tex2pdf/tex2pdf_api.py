@@ -98,6 +98,8 @@ async def convert_pdf(incoming: UploadFile,
                                 description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
                       preflight: typing.Annotated[bool,
                           Query(title="Preflight", description="Preflight check")] = False,
+                      create_ua2: typing.Annotated[bool,
+                          Query(title="Create PDF2/UA2", description="Try to create accessible PDF2/UA2 pdfs")] = False,
                       watermark_text: str | None = None) -> Response:
     """
     get a tarball, and convert to PDF
@@ -113,6 +115,9 @@ async def convert_pdf(incoming: UploadFile,
             tag = stem
             continue
         break
+
+    if create_ua2 is None:
+        create_ua2 = False
 
     if max_tex_files is None:
         max_tex_files = MAX_TOPLEVEL_TEX_FILES
@@ -134,7 +139,8 @@ async def convert_pdf(incoming: UploadFile,
                                  water=watermark_text, max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
-                                 preflight=preflight
+                                 preflight=preflight,
+                                 create_ua2=create_ua2
                                  )
         try:
             _pdf_file = driver.generate_pdf()
