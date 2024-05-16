@@ -176,8 +176,8 @@ class BaseConverter:
                 cmdenv[senv] = os.getenv(senv, "") # the "" is only here to placate mypy :-(
         # get location of addon trees
         if self.use_addon_tree:
-            args = self.decorate_args(["/usr/bin/kpsewhich", "-var-value", "SELFAUTOPARENT"])
-            sap = subprocess.run(args, capture_output=True, text=True).stdout.rstrip()
+            kpsewhich = self.decorate_args(["/usr/bin/kpsewhich", "-var-value", "SELFAUTOPARENT"])
+            sap = subprocess.run(kpsewhich, capture_output=True, text=True).stdout.rstrip()
             addon_tree = os.path.join(sap, "texmf-arxiv")
             cmdenv["TEXMFAUXTREES"] = addon_tree + "," # we need a final comma!
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
