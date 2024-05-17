@@ -20,11 +20,13 @@ TEX_LOG_ERRORS: typing.List[Pattern] = [
         r'Error: pdflatex \(file ([^\)]*)\): cannot find image file',
         r': File `(.*)\' not found:\s*$',
         r'! Unable to load picture or PDF file \'([^\\\']+)\'.',
-        r'Package pdftex.def Error: File (.*) not found: using draft setting\.',
+        r'Error: File `(.*)\' not found: using draft setting\.',
         r'.*?:\d*: LaTeX Error: Unknown graphics extension: (.*)\.',
     ]
 ]
 
+# There is a log
+# \n ....def Error: File `\\Gin@base .pdf' not found: using draft setting.\n
 
 def inspect_log(log: str,
                 patterns: typing.List[Pattern] | None = None,
