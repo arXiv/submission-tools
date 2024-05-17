@@ -301,7 +301,7 @@ class BaseConverter:
         """Scoop up the missing files from the tex command log"""
         name = run[artifact]["name"]
         artifact_file = os.path.join(in_dir, name)
-        if os.path.exists(artifact_file) and (missings := inspect_log(run["log"])):
+        if os.path.exists(artifact_file) and (missings := inspect_log(run["log"], break_on_found=False)):
             run["missings"] = missings
             get_logger().debug(f"Output {name} deleted due to incomplete run.")
             os.unlink(artifact_file)
