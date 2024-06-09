@@ -50,41 +50,51 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
             shutil.move(doc_list[0], output_path)
         converted_docs.append(os.path.basename(doc_list[0]))
         return out_filename, converted_docs, failed_docs
-    with pikepdf.new() as pdf:
-        logger = get_logger()
-        for doc_path in doc_list:
-            [stem, ext] = os.path.splitext(doc_path)
-            # This should exist but be safe.
-            if not os.path.exists(doc_path):
-                continue
-            if ext.lower() == ".pdf":  # This should not need lower() but be safe. Should I assert?
-                try:
-                    with pikepdf.Pdf.open(doc_path) as pdf_page:
-                        pdf.pages.extend(pdf_page.pages)
+    # we have more files to combine
+    # If the first document is a PDF, use it as starting point to preserve
+    # metadata (author/title/...), otherwise start from an empty PDF file
+    first_file = doc_list[0]
+    rest_files = doc_list[1:]
+    logger = get_logger()
+    try:
+        pdf = pikepdf.Pdf.open(first_file)
+    except PdfError:
+        pdf = pikepdf.new()
+        rest_files = doc_list
+    for doc_path in rest_files:
+        [stem, ext] = os.path.splitext(doc_path)
+        # This should exist but be safe.
+        if not os.path.exists(doc_path):
+            continue
+        if ext.lower() == ".pdf":  # This should not need lower() but be safe. Should I assert?
+            try:
+                with pikepdf.Pdf.open(doc_path) as pdf_page:
+                    pdf.pages.extend(pdf_page.pages)
+                converted_docs.append(doc_path)
+            except PdfError:
+                failed_docs.append(doc_path)
+                logger.warning("Cannot open PDF file %s", doc_path, extra=log_extra)
+                pass
+        elif ext.lower() in graphics_exts:
+            temp_pdf = os.path.join(out_dir, stem + '.pdf')
+            try:
+                pdf_filename = convert_image_to_pdf(doc_path, temp_pdf)
+                if pdf_filename and os.path.exists(pdf_filename):
                     converted_docs.append(doc_path)
-                except PdfError:
-                    failed_docs.append(doc_path)
-                    logger.warning("Cannot open PDF file %s", doc_path, extra=log_extra)
+                    with pikepdf.Pdf.open(pdf_filename) as pdf_page:
+                        pdf.pages.extend(pdf_page.pages)
                     pass
-            elif ext.lower() in graphics_exts:
-                temp_pdf = os.path.join(out_dir, stem + '.pdf')
-                try:
-                    pdf_filename = convert_image_to_pdf(doc_path, temp_pdf)
-                    if pdf_filename and os.path.exists(pdf_filename):
-                        converted_docs.append(doc_path)
-                        with pikepdf.Pdf.open(pdf_filename) as pdf_page:
-                            pdf.pages.extend(pdf_page.pages)
-                        pass
-                except UnidentifiedImageError:
-                    failed_docs.append(doc_path)
-                    logger.warning("Unsupported %s", doc_path, extra=log_extra)
-                    pass
-                except Exception as _exc:
-                    failed_docs.append(doc_path)
-                    logger.warning("Unknown error %s", doc_path, extra=log_extra,
-                                   exc_info=True)
-                    pass
+            except UnidentifiedImageError:
+                failed_docs.append(doc_path)
+                logger.warning("Unsupported %s", doc_path, extra=log_extra)
+                pass
+            except Exception as _exc:
+                failed_docs.append(doc_path)
+                logger.warning("Unknown error %s", doc_path, extra=log_extra,
+                               exc_info=True)
                 pass
             pass
-        pdf.save(output_path)
+        pass
+    pdf.save(output_path)
+    pdf.close()
     return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs)
