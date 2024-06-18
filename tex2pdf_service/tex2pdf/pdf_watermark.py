@@ -16,6 +16,7 @@ import reportlab.lib.units
 from reportlab.pdfgen.textobject import PDFTextObject
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph
+from reportlab.lib.enums import TA_CENTER
 
 # This is how it is done in arxiv-lib/lib/TeX/AutoTeX/StampPDF.pm
 #
@@ -56,24 +57,31 @@ def gen_watermark_pdf(watermark: str, in_pdf: pathlib.Path | str, out_pdf: str) 
         pass
     canvas = reportlab.pdfgen.canvas.Canvas(out_pdf, pagesize=page_size)
     canvas.setFont('Times-Roman', 20)
-    wm_style = ParagraphStyle(
-        fontName = "Times-Roman",
-        fontSize = 20,
-        textColor = "#7f7f7f",
-    )
+
+    # This method does not support links!
     # canvas.drawString(32, 32, watermark)
     # text = PDFTextObject(canvas)
     # text.setFillGray(0.5)
     # text.setStrokeGray(0.5)
     # text.setFont('Times-Roman', 20)
-    y_offset = 432 - 5 * len(watermark)
+    # y_offset = 432 - 5 * len(watermark)
     # text.setTextTransform(0, 1, -1, 0, 32, y_offset)
     # text.textLine(watermark)
     # canvas.drawText(text)
-    p = Paragraph(watermark)
-    canvas.transform(0, 1, -1, 0, 32, y_offset)
-    p.wrapOn(canvas, 1000, 1000)
-    p.drawOn(canvas, 0, 0)
+
+    wm_style = ParagraphStyle('watermark_style',
+        fontName = "Times-Roman",
+        fontSize = 20,
+        align=TA_CENTER,
+        textColor = "#7f7f7f",
+    )
+    p = Paragraph(watermark, wm_style)
+    canvas.transform(0, 1, -1, 0, 32, 0)
+    # wrap on huge size so that we have only one line
+    p.wrap(7200,7200)
+    actual_width = p.getActualLineWidths0()[0]
+    p.wrapOn(canvas, page_size[0], page_size[1])
+    p.drawOn(canvas, (page_size[1] - actual_width)/2, 0)
     canvas.save()
     pass
 
