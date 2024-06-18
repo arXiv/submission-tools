@@ -74,8 +74,11 @@ def gen_watermark_pdf(watermark: str, in_pdf: pathlib.Path | str, out_pdf: str) 
         fontSize = 20,
         align=TA_CENTER,
         textColor = "#7f7f7f",
+        # leading is the line height, and influences the action box size
+        leading=20,
     )
     p = Paragraph(watermark, wm_style)
+    # rotate 90deg and shift 32pt to the right
     canvas.transform(0, 1, -1, 0, 32, 0)
     # wrap on huge size so that we have only one line
     p.wrap(7200,7200)
@@ -96,8 +99,15 @@ def add_watermark_text_to_pdf(watermark: str,
         overlay = pikepdf.Pdf.open(watermark_pdf)
         source = pikepdf.Pdf.open(in_pdf)
         if source and source.pages:
-            destination_page = pikepdf.Page(source.pages[0])
-            destination_page.add_overlay(pikepdf.Page(overlay.pages[0]))  # type: ignore
+            source_page = overlay.pages[0]
+            destination_page = source.pages[0]
+            indirect_annots = overlay.make_indirect(source_page.Annots)
+            if '/Annots' in destination_page:
+                # TODO needs testing!!!
+                destination_page.Annots.append(source.copy_foreign(indirect_annots))
+            else:
+                destination_page.Annots = source.copy_foreign(indirect_annots)
+            destination_page.add_overlay(pikepdf.Page(source_page))  # type: ignore
             if isinstance(out_pdf, io.FileIO):
                 source.save(out_pdf)
             else:
