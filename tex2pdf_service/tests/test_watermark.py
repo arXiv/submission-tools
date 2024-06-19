@@ -19,7 +19,7 @@ class MyTestCase(unittest.TestCase):
             self.assertTrue(pdfd.read(4) == b"%PDF")
 
     def test_watermarking(self):
-        add_watermark_text_to_pdf("Water World is in Orlando, FL.", in_pdf,
+        add_watermark_text_to_pdf("""<link href="https://en.wikipedia.org/wiki/Waterworld">Water World</link> is in Orlando, FL.""", in_pdf,
                                    "tests/test-output/Test.pdf")
 
 if __name__ == '__main__':
