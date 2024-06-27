@@ -371,6 +371,10 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         except AssemblingFileNotFound as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
+        except subprocess.TimeoutExpired:
+            logger.warning("Failed combining PDFs: gs call timed out", extra=self.log_extra)
+        except subprocess.CalledProcessError:
+            logger.warning("Failed combining PDFs: gs returned an error", extra=self.log_extra)
 
         if self.water and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
