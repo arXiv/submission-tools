@@ -77,10 +77,10 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
                                exc_info=True)
     # call gs to combine the pdf
     # we cannot use pikepdf (easily) here since it breaks annotations (links)
-    # gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER -sOutputFile=merged-ps.pdf  ms.pdf supp.pdf
     gs_cmd = [
         "gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dBATCH", "-dSAFER", f"-sOutputFile={output_path}"
     ] + effective_pdf_list
     logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
-    subprocess.call(gs_cmd)
+    # exception handing is done in convert_driver:_finalize_pdf
+    subprocess.run(gs_cmd, timeout=30, check=True)
     return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs)
