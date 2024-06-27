@@ -3,11 +3,11 @@ Turn multiple documents into one PDF.
 """
 import os
 import shutil
+import shlex
+import subprocess
 import typing
 
-import pikepdf
 from PIL import Image, UnidentifiedImageError
-from pikepdf import PdfError
 
 from tex2pdf import graphics_exts
 from tex2pdf.service_logger import get_logger
@@ -50,41 +50,37 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
             shutil.move(doc_list[0], output_path)
         converted_docs.append(os.path.basename(doc_list[0]))
         return out_filename, converted_docs, failed_docs
-    with pikepdf.new() as pdf:
-        logger = get_logger()
-        for doc_path in doc_list:
-            [stem, ext] = os.path.splitext(doc_path)
-            # This should exist but be safe.
-            if not os.path.exists(doc_path):
-                continue
-            if ext.lower() == ".pdf":  # This should not need lower() but be safe. Should I assert?
-                try:
-                    with pikepdf.Pdf.open(doc_path) as pdf_page:
-                        pdf.pages.extend(pdf_page.pages)
+    
+    logger = get_logger()
+    effective_pdf_list = []
+    # first collection list of pdfs to be combined (normal and converted images)
+    for doc_path in doc_list:
+        [stem, ext] = os.path.splitext(doc_path)
+        # This should exist but be safe.
+        if not os.path.exists(doc_path):
+            continue
+        if ext.lower() == ".pdf":  # This should not need lower() but be safe. Should I assert?
+            effective_pdf_list.append(doc_path)
+        elif ext.lower() in graphics_exts:
+            temp_pdf = os.path.join(out_dir, stem + '.pdf')
+            try:
+                pdf_filename = convert_image_to_pdf(doc_path, temp_pdf)
+                if pdf_filename and os.path.exists(pdf_filename):
+                    effective_pdf_list.append(temp_pdf)
                     converted_docs.append(doc_path)
-                except PdfError:
-                    failed_docs.append(doc_path)
-                    logger.warning("Cannot open PDF file %s", doc_path, extra=log_extra)
-                    pass
-            elif ext.lower() in graphics_exts:
-                temp_pdf = os.path.join(out_dir, stem + '.pdf')
-                try:
-                    pdf_filename = convert_image_to_pdf(doc_path, temp_pdf)
-                    if pdf_filename and os.path.exists(pdf_filename):
-                        converted_docs.append(doc_path)
-                        with pikepdf.Pdf.open(pdf_filename) as pdf_page:
-                            pdf.pages.extend(pdf_page.pages)
-                        pass
-                except UnidentifiedImageError:
-                    failed_docs.append(doc_path)
-                    logger.warning("Unsupported %s", doc_path, extra=log_extra)
-                    pass
-                except Exception as _exc:
-                    failed_docs.append(doc_path)
-                    logger.warning("Unknown error %s", doc_path, extra=log_extra,
-                                   exc_info=True)
-                    pass
-                pass
-            pass
-        pdf.save(output_path)
+            except UnidentifiedImageError:
+                failed_docs.append(doc_path)
+                logger.warning("Unsupported %s", doc_path, extra=log_extra)
+            except Exception as _exc:
+                failed_docs.append(doc_path)
+                logger.warning("Unknown error %s", doc_path, extra=log_extra,
+                               exc_info=True)
+    # call gs to combine the pdf
+    # we cannot use pikepdf (easily) here since it breaks annotations (links)
+    # gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER -sOutputFile=merged-ps.pdf  ms.pdf supp.pdf
+    gs_cmd = [
+        "gs", "-sDEVICE=pdfwrite", "-dNOPAUSE", "-dBATCH", "-dSAFER", f"-sOutputFile={output_path}"
+    ] + effective_pdf_list
+    logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
+    subprocess.call(gs_cmd)
     return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs)
