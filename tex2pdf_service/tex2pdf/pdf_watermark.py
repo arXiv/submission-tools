@@ -101,12 +101,13 @@ def add_watermark_text_to_pdf(watermark: str,
         if source and source.pages:
             source_page = overlay.pages[0]
             destination_page = source.pages[0]
-            indirect_annots = overlay.make_indirect(source_page.Annots)
-            if '/Annots' in destination_page:
-                # only copy the first (and only) annotation into the origins list of annots
-                destination_page.Annots.append(source.copy_foreign(indirect_annots[0]))
-            else:
-                destination_page.Annots = source.copy_foreign(indirect_annots)
+            if '/Annots' in source_page:
+                indirect_annots = overlay.make_indirect(source_page.Annots)
+                if '/Annots' in destination_page:
+                    # only copy the first (and only) annotation into the origins list of annots
+                    destination_page.Annots.append(source.copy_foreign(indirect_annots[0]))
+                else:
+                    destination_page.Annots = source.copy_foreign(indirect_annots)
             destination_page.add_overlay(pikepdf.Page(source_page))  # type: ignore
             if isinstance(out_pdf, io.FileIO):
                 source.save(out_pdf)
