@@ -76,7 +76,7 @@ def docker_container():
 
     # Wait for the API to be ready
     url = f"http://localhost:{PORT}"
-    for _ in range(30):  # retries for 30 seconds
+    for _ in range(60):  # retries for 60 seconds
         try:
             response = requests.get(url)
             if response.status_code == 200:

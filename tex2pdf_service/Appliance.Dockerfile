@@ -2,7 +2,7 @@
 # and need to be passed via --build-arg, see Makefile
 ARG TEXLIVE_BASE_RELEASE
 ARG TEXLIVE_BASE_IMAGE_DATE
-FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} as arxiv-texlive-base
+FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE
 
 ENV PYTHONUNBUFFERED=1 \
@@ -32,7 +32,7 @@ RUN poetry install --without=dev
 
 
 # application specific changes
-ENV PYTHONPATH $WORKER_HOME
+ENV PYTHONPATH=$WORKER_HOME
 COPY app-logging.conf .
 COPY app-logging.json .
 COPY hypercorn-config.toml .
