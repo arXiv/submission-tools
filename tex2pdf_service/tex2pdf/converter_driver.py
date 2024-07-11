@@ -18,7 +18,7 @@ from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import unpack_tarball, chmod_775
 from tex2pdf.tex_to_pdf_converters import BaseConverter
 from tex2pdf.tex_patching import fix_tex_sources
-from tex2pdf.pdf_watermark import add_watermark_text_to_pdf
+from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, Watermark
 from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
                             SubmissionFileType)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
@@ -64,7 +64,7 @@ class ConverterDriver:
     preflight: bool
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
-                 tag: str | None = None, water: str | None = None, wm_link: str | None = None,
+                 tag: str | None = None, watermark: Watermark | None = None,
                  max_time_budget: float | None = None,
                  max_tex_files: int = 1,  max_appending_files: int = 0,
                  preflight: bool = False,
@@ -75,8 +75,7 @@ class ConverterDriver:
         self.source = source
         self.converters = []
         self.converter = None
-        self.water = water
-        self.wm_link = wm_link
+        self.water = watermark
         self.outcome = {}
         self.log_extra = {ID_TAG: tag} if tag else {}
         self.note = ""
@@ -417,7 +416,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
                                        "watermarked-" + os.path.basename(pdf_file))
                 pass
             try:
-                add_watermark_text_to_pdf(self.water, self.wm_link, pdf_file, watered)
+                add_watermark_text_to_pdf(self.water, pdf_file, watered)
                 output = watered
             except Exception as _exc:
                 logger.warning("Failed creating %s", watered, exc_info=True,
