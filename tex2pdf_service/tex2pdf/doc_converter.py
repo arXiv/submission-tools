@@ -33,7 +33,7 @@ def strip_to_basename(path_list: typing.List[str], extent: None | str = None) ->
 
 
 def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: str,
-                      log_extra: dict|None=None) -> typing.Tuple[str, list, list]:
+                      log_extra: dict|None=None) -> typing.Tuple[str, list, list, dict]:
     """Combine multiple PDFs and maybe some pictures, and images into one PDF.
 
     Args:
@@ -45,11 +45,13 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
     output_path = os.path.join(out_dir, out_filename)
     converted_docs: typing.List[str] = []
     failed_docs: typing.List[str] = []
-    if len(doc_list) == 1 and doc_list[0].endswith(".pdf"):
+    addon_outcome: typing.Dict[str,dict[str,str]] = {}
+    # if we have only one pdf document in the list, return it as is
+    if len(doc_list) == 1 and doc_list[0].lower().endswith(".pdf"):
         if doc_list[0] != output_path:
             shutil.move(doc_list[0], output_path)
         converted_docs.append(os.path.basename(doc_list[0]))
-        return out_filename, converted_docs, failed_docs
+        return out_filename, converted_docs, failed_docs, addon_outcome
     
     logger = get_logger()
     effective_pdf_list = []
@@ -58,6 +60,7 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
         [stem, ext] = os.path.splitext(doc_path)
         # This should exist but be safe.
         if not os.path.exists(doc_path):
+            logger.warning("Document requested to be joined is not available: %s", doc_path, extra=log_extra)
             continue
         if ext.lower() == ".pdf":  # This should not need lower() but be safe. Should I assert?
             effective_pdf_list.append(doc_path)
@@ -75,6 +78,18 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
                 failed_docs.append(doc_path)
                 logger.warning("Unknown error %s", doc_path, extra=log_extra,
                                exc_info=True)
+    if len(effective_pdf_list) == 0:
+        # this should not happen, we should have at least one pdf from the tex file
+        raise Exception("No documents have been found.")
+    if len(effective_pdf_list) == 1:
+        # we didn't return above where we check for len(doc_list) == 1
+        # so this is an image that has been converted to pdf.
+        # Somehow surprising ... do we have such submissions?
+        if effective_pdf_list[0] != output_path:
+            shutil.move(effective_pdf_list[0], output_path)
+        converted_docs.append(os.path.basename(effective_pdf_list[0]))
+        return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs), addon_outcome
+        
     # call gs to combine the pdf
     # we cannot use pikepdf (easily) here since it breaks annotations (links)
     gs_cmd = [
@@ -82,5 +97,8 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
     ] + effective_pdf_list
     logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
     # exception handing is done in convert_driver:_finalize_pdf
-    subprocess.run(gs_cmd, timeout=30, check=True)
-    return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs)
+    ret = subprocess.run(gs_cmd, capture_output=True, timeout=30, check=True, text=True)
+    addon_outcome['gs'] = {}
+    addon_outcome['gs']['stdout'] = ret.stdout
+    addon_outcome['gs']['stderr'] = ret.stderr
+    return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs), addon_outcome

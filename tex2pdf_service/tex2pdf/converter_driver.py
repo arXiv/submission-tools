@@ -360,8 +360,9 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             # Docs decided
             outcome["documents"] = docs
             docs = [os.path.join(self.work_dir, doc) for doc in docs]
-            final_pdf, used_gfx, unused_gfx = \
+            final_pdf, used_gfx, unused_gfx, addon_outcome = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
+            outcome |= addon_outcome
             self.zzrm.set_assembling_files(used_gfx)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
@@ -372,10 +373,10 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         except AssemblingFileNotFound as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
-        except subprocess.TimeoutExpired:
-            logger.warning("Failed combining PDFs: gs call timed out", extra=self.log_extra)
-        except subprocess.CalledProcessError:
-            logger.warning("Failed combining PDFs: gs returned an error", extra=self.log_extra)
+        except subprocess.TimeoutExpired as exc:
+            logger.warning("Failed combining PDFs: gs call timed out: %s", exc, extra=self.log_extra)
+        except subprocess.CalledProcessError as exc:
+            logger.warning("Failed combining PDFs: gs returned an error: %s", exc, extra=self.log_extra)
 
         if self.water and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
