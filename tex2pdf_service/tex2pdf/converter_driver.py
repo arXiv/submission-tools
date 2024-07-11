@@ -360,8 +360,9 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             # Docs decided
             outcome["documents"] = docs
             docs = [os.path.join(self.work_dir, doc) for doc in docs]
-            final_pdf, used_gfx, unused_gfx = \
+            final_pdf, used_gfx, unused_gfx, addon_outcome = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
+            outcome |= addon_outcome
             self.zzrm.set_assembling_files(used_gfx)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
@@ -372,6 +373,19 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         except AssemblingFileNotFound as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
+        except Exception as exc:
+            if isinstance(exc, (subprocess.TimeoutExpired, subprocess.CalledProcessError)):
+                logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
+                outcome["gs"] = {}
+                if isinstance(exc, subprocess.CalledProcessError):
+                    outcome["gs"]["return_code"] = exc.returncode
+                outcome["gs"]["timeout"] =  True
+                # mypy believes that exc does not have stdout/stderr, but both
+                # exceptions contain these values
+                outcome["gs"]["stdout"] = exc.stdout # type: ignore
+                outcome["gs"]["stderr"] = exc.stderr # type: ignore
+            else:
+                raise exc
 
         if self.water and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
