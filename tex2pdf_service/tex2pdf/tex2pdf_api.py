@@ -19,6 +19,7 @@ from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
 from tex2pdf.fastapi_util import closer
+from tex2pdf.pdf_watermark import Watermark
 
 log_level = os.environ.get("LOGLEVEL", "INFO").upper()
 get_logger().info("Starting: uid=%d gid=%d", os.getuid(), os.getgid())
@@ -132,7 +133,7 @@ async def convert_pdf(incoming: UploadFile,
                 pass
             pass
         driver = ConverterDriver(tempdir, filename, use_addon_tree=use_addon_tree, tag=tag,
-                                 water=watermark_text, wm_link=watermark_link,
+                                 watermark=Watermark(watermark_text, watermark_link),
                                  max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
