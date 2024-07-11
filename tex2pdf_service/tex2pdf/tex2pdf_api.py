@@ -98,7 +98,8 @@ async def convert_pdf(incoming: UploadFile,
                                 description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
                       preflight: typing.Annotated[bool,
                           Query(title="Preflight", description="Preflight check")] = False,
-                      watermark_text: str | None = None) -> Response:
+                      watermark_text: str | None = None,
+                      watermark_link: str | None = None) -> Response:
     """
     get a tarball, and convert to PDF
     """
@@ -131,7 +132,8 @@ async def convert_pdf(incoming: UploadFile,
                 pass
             pass
         driver = ConverterDriver(tempdir, filename, use_addon_tree=use_addon_tree, tag=tag,
-                                 water=watermark_text, max_time_budget=timeout_secs,
+                                 water=watermark_text, wm_link=watermark_link,
+                                 max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
                                  preflight=preflight

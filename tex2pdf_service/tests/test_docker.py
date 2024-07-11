@@ -46,7 +46,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
 def docker_container():
     os.makedirs("tests/output", exist_ok=True)
 
-    image_name = "arxiv-tex2pdf-app"
+    image_name = "public-tex2pdf-app-2023-2023-05-21"
     container_name = "test-arxiv-tex2pdf"
     dockerport = "8080"
 
@@ -76,7 +76,7 @@ def docker_container():
 
     # Wait for the API to be ready
     url = f"http://localhost:{PORT}"
-    for _ in range(30):  # retries for 30 seconds
+    for _ in range(60):  # retries for 60 seconds
         try:
             response = requests.get(url)
             if response.status_code == 200:
