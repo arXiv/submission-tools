@@ -45,7 +45,7 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
     output_path = os.path.join(out_dir, out_filename)
     converted_docs: typing.List[str] = []
     failed_docs: typing.List[str] = []
-    addon_outcome: typing.Dict[str,dict[str,str]] = {}
+    addon_outcome: typing.Dict[str,dict] = {}
     # if we have only one pdf document in the list, return it as is
     if len(doc_list) == 1 and doc_list[0].lower().endswith(".pdf"):
         if doc_list[0] != output_path:
@@ -101,4 +101,5 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
     addon_outcome['gs'] = {}
     addon_outcome['gs']['stdout'] = ret.stdout
     addon_outcome['gs']['stderr'] = ret.stderr
+    addon_outcome['gs']['return_code'] = ret.returncode
     return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs), addon_outcome
