@@ -373,10 +373,19 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         except AssemblingFileNotFound as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
-        except subprocess.TimeoutExpired as exc:
-            logger.warning("Failed combining PDFs: gs call timed out: %s", exc, extra=self.log_extra)
-        except subprocess.CalledProcessError as exc:
-            logger.warning("Failed combining PDFs: gs returned an error: %s", exc, extra=self.log_extra)
+        except Exception as exc:
+            if isinstance(exc, (subprocess.TimeoutExpired, subprocess.CalledProcessError)):
+                logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
+                outcome["gs"] = {}
+                if isinstance(exc, subprocess.CalledProcessError):
+                    outcome["gs"]["return_code"] = exc.returncode
+                outcome["gs"]["timeout"] =  True
+                # mypy believes that exc does not have stdout/stderr, but both
+                # exceptions contain these values
+                outcome["gs"]["stdout"] = exc.stdout # type: ignore
+                outcome["gs"]["stderr"] = exc.stderr # type: ignore
+            else:
+                raise exc
 
         if self.water and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
