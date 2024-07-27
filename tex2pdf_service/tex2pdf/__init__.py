@@ -28,6 +28,12 @@ USE_ADDON_TREE: bool = os.environ.get("USE_ADDON_TREE") in ["y", "true"]
 MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
 MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 
+# Currently used TL release year and docker image tag
+# this information is duplicated in cloudbuild.yaml files and needs to be kept
+# in sync
+TEXLIVE_RELEASE_YEAR: int = int(os.environ.get("TEXLIVE_RELEASE_YEAR", "2024"))
+TEXLIVE_RELEASE_TAG: str = os.environ.get("TEXLIVE_RELEASE_TAG", "2024-07-21")
+
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger"""
     def __init__(self, *args: list, **kwargs: Any):

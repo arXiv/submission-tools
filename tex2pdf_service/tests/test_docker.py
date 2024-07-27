@@ -46,7 +46,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
 def docker_container():
     os.makedirs("tests/output", exist_ok=True)
 
-    image_name = "public-tex2pdf-app-2023-2023-05-21"
+    image_name = "public-tex2pdf-app-2024-2024-07-21"
     container_name = "test-arxiv-tex2pdf"
     dockerport = "8080"
 
