@@ -1,7 +1,7 @@
 [project]
-name = "TeX and LaTeX parser"
+name = "preflight-parser"
+description = "TeX and LaTeX parser"
 version = "0.0.1"
-license = "BSD-3 License"
 authors = [
     { name = "Norbert Preining", email = "norbert@arxiv.org" },
 ]
