@@ -159,9 +159,10 @@ async def convert_pdf(incoming: UploadFile,
                                 content={"message": traceback.format_exc()})
 
         if newpreflight:
-            if "newpreflight" in self.outcome:
-                return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                                    content=self.outcome["newpreflight"])
+            if "newpreflight" in driver.outcome:
+                return Response(status_code=STATCODE.HTTP_200_OK,
+                                headers={"Content-Type": "application/json"},
+                                content=driver.outcome["newpreflight"])
             else:
                 return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
                                     content={"message": "New preflight data found"})
