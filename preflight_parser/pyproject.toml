@@ -1,12 +1,13 @@
-[project]
+[tool.poetry]
 name = "preflight-parser"
 description = "TeX and LaTeX parser"
 version = "0.0.1"
-authors = [
-    { name = "Norbert Preining", email = "norbert@arxiv.org" },
-]
+authors = [ "Norbert Preining"  ]
 requires-python = ">=3.11"
-dependencies = [ "chardet ~= 5.0" ]
+include = ["kpse_search.lua"]
+
+[tool.poetry.dependencies]
+chardet = "^5.0"
 
 [project.optional-dependencies]
 dev = [
@@ -49,3 +50,7 @@ line-length = 120
 
 [tool.pylint]
 max-line-length = 120
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
