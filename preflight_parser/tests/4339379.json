@@ -1,0 +1,59 @@
+{
+   "detected_toplevel_files" : [
+      {
+         "filename" : "IS-2022-03-0059.R1_Wickramarachchi.tex",
+         "issues" : [
+            {
+               "filename" : "IEEEtran.cls",
+               "info" : "3",
+               "key" : "issue_in_subfile"
+            }
+         ],
+         "process" : {
+            "bibliography" : {
+               "pre_generated" : true
+            },
+            "compiler" : "pdflatex"
+         }
+      }
+   ],
+   "status" : {
+      "key" : "success"
+   },
+   "tex_files" : [
+      {
+         "filename" : "IEEEtran.cls",
+         "issues" : [
+            {
+               "info" : "mtpro2.sty",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "mt11p.sty",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "mathtime.sty",
+               "key" : "file_not_found"
+            }
+         ],
+         "language" : "latex"
+      },
+      {
+         "filename" : "IS-2022-03-0059.R1_Wickramarachchi.tex",
+         "language" : "latex",
+         "used_bib_files" : [
+            "references.bib"
+         ],
+         "used_other_files" : [
+            "fig1.pdf",
+            "fig2.pdf",
+            "fig3.pdf",
+            "fig4.pdf"
+         ],
+         "used_tex_files" : [
+            "IEEEtran.cls"
+         ]
+      }
+   ]
+}

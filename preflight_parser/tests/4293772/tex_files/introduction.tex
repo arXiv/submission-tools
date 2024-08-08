@@ -1,0 +1,61 @@
+\section{Introduction}\label{sec:introduction}
+% what is the question, why it is important
+
+
+In classical control theory, transfer functions and controllers are constructed to minimize a variety of cost functions, primarily functions of the state and input \cite{doyle1992feedback} \cite{zhou1996robust}. These 
+celebrated techniques have been proven useful for state-feedback small-scale systems. However, in modern applications of linear control, especially for large-scale systems, the full state of a system is often unknown or too expensive to acquire within a reasonable amount of time. 
+As a result, we rely on partial observations of the state to control the system in an output-feedback fashion. 
+Not only does such a proxied information structure make output-feedback control difficult, but it also hinders one in incorporating additional system level constraints.
+To address these challenges, system level synthesis (SLS) \cite{anderson2019system, wang2019system} 
+derives its system level parameterization of output-feedback controllers as a convex optimization problem that
+ maintains system-level constraint enforcement. This formulation can be used to solve the linear-quadratic Gaussian problem and optimization under the $\Hcal_2$ norm as shown in \cite{anderson2019system}. With SLS, we can 
+ solve these traditional control problems with added system-level constraints, which is not possible with the Youla or Input-Output parameterizations \cite{furieri2019input} \cite{sabau2014youla} \cite{youla1976modern2}.
+ % the output-feedback control problems as convex optimizations,
+\iffalse
+%is a discrete-time frequency-based control method that allows large-scale problems to be solved in a distributed fashion while using local information. 
+%However, SLS problems are difficult to solve 
+quickly because finding a controller involves solving a large, slow optimization problem. The output feedback 
+case poses a greater challenge than state feedback because it requires optimizing over twice the number of transfer
+functions, which increases the size of the optimization problem.
+\fi
+
+Although convex optimization problems are in general tractable, it is still slow to solve the SLS problems for output-feedback settings.
+Existing work proposes to accelerate the SLS computation by exploiting the structure of underlying systems, and an early work \cite{wang2018separable} has established that an SLS problem can be solved by ADMM in theory if the problem is partially separable -- for both the constraints and the objective. In practice, most work primarily focuses on state-feedback settings \cite{anderson2017structured,matni2017scalable,amo-alonso2020distributed,amo-alonsosubeffective} since the state-feedback SLS constraints are column-wise separable and we only need to ensure the objective is also column-wise separable. Output-feedback SLS is much more complicated as its constraints consist of both column-wise and row-wise separable parts, which require the objective to be both column-wise and row-wise separable for ADMM to work. As a consequence, we end up relying on the solver to deal with general non-separable output-feedback problems.
+
+% challenges!
+Some recent work provides an alternative approach to the SLS computation. \cite{tseng2020system} shows that a state-feedback SLS problem can be reformulated as a discrete-time control problem, which admits efficient computation via dynamic programming (DP). This approach could potentially be applied to output-feedback SLS as long as we could address the following discrepancy between the state-feedback and output-feedback SLS. First, the state-feedback SLS system response comprises only two transfer matrices, which are then conveniently set as the state and the control in \cite{tseng2020system}, while the output-feedback version has four matrices to handle. Also, the system dynamics matrices are multiplied at the left in state-feedback constraints, while the output-feedback formulation have both left and right matrix multiplications in its constraints. Further, we have only one initial condition in the state-feedback SLS while the initial condition has a much more complicated structure in the output-feedback setting. 
+
+\iffalse
+An alternative method for solving this optimization problem is to reformulate it as a control problem and use dynamic programming \cite{bertsekas2005dynamic1}.
+We build on Tseng's 2020 \cite{tseng2020system} paper which develops a dynamic programming algorithm for state feedback by 
+considering the two transfer functions as the state and control input. We select one of the four transfer
+functions in the output feedback case as the control input, and combine the other three transfer functions
+as the state. This results in a state feedback problem, which can be solved using dynamic programming. 
+
+We evaluate our algorithm, along with an approximation algorithm, by comparing the compute time for 
+solving the nominal problem with our dynamic programming algorithms. Our algorithms perform up to fifteen times faster than a standard
+convex optimization solver, and we use the software developed by the authors of \cite{SLSpy} as the baseline for comparison.
+% what is hte problem - output feedabck is improtatn becasue can't see state 
+% most of the time
+% SLS allows us to solve large distributed problem
+% SLS itself is hard to solve quickly
+% special things - treat optimization as a control problem, then we can use DP 
+% to solve problem
+
+% what's good about ours - ours is faster! (lol)
+% cite SLS papers (Nick, etc), shih-hao's state feedback paper, explain that 
+% output feedback is harder
+% 
+\fi
+
+\subsection{Contributions and Organization}
+% contribution!
+We address the aforementioned challenges and extend the approach in \cite{tseng2020system} to derive a DP algorithm for output-feedback SLS by reformulating it as a discrete-time control problem. By our choice of the corresponding state and control variables, the control problem consists of a new transition constraint and initial condition compared to the state-feedback scenario. By vectorizing the multi-sided matrix multiplications, we can solve the control problem by a two-stage DP procedure. We develop the full DP and an approximation algorithm by skipping the constraint enforcement up to some \emph{allowance}. Explicitly, we derive the algorithm for $\Hcal_2$ and quadratic objectives. By comparing the computing time with the CVX-based solver \cite{SLSpy}, we show that DP perform up to $7$ times faster. Also, the approximation algorithm can further shorten the computing time by $42\%$ to $68\%$ with mild accuracy degradation.
+
+% organization
+The paper is organized as follows. We begin with brief introductions of output-feedback SLS and DP in \sec{preliminaries}. 
+Then, we present our DP algorithms to solve and approximate output-feedback SLS in \sec{DP_algorithm}. In \sec{examples}, 
+the $\Hcal_2$ and quadratic costs are explicity derived, and we numerically evaluate our algorithms in \sec{evaluation}. %results?
+We conclude the paper in \sec{conclusion}.
+
+\input{notation}

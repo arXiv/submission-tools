@@ -1,0 +1,14 @@
+{
+   "detected_toplevel_files" : [
+      {
+         "filename" : "submission.pdf",
+         "process" : {
+            "compiler" : "pdf_submission"
+         }
+      }
+   ],
+   "status" : {
+      "key" : "success"
+   },
+   "tex_files" : []
+}

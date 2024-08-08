@@ -1,0 +1,41 @@
+%Display code in article
+\usepackage{listings}
+\usepackage{textcomp}
+\usepackage{xcolor}
+ \lstset{ 
+  backgroundcolor=\color{white},  % background color; e.g., nearwhite you must add \usepackage{color} or \usepackage{xcolor}; should come as last argument
+  basicstyle=\footnotesize\ttfamily,% the size of the fonts that are used for the code
+  breakatwhitespace=false,% sets if automatic breaks should only happen at whitespace
+  breaklines=true, % sets automatic line breaking
+  framextopmargin=5pt,
+  framexleftmargin=5pt, 
+  framexbottommargin=5pt,
+  framexrightmargin=0pt,
+  framesep=0pt,
+  captionpos=b,% sets the caption-position to bottom
+  commentstyle=\color{mygreen}, % comment style
+  morecomment=[s]{/*}{*/},
+  deletekeywords={...}, % if want to delete keywords from the given language
+  escapeinside={\%*}{*)},% if you want to add LaTeX within your code
+  extendedchars=true,% lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,	% adds a frame around the code
+  keepspaces=false, % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{blue},% keyword style blue
+  language=java, % the language of the code
+  morekeywords={},% if you want to add more keywords to the set
+  numbers=none, % where line-numbers put; possible values are (none, left, right)
+  numbersep=0pt,% how far the line-numbers are from the code
+  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+  rulecolor=\color{gray},  % appleGray     % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  sensitive=true,
+  showspaces=false, % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,% underline spaces within strings only
+  showtabs=false, % show tabs within strings adding particular underscores
+  stepnumber=2,	% the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{purple}, % string literal style
+  tabsize=4,% sets default tabsize to 2 spaces
+  title=\lstname, % show the filename of files included with \lstinputlisting; also try caption instead of title
+  upquote=true,      % Straight quotes
+  belowcaptionskip=0em,
+  belowskip=0em
+}

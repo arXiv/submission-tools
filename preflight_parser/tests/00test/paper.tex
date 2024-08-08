@@ -1,0 +1,46 @@
+%
+% File:         paper.tex
+% Date:         Thu Oct  1 12:53:09 1998
+% Author:        (norbert)      
+%
+\documentclass{elsart}
+\usepackage{natbib,newlfont}
+\usepackage{elsart_macros}
+%\usepackage{changebar}
+
+\begin{document}
+
+\begin{frontmatter}
+%
+% HEADER
+%
+\title{Herbrand Disjunctions and Extraction of Proofs from Sketches}
+
+\author{Matthias Baaz},
+\ead{baaz@logic.at}
+\author{Norbert Preining\corauthref{cor}}
+\corauth[cor]{Corresponding author.}
+\ead{preining@logic.at}
+\address{Institute for Algebra and Computational Mathematics\\%
+  University of Technology\\%
+  Vienna, Austria}
+
+\input abstract
+
+\begin{keyword}
+Sketch, Projective Geometry, Herbrand Disjunction
+\end{keyword}
+%%\tableofcontents
+%%\listoffigures
+\end{frontmatter}
+
+\input introduction
+\input herbrand-disjunction
+\input sketches
+\input herbrand-sketches
+\input howfast
+\input closing
+\addcontentsline{toc}{section}{Bibliography}
+\bibliography{currentbib}
+\bibliographystyle{elsart-harv}
+\end{document}

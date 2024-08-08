@@ -1,0 +1,267 @@
+%
+% herbrand-sketches.tex
+%
+
+
+\section{Sketches made from Herbrand Disjunctions}
+\label{sec:herbrandsketch}
+
+In \cite{Prei97KGC} we gave a definition of a construction and proved
+the equivalence of sketches and proofs by translating a given proof
+in~\pelk into a proof by constructions. In this way we depend on the
+special calculus~\pelk and speed-up results as obtained in
+section~\ref{sec:orevkov} would not be generally valid. Therefore we
+aimed at shifting the translation from \pelk to \hd and in this way we
+get rid of any dependencies on a calculus.
+
+\subsection{Transformation from Herbrand disjunction to Construction}
+\label{sec:herbrandsketch:herbratransformation}
+
+We want to note that we cannot start with the \hd of an arbitrary formula,
+because we can only prove a formula with a sketch if it is a formula of
+projective geometry. We therefore assume that a given formula~$A$ was proven
+in a sound calculus for projective geometry.
+
+Therefore the formula $\Ax\limp A$ is valid in first order logic and has
+an \hd of the form
+   $$(\Ax(t_1)\limp A(t_1))\lor\dots\lor(\Ax(t_n)\limp A(t_n))$$
+So the formula we really want to proof with sketches is
+   $$A(t_1)\lor\dots\lor A(t_n).$$
+
+The transformation from a Herbrand disjunction to a construction is done in
+the following steps:
+\begin{enumerate}
+\item Minimizing the term depth
+\item Reformation of the geometric part into a DNF
+\item Building up the construction from the literals and terms
+\end{enumerate}
+
+Part~1 is described in sec.~\ref{sec:herbrand:minimize}, part~2 is
+trivial. 
+
+
+\subsubsection*{Building up the construction}
+\label{sec:herbrandsketch:transformation:construction}
+
+The way to building up the construction is as follows:
+We start with an empty node and add step by step for each literal in the \hd a
+case-distinction action, i.e. two vertices labeled with~$L$ and~$\bar L$,
+respectively. But before these actions can be done the terms occuring in the
+literal have to be build up, too. So we will refer to the partial construction
+of first building the terms, if necessary, and then the case-distinction
+action as the \emph{construction of the literal~$L$}, denoted as~$\cC(L)$.
+
+If we have already a part of the construction and want to add a new literal,
+then we have to find the \emph{open} nodes, i.e.\ those which are not
+contradictious and 
+which do not prove a part of the \hd. In all these open nodes the construction
+for the literal has to be added. Note that some of the actions of the added
+construction can be redundant or contradictious, according to whether subterms
+are already constructed and which further identities are shown. 
+%This operation
+%of concatenating two trees, we denote with~$\cT\oplus \cT'$.
+
+After having added all the literals there should be only closed nodes, some
+closed by contradictions, some by parts of the \hd, but it is not obvious why
+all the nodes are closed. The following lemma gives us a hint:
+
+\begin{lemma}\label{lemma:1}
+If there is a construction for a formula~$A$ and in another construction there
+is a node which derives~$\bar A$, then below this node there are only
+contradictious leaves.
+\end{lemma}
+
+\beginproof Take this node and attach the whole construction
+deriving~$A$. This of course leads to something which is not a construction,
+but with some operations similar to those for converting a preconstruction to
+a construction (see~\cite{Prei96MT}) it is possible to obtain a construction
+in which all the nodes are obviously contradictious. \endproof
+
+So now assume that there is a node in the construction from above which is
+open, i.e. it is not contradictious and does not derive the \hd. Then for
+every sub-conjunction there must be at least one literal whose
+negation is in the  
+node. We now need a construction of the \hd to close this node. This is not a
+vicious circle, because since we assumed that the original formula was proven
+in some reasonable calculus, there is a proof of this formula in~\pelk,
+which can be translated to a construction.
+
+But this would cause another dependency on the calculus~\pelk, which we
+wanted to overcome to obtain general results on the complexity of
+constructions. For this case we will need the following lemmas:
+
+\begin{lemma}\label{lemma:2}
+If below a node there are only contradictory nodes and no occurrence of a
+critical constellation, then the node by itself is contradictory. 
+\end{lemma}
+
+\beginproof Let~$N$ be the upper node, $N'$ ($L, R$) be the successor(s) and
+ $\alpha$, ($\alpha, \beta$) the actions leading from~$N$ to~$N'$ ($L, R$).
+We have to scrutinize all the possible actions on whether they could generate
+a contradiction in the next node:
+
+If $\alpha = [PQ]$ or~$\alpha = (gh)$, then the new formulas are $P\cI [PQ]$
+and~$Q\cI [PQ]$, whose negation not in the upper
+node because the term isn't constructed yet. Therefore if in~$N'$
+there is a contradiction, it must be also in~$N$. 
+
+The argumentation for the other cases are similar. The only situation when this
+argumentation can not work, is if there is a critical constellation where the
+following substitutions generate the contradictions.
+\endproof
+
+Now we have to show how to eliminate rules between certain occurrences
+of critical constellations.
+
+\begin{lemma}\label{lemma:3}
+If all the leafs under a node~$N$ are contradictory, then these
+contradictions are automatically derived with the critical constellation
+procedure, i.e.\ the procedure which only solves critical constellations until
+none is left.
+\end{lemma}
+
+\beginproof 
+We now assume that we have a node~$N$ with two successors~$L$ and~$R$,
+the action is a critical constellation $(P,Q;g,h)$, i.e. from~$N$
+to~$L$ there is a vertex labeled with~$P=Q$ and from~$N$ to~$R$ there
+is a vertex labeled with~$g=h$. Furthermore assume that~$L$ and~$R$
+are contradictory (otherwise use lemma~\ref{lemma:2}).
+
+Assume that~$N$ is not contradictory (otherwise we can kill the
+critical constellation below and proceed to the next one). Therefore
+the critical constellation actions generated the contradictions.
+
+We now have to analyze the possibilities how this critical
+constellation has emerged out of the predecessor of~$N$. There are
+four possibilities for actions leading to the node~$N$: The joining,
+the meeting, a case distinction or a critical constellation. The first
+two are analog.
+
+First for the joining: It must be the joining of~$P$ and~$Q$,
+otherwise the predecessor already has a critical constellation. So the
+critical constellation is in fact~$(P,Q;[PQ],h)$. The contradiction
+in~$R$, where the vertex labeled with~$[PQ]=h$ is leading to, must be
+of the form~$(X\cI h, X\notcI h)$ or~$h\not= h$. In the latter case
+there must be a formula~$[PQ]\not=h$ in~$N$ and therefore also in
+the predecessor of~$N$, which is impossible since this term is
+constructed on the vertex leading to~$N$.
+
+If the contradiction is~$(X\cI h, X\notcI h)$, then it can come from
+either~$(X\cI [PQ], X\notcI h)$ or from~$(X\cI h, X\notcI [PQ])$
+in~$N$. In the latter case the formulas~$X\notcI [PQ]$ would be
+present in the predecessor of~$N$, too, which is impossible. In the
+former case~$X$ has to be either~$P$ or~$Q$. But if~$X=P$ then we
+would have~$(P\cI h, P\notcI h)$ in~$N$, otherwise~$(Q\cI h, Q\notcI
+h)$, and in both cases already the node~$N$ would be contradictory.
+
+The meeting of two lines is handled analog.
+
+Now for the part where the vertex leading to~$N$ comes from a case
+distinction. Assume that below the node following the negative vertex
+there are no other case distinctions (otherwise we start the whole
+procedure below this). So we can eliminate all the actions below the
+node and only critical constellations are left. But since the negative
+literal cannot induce a critical constellation they must already be
+present in the predecessor of~$N$ and therefore the case distinction
+can be eliminated.
+
+For the last part, if there is a critical constellation above, we have
+eliminated all the intermediate actions, that is what we wanted.
+\endproof
+
+Now we see the importance to know that there is a construction. Because if we
+start with the procedure from above and end up in an open node, we know that
+this node is contradictory or the critical constellation procedure produces a
+subtree with all leaves closed. This now is independent from a particular
+calculus.
+
+Combining the above lemmas and methods we obtain
+
+\begin{theorem}\label{theorem:1}
+For any formula proven in any reasonable\footnote{i.e.\ a calculus comparable
+to~\pelk} and sound calculus for \pg, there is a construction which deduces
+this formula.
+\end{theorem}
+
+
+
+One interesting consequence of the way this theorem is proven is that
+sketches as they are used are not constructive in the usual sense,
+meaning that there are non-constructive elements in it. One of the
+most obvious of these elements is the case distinction, which of
+course is necessary. Another one is the occurrence of critical
+constellations, which are incarnations of case distinctions.
+
+This fact, that sketches aren't constructive in the strict sense of
+the word, is in fact interesting, because at the first glance we would
+accept them and even name them as primary candidates for constructive
+objects. 
+
+
+\subsection{An example}
+\label{sec:herbrandsketch:example}
+
+We want to give an example for such a sketch: The fact we want to
+prove is the fact that~$\ao$ does not lie on the line through two
+diagonal-points. That is with
+\begin{align*}
+  g &:= [\ao\bo]\\
+  h &:= [\co\deo]\\
+  j &:= [\ao\co]\\
+  k &:= [\bo\deo]\\
+  E &:= (gh)\\
+  F &:= (jk)\\
+  l &:= [EF]
+\end{align*}
+we want to proof that~$\ao\notcI l$. For the sketch compare
+fig.~\ref{fig:diagonal}. 
+
+\begin{figure}[ht!]
+  \[\epsfbox{diagonal.7}\]
+  \caption{Sketch of $\ao\notcI l$}
+  \label{fig:diagonal} 
+\end{figure}
+
+The corresponding construction tree is given
+in~fig.~\ref{fig:construction}. This example demonstrates the
+automatic deduction of a contradiction with the help of critical
+constellations. From node~1 to node~2 the various terms are
+constructed and renamed, this is a trivial part and no critical
+constellation will arise. But in node~2 we start proving~$\ao\notcI l$
+by contradiction. We split the construction adding once~$A\cI l$
+(node~3r) and once~$A\notcI l$ (node~3l). In node~3r a critical
+constellation arises, which can be solved in two ways, either leading
+to a contradiction in node~4l or to a new critical constellation in
+node~4r. The solution to the new critical constellation produces
+contradictions in both nodes~5l and~5r, which closes all the nodes
+below the addition of~$A\cI l$ in node~2. The only open node left over
+is node~3l, which proves~$A\notcI l$.
+
+\begin{figure}[ht!]
+  \[\epsfbox{diagonal.8}\]
+  \caption{Construction tree for $\ao\notcI l$}
+  \label{fig:construction}
+\end{figure}
+
+
+\subsection{Estimations of the length of the constructions}
+\label{sec:herbrandsketch:estimations}
+
+With the estimation of the length of terms in the Herbrand disjunction
+given in Sec.~\ref{sec:herbrand:minimize:length} we can give an
+estimation of the length of a construction as follows:
+
+In every step of the construction of the terms and the
+case-distinctions the branches can be split (doubled), which yields a
+multiplicand of~$2^{d_m\#t+\#l}$. Furthermore in every final
+(prefinal) node there can be a chain of critical constellations, but
+not more than~$\#t$, where~$\#t$ is the number of terms, $\#l$ the number
+of literals and~$d_m$ the maximal term depth. We thus obtain the
+following (very rough) bound on the length~$l_\cC$ of a
+construction~$\cC$ made from a \HD:
+  $$ l_\cC \le 2^{d_m\#t+\#l}\cdot \#t.$$
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End: 

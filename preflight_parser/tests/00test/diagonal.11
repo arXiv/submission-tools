@@ -1,0 +1,77 @@
+%!PS
+%%BoundingBox: 0 -8 112 20 
+%%HiResBoundingBox: 0 -7.36668 111.6829 19.61171 
+%%Creator: MetaPost 2.10
+%%CreationDate: 2024.05.24:1314
+%%Pages: 1
+%*Font: cmmi10 9.96265 9.96265 14:800000000307e0df88001b90c02
+%*Font: cmr7 6.97385 6.97385 30:f
+%*Font: cmr10 9.96265 9.96265 28:c07c041000000016cf3c
+%*Font: cmsy10 9.96265 9.96265 49:800002004
+%*Font: cmmi7 6.97385 6.97385 6e:8
+%%BeginProlog
+%%EndProlog
+%%Page: 1 1
+ 0 0 0 setrgbcolor
+0 0 moveto
+(A) cmmi10 9.96265 fshow
+7.472 0 moveto
+(\() cmr10 9.96265 fshow
+10.7185 1.8384 moveto
+(~) cmmi10 9.96265 fshow
+11.3464 0 moveto
+(t) cmmi10 9.96265 fshow
+14.944 -1.4944 moveto
+(1) cmr7 6.97385 fshow
+19.4134 0 moveto
+(;) cmmi10 9.96265 fshow
+25.0173 2.5183 moveto
+(~) cmmi10 9.96265 fshow
+23.8412 0 moveto
+(T) cmmi10 9.96265 fshow
+29.6631 -1.4944 moveto
+(1) cmr7 6.97385 fshow
+34.1325 0 moveto
+(\)) cmr10 9.96265 fshow
+40.2207 0 moveto
+(_) cmsy10 9.96265 fshow
+49.0763 0 moveto
+(:) cmmi10 9.96265 fshow
+53.5041 0 moveto
+(:) cmmi10 9.96265 fshow
+57.932 0 moveto
+(:) cmmi10 9.96265 fshow
+62.9132 0 moveto
+(_) cmsy10 9.96265 fshow
+71.7689 0 moveto
+(A) cmmi10 9.96265 fshow
+79.2409 0 moveto
+(\() cmr10 9.96265 fshow
+82.4874 1.8384 moveto
+(~) cmmi10 9.96265 fshow
+83.1152 0 moveto
+(t) cmmi10 9.96265 fshow
+86.7129 -1.4944 moveto
+(n) cmmi7 6.97385 fshow
+92.1359 0 moveto
+(;) cmmi10 9.96265 fshow
+97.7398 2.5183 moveto
+(~) cmmi10 9.96265 fshow
+96.5637 0 moveto
+(T) cmmi10 9.96265 fshow
+102.3856 -1.4944 moveto
+(n) cmmi7 6.97385 fshow
+107.8086 0 moveto
+(\)) cmr10 9.96265 fshow
+ 0 0.5 dtransform truncate idtransform setlinewidth pop [] 0 setdash
+ 1 setlinecap 1 setlinejoin 10 setmiterlimit
+newpath 5.58449 9.6361 moveto
+24.58975 20.60875 48.00516 20.60875 67.01042 9.6361 curveto stroke
+newpath 33.50522 9.6361 moveto
+55.96564 22.60359 83.638 22.60359 106.09842 9.6361 curveto stroke
+newpath 22.33624 -2.4907 moveto
+28.50423 -8.65869 38.5045 -8.65869 44.67249 -2.4907 curveto stroke
+newpath 55.84146 -2.4907 moveto
+58.92569 -5.57494 63.9262 -5.57494 67.01042 -2.4907 curveto stroke
+showpage
+%%EOF

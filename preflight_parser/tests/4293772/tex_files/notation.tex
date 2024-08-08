@@ -1,0 +1,24 @@
+\subsection{Notation} 
+
+\def\Rp{\Rcal_{p}}
+\def\Rsp{\Rcal_{sp}}
+\def\RHinf{\Rcal\Hcal_{\infty}}
+
+Let $z^{-1}\RHinf$ 
+and $\RHinf$ denote the set of strictly proper 
+and stable proper transfer matrices, respectively, all defined according to the underlying setting, continuous or discrete.
+%, and $z^{-1}\RHinf \subset \RHinf$ the subset of strictly proper stable transfer matrices. 
+% \RHinf refers to different spaces under continuous and discrete time (Hardy space)
+Lower- and upper-case letters (such as $x$ and $A$) denote vectors and matrices respectively, while bold lower- and upper-case characters and symbols (such as $\ubf$ and $\Rbf$) are reserved for signals and transfer matrices. $I$ and $0$ are the identity matrix and all-zero matrix/vector (with dimensions defined according to the context).
+We denote by $A^+$ the pseudo inverse (Moore-Penrose inverse) of $A$ and $\normalize{A}$ the matrix containing all normalized non-zero rows in $A$. Let $\vec{A}$ be the vectorized matrix $A$, which stacks the columns of $A$, and let $\unvec{x}$ be the inverse operation such that $x = \vec{A}$ is equivalent to $A = \unvec{x}$. The null space of a matrix $\Psi$ is written as $\nul{\Psi} = \{v : \Psi v = 0\}$, where $0$ is an all-zero vector. We denote by $\basis{\Scal}$ a matrix where its columns form a basis that spans the linear (sub)space $\Scal$.
+
+
+%We write $A \to B$ as a short-hand notation for ``given $A$, we can derive $B$ accordingly.''
+
+\iffalse
+We use lower- and upper-case letters (such as $x$ and $A$) to denote vectors and matrices respectively, while bold lower- and upper-case characters and symbols (such as $\ubf$ and ${\Phibf_\ubf}$) are reserved for signals and transfer matrices. Let $A^{ij}$ be the entry of $A$ at the $i^{\rm th}$ row and $j^{\rm th}$ column. We denote by $A^+$ the pseudo inverse (Moore-Penrose inverse).
+We vectorize a matrix $A$ to be the vector $\v{A}$ by stacking its columns. Inversely, we rebuild the matrix $\vinv{x}$ from a vector $x$ by realigning the elements. The null space of a matrix $\Psi$ is written as $\nul{\Psi} = \{v : \Psi v = 0\}$, where $0$ is an all-zero vector. We slightly abuse the notation to write $A \in \nul{\Psi}$ if all columns in $A$ are in $\nul{\Psi}$.
+%As such, we have $x = \v{X} \Leftrightarrow X = \vinv{x}$.
+%We define $A^{i\star}$ as the $i^{\rm th}$ row and $A^{\star j}$ the $j^{\rm th}$ column of $A$. 
+Let $\left\lVert {\Phibf}_\ubf\right\rVert_{\Hcal_2}^2$ be the $\Hcal_2$ norm of a transfer function $\Phibf_\ubf$, which is given by $\sum_{t=0}^{\infty}\left\lVert{\Phi_u[t]}\right\rVert_{F}^2$ with $\lVert \cdot \rVert_{F}$ the Frobenius norm.
+\fi

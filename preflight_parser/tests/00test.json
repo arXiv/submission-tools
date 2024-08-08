@@ -1,0 +1,250 @@
+{
+   "detected_toplevel_files" : [
+      {
+         "filename" : "minimization.tex",
+         "process" : {
+            "compiler" : "pdflatex"
+         }
+      },
+      {
+         "filename" : "paper.tex",
+         "process" : {
+            "bibliography" : {
+               "pre_generated" : true
+            },
+            "compiler" : "latex+dvips_ps2pdf"
+         }
+      },
+      {
+         "filename" : "recursive.tex",
+         "process" : {
+            "compiler" : "pdflatex"
+         }
+      },
+      {
+         "filename" : "sv-paper.tex",
+         "process" : {
+            "bibliography" : {
+               "pre_generated" : false
+            },
+            "compiler" : "latex+dvips_ps2pdf"
+         }
+      },
+      {
+         "filename" : "testdiag.tex",
+         "process" : {
+            "compiler" : "etex+dvips_ps2pdf"
+         }
+      },
+      {
+         "filename" : "world-logic-day-2022.tex",
+         "issues" : [
+            {
+               "filename" : "world-logic-day-2022.tex",
+               "info" : "1",
+               "key" : "issue_in_subfile"
+            }
+         ],
+         "process" : {
+            "compiler" : "pdflatex"
+         }
+      }
+   ],
+   "status" : {
+      "key" : "success"
+   },
+   "tex_files" : [
+      {
+         "filename" : "abstract.tex"
+      },
+      {
+         "filename" : "calligraphic.sty",
+         "language" : "latex"
+      },
+      {
+         "filename" : "closing.tex",
+         "language" : "latex"
+      },
+      {
+         "filename" : "current-macros.sty",
+         "language" : "latex",
+         "used_tex_files" : [
+            "logic.sty",
+            "calligraphic.sty",
+            "gentzen-lk.sty",
+            "projective.sty"
+         ]
+      },
+      {
+         "filename" : "elsart.cls",
+         "language" : "latex"
+      },
+      {
+         "filename" : "elsart_macros.sty",
+         "language" : "latex",
+         "used_tex_files" : [
+            "logic.sty",
+            "calligraphic.sty",
+            "gentzen-lk.sty",
+            "projective.sty"
+         ]
+      },
+      {
+         "filename" : "gentzen-lk.sty",
+         "language" : "latex"
+      },
+      {
+         "filename" : "herbrand-disjunction.tex",
+         "language" : "latex",
+         "output_type" : "dvi",
+         "used_other_files" : [
+            "skelett.eps"
+         ]
+      },
+      {
+         "filename" : "herbrand-sketches.tex",
+         "language" : "latex",
+         "used_other_files" : [
+            "diagonal.7",
+            "diagonal.8"
+         ]
+      },
+      {
+         "filename" : "howfast.tex",
+         "language" : "latex"
+      },
+      {
+         "filename" : "introduction.tex",
+         "language" : "latex",
+         "output_type" : "dvi",
+         "used_other_files" : [
+            "diagonal.1",
+            "chinabild.eps"
+         ]
+      },
+      {
+         "filename" : "logic-symbols.sty",
+         "language" : "latex"
+      },
+      {
+         "filename" : "logic.sty",
+         "language" : "latex",
+         "used_tex_files" : [
+            "logic-symbols.sty",
+            "gentzen-lk.sty"
+         ]
+      },
+      {
+         "filename" : "minimization.tex",
+         "language" : "latex",
+         "used_tex_files" : [
+            "svjour.cls",
+            "current-macros.sty"
+         ]
+      },
+      {
+         "filename" : "paper.tex",
+         "language" : "latex",
+         "used_bib_files" : [
+            "currentbib.bib"
+         ],
+         "used_tex_files" : [
+            "abstract.tex",
+            "introduction.tex",
+            "herbrand-disjunction.tex",
+            "sketches.tex",
+            "herbrand-sketches.tex",
+            "howfast.tex",
+            "closing.tex",
+            "elsart.cls",
+            "elsart_macros.sty"
+         ]
+      },
+      {
+         "filename" : "projective.sty",
+         "language" : "latex",
+         "used_tex_files" : [
+            "logic.sty",
+            "calligraphic.sty"
+         ]
+      },
+      {
+         "filename" : "recursive.tex",
+         "language" : "latex"
+      },
+      {
+         "filename" : "sketches.tex",
+         "language" : "latex",
+         "used_other_files" : [
+            "diagonal.2",
+            "diagonal.9",
+            "diagonal.10",
+            "diagonal.3",
+            "diagonal.4",
+            "diagonal.5",
+            "diagonal.6"
+         ]
+      },
+      {
+         "filename" : "sv-paper.tex",
+         "language" : "latex",
+         "used_bib_files" : [
+            "currentbib.bib"
+         ],
+         "used_tex_files" : [
+            "abstract.tex",
+            "introduction.tex",
+            "herbrand-disjunction.tex",
+            "sketches.tex",
+            "herbrand-sketches.tex",
+            "howfast.tex",
+            "closing.tex",
+            "svjour.cls",
+            "current-macros.sty"
+         ]
+      },
+      {
+         "filename" : "testdiag.tex",
+         "used_other_files" : [
+            "diagonal.1",
+            "diagonal.3",
+            "diagonal.4",
+            "diagonal.5",
+            "diagonal.6",
+            "diagonal.7",
+            "diagonal.8",
+            "diagonal.9"
+         ]
+      },
+      {
+         "filename" : "world-logic-day-2022.tex",
+         "issues" : [
+            {
+               "info" : "command includegraphics used with macro parameter #",
+               "key" : "include_command_with_macro"
+            }
+         ],
+         "language" : "latex",
+         "used_tex_files" : [
+            "bpextra.sty",
+            "prooftree.sty"
+         ]
+      },
+      {
+         "filename" : "svjour.cls",
+         "language" : "latex"
+      },
+      {
+         "filename" : "bpextra.sty",
+         "language" : "latex"
+      },
+      {
+         "filename" : "prooftree.sty",
+         "language" : "latex"
+      },
+      {
+         "filename" : "svmatlog.clo",
+         "language" : "latex"
+      }
+   ]
+}

@@ -1,0 +1,86 @@
+%
+% current-macros.sty
+%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{elsart_macros}[1996/03/01]
+\typeout{Package: 'elsart_macros' [1996/03/01]}
+%
+% packages
+%
+%\usepackage[austrian,english]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{logic,calligraphic,gentzen-lk,projective,proof}
+\usepackage{xspace}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{latexsym}
+\usepackage{epsf}
+\usepackage{paralist}
+%
+% adaptions to I
+%\DeclareMathSymbol{\cI}{\mathrel}{symbols}{`I}
+%\def\cI{\mathrel{\cal I}}
+%\renewcommand{\notcI}{\cI\!\!\!\!|\:\,}
+\def\cI{\mathrel{\cal I}}
+\renewcommand{\notcI}{\mathrel{\cI\!\!\!\!|\:\,}}
+%
+% definitions
+%
+%\theorembodyfont{\upshape}
+%\theoremheaderfont{\scshape}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[section]{\bf}{\rm}
+\newtheorem{lemma}{Lemma}[section]{\bf}{\rm}
+\newtheorem{definition}{Definition}[section]{\bf}{\rm}
+\newtheorem{proposition}{Proposition}[section]{\bf}{\rm}
+%\newtheorem{algorithm}{Algorithm}[section]{\bf}{\rm}
+\def\HD{\hbox{\textsf{HD}}}
+\def\hd{Herbrand disjunction\xspace}
+\def\cM{{\cal M}}
+\def\Ax{{\cal AX}}
+\def\N{\mathbb{N}}
+\def\Q{\mathbb{Q}}
+\newcommand{\qei}[2]{(\exists #1_{#2})}
+\newcommand{\qai}[2]{(\forall #1_{#2})}
+\newcommand{\qmi}[2]{(\mu #1_{#2})}
+\newcommand{\bqa}[2]{(\forall #1_{#1<#2})}
+\newcommand{\bqe}[2]{(\exists #1_{#1<#2})}
+\newcommand{\bqm}[2]{(\mu #1_{#1<#2})}
+\newcommand{\qe}[1]{(\exists #1)}
+\newcommand{\qa}[1]{(\forall #1)}
+\newcommand{\qm}[1]{(\mu #1)}
+\def\nat{\mbox{Nat}}
+\newcommand{\Seq}[1]{\mbox{Seq}(#1)}
+\newcommand{\lh}[1]{\mbox{lh}(#1)}
+\newcommand{\goi}[2]{(#1)_{#2}}
+\newcommand{\gon}[1]{\lceil#1\rceil}
+\newcommand{\ger}[1]{\mathfrak{#1}}
+\def\minus{-}
+\def\knum{\mathbf{k}}
+\def\PGQ{\ensuremath{\mathbf{PG_{\Q}}}}
+\def\HDQ{\HD_{\PGQ}}
+\def\AH{\ensuremath{A_H}}
+\def\mstar{^*}
+\def\H#1{{\cal H}(#1)}
+\def\S#1{{\cal S}(#1)}
+\def\HS#1{{\cal H}({\cal S}(#1))}
+\def\ka{\mathbf{k}}
+\def\atom{\mbox{Atom}}
+\let\true\perp
+%
+% hack
+%
+\def\beginproof{\par\medskip\noindent{\scshape Proof:} }
+\def\endproof{\hfill$\Box$\par\medskip}
+\def\beginexample{\par\medskip\noindent{\scshape Example:} }
+%\def\endexample{\hfill$\heartsuit$\par\medskip}
+\def\endexample{\hfill\vrule width 5pt height 5pt depth 0pt\par\medskip}
+\def\beginnote{\par\medskip\noindent{\scshape Note:} }
+\def\endnote{\hfill\vrule width 5pt height 5pt depth 0pt\par\medskip}
+\def\beginclaim{\par\medskip\noindent{\scshape Claim:} }
+\let\endclaim\endproof
+%
+% END OF FILE
+%
+\endinput
+

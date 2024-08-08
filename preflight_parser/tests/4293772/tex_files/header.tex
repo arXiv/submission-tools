@@ -1,0 +1,56 @@
+%\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+
+\usepackage{cite}
+\let\proof\relax
+\let\endproof\relax
+\usepackage{amsthm,amsmath,amssymb,amsfonts}
+\usepackage{bm}  % bold greek letters
+\usepackage{algorithmic}
+\usepackage{algorithm}
+%\usepackage[ruled, noline, linesnumbered]{algorithm2e}
+%\setlength{\algomargin}{1ex}
+
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{xcolor}
+
+\usepackage{array}
+%\usepackage{multirow}
+
+% a workaround for using subcaption with IEEEtran
+\makeatletter
+\let\MYcaption\@makecaption
+\makeatother
+
+\usepackage[font=footnotesize]{subcaption}
+
+\makeatletter
+\let\@makecaption\MYcaption
+\makeatother
+
+% textcomp provides some special characters
+\usepackage{textcomp}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+% lipsum can generate some dummy text for testing by \lipsum[1-10]
+%\usepackage{lipsum}
+
+% copyright
+\newcommand\copyrighttext{
+  \footnotesize \copyright\ 2017 IEEE. Personal use of this material is permitted. Permission from IEEE must be obtained for all other uses, in any current or future media, including reprinting/republishing this material for advertising or promotional purposes, creating new collective works, for resale or redistribution to servers or lists, or reuse of any copyrighted component of this work in other works. DOI: 10.1109/CDC.2017.8264401
+}%
+\newcommand\copyrightnotice{%
+\begin{tikzpicture}[remember picture,overlay]
+\node[anchor=south,yshift=0.2in] at (current page.south) {\parbox{\dimexpr\textwidth-\fboxsep-\fboxrule\relax}{\copyrighttext}};
+\end{tikzpicture}\vspace{-0.825\baselineskip}%
+}
+
+% specify the tex file folder
+\makeatletter
+\def\input@path{{tex_files/}}
+\makeatother
+
+% margins
+%\setlength{\belowcaptionskip}{5pt plus 5pt minus 5pt}

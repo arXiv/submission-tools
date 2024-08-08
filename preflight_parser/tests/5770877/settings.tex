@@ -1,0 +1,109 @@
+\documentclass[12pt]{article}
+
+% Encoding
+\usepackage[utf8]{inputenc}
+
+% Math packages
+\usepackage{amsmath, amssymb}
+
+% Font and text
+\usepackage{times}
+\usepackage[normalem]{ulem}
+\useunder{\uline}{\ul}{}
+
+% Colors and graphics
+\usepackage[table,xcdraw]{xcolor} % Include options needed for xcolor
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+
+% Layout and geometry
+\usepackage{geometry}
+\usepackage[skip=10pt, indent=0pt]{parskip}
+\geometry{a4paper, margin=1in}
+
+% Hyperlinks
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  filecolor=magenta,      
+  urlcolor=cyan,
+}
+
+% Tables and multi-rows
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{booktabs}
+
+% Other environments
+\usepackage{float}
+\usepackage{lscape}
+
+% Bibliography management
+\usepackage[numbers]{natbib}
+
+% Enhanced lists, algorithms, and appendices
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[toc,page]{appendix}
+
+% Spacing
+\usepackage{setspace}
+\onehalfspacing
+
+% Table footnotes
+\usepackage{tablefootnote}
+
+% TikZ libraries
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, shadings}
+
+% Subfigure/caption support
+\usepackage{subcaption}
+
+% Modify table of contents handling
+\usepackage[nottoc]{tocbibind}
+
+% Custom color definitions for listings
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+% Listings configuration
+\lstset{
+  frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\makeatletter
+\renewenvironment{titlepage}
+ {%
+  \if@twocolumn
+    \@restonecoltrue\onecolumn
+  \else
+    \@restonecolfalse\newpage
+  \fi
+  \thispagestyle{plain}%
+ }
+ {%
+  \if@restonecol
+    \twocolumn
+  \else
+    \newpage
+  \fi
+ }
+\makeatother

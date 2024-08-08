@@ -1,0 +1,190 @@
+\section{Example Algorithms}\label{sec:examples}
+Now that we have defined the dynamic programming algorithms, we illustrate results for two classes of objective functions.
+We show algorithms for computing the optimal control under two cost functions: a $\mathcal{H}_2$ and a quadratic cost.
+Define the $\mathcal{H}_2$ cost to be 
+\begin{align*} %\label{eqn:H2}
+    h_{\tau}(x[\tau],u[\tau]) = \norm{ Fx[\tau]+Gu[\tau] }_F^2,
+\end{align*}
+where $\norm{\cdot}_F$ is the Frobenius norm, and the quadratic cost to be 
+\begin{align*} %\label{eqn:LQ}
+    h_{\tau}(x[\tau],u[\tau]) = x[\tau]^\top  Q x[\tau] + u[\tau]^\top  R u[\tau],
+\end{align*}
+where $Q$ is a positive definite matrix weighing the cost of elements of the state. Note that the $\Hcal_2$ objective is a generalization of the 
+quadratic objective where cross terms between $x$ and $u$ are permitted.
+% don't number an equation if we don't cite it !!
+
+\subsection{$\mathcal{H}_2$ Objective}
+Using the reformulated SLS contraint and optimization equations \eqn{reformulated_opt},
+we implement a dynamic programming algorithm by deriving an explicit 
+expression for the cost-to-go function from the objective function $g_{\tau}$. For $\tau > 0$, we have:
+\begin{align*} %\label{eqn:cost_to_go_H2}
+V_{\tau}(x[\tau]) = \min\limits_{\hat{u} \in \Acal_u[\tau]} \norm{ Fx[\tau]+ G \hat{u} }_F^2 +
+V_{\tau+1}(f(x[\tau],\hat{u})).
+\end{align*}
+% \SHT{what does $\norm{}_F$ mean here?}
+Using the form of $U$ from Theorem 1 and the claim in equation 12 in \cite{tseng2020system}, 
+we know that the cost-to-go function can be parameterized by some matrix $P$.
+\begin{equation*}
+    \begin{aligned}
+        V_{\tau}(x[\tau]) = \min_{\lambda} \{ \norm{ F_x x[\tau] + G_{\lambda} \lambda }_F^2 + \\
+        \sum_{t=\tau+1}^\top  \norm{ P[\tau] (A_x x[\tau] + B_{\lambda} \lambda ) }_F^2 \} \\
+    \end{aligned}
+\end{equation*}
+where
+\begin{align*}
+    A_x =&\ A + BH_x, & B_{\lambda}=&\ BH_{\lambda},\\
+    F_x =&\ F + GH_x, & G_{\lambda}=&\ GH_{\lambda}.
+\end{align*}
+
+After solving for the $\lambda$ that minimizes the function, which then gives a 
+controller as a function of the state, the cost-to-go is given by
+\begin{equation*}
+    \begin{aligned}
+        V_{\tau}(x[\tau]) = \min_{\lambda} \{ \norm{ (F + G K[\tau])x[\tau] }_F^2 + \\
+        \sum_{t=\tau+1}^\top  \norm{ P[\tau] (A + BK[\tau])x[\tau] }_F^2 \}.
+    \end{aligned}
+\end{equation*}
+% make a separate equation block for the equations, multi-line
+% note key difference here from state feedback case
+where 
+\begin{gather}
+        K[\tau] = H_x + H_{\lambda} L[\tau] \label{eqn:Kt_H2} \\
+        L[\tau] = -(G_{\lambda}^\top G_{\lambda}+B_{\lambda}^\top P[\tau]B_{\lambda})^{-1}(G_{\lambda}^\top  F_x +B_{\lambda}^\top  P[\tau]A_x). \nonumber
+\end{gather}
+\cite{tseng2020system} shows how to compute $P[\tau]$; we state the result here:
+\begin{align}\label{eqn:update_p}
+    \begin{gathered}
+        P[\tau-1] = (C+GK[\tau])^\top (C+GK[\tau]) \\
+    + (A+BK[\tau])^\top P[\tau](A+BK[\tau]).
+    \end{gathered}
+\end{align}
+The derivation changes from the state feedback scenario for $\tau=0$. The SLS constraints 
+that hold for the previous transitions change, so the cost-to-go is instead given as an optimization over
+a control input that influences $\Pxy$, $\Pux$, and $\Puy$. Recall $P[1]$ as the matrix defining the cost-to-go
+at the next state, where the cost-to-go at state $x[1]$ is $V_1(x[1]) = \norm{ P[1] x[1] }_F^2$.
+\begin{equation*} %\label{eqn:cost_to_go_zero}
+    \begin{aligned}
+        V_0(x[0]) = \min_{\hat{u} \in \Acal_u[0]} \{ \norm{ G \hat{u} }_F^2 + \norm{ P[1]\mat{\Vec{I} \\ \tilde{B}_0\hat{u}}  }_F^2 \}
+    \end{aligned}
+\end{equation*}
+Now we must consider the form that $u[0]$ will take. We showed in \thm{feasible_set0} that 
+$\Acal_u[0]$ consists of vectors of the form $\hat{u} = H_{\lambda}\lambda + w$. We can write the cost-to-go as
+\begin{equation*}
+    \begin{aligned}
+        V_0(x[0]) = \min_{\lambda} \{ \norm{ G (H_{\lambda}\lambda + w) }_F^2 + \\
+        \norm{ P[1]\mat{\Vec{I}\\ \tilde{B}_0(H_{\lambda}\lambda + w)} }_F^2 \}
+    \end{aligned}
+\end{equation*}
+and the control parameterization as
+\begin{equation}\label{eqn:K0_H2}
+    \begin{gathered}
+        u[0] = H_{\lambda}\lambda^* + w,\\
+        \lambda^* = \argmin_{\lambda} \{ \norm{ G (H_{\lambda}\lambda + w) }_F^2 + \\
+        \norm{ P[1] \mat{\Vec{I}\\ \tilde{B}_0(H_{\lambda}\lambda + w)} }_F^2 \}.
+    \end{gathered}
+\end{equation}
+The solution can be found by setting the derivative equal to zero and solving for $\lambda^*$. The steps are shown 
+in \alg{H2}.
+
+% algorithm
+\begin{algorithm}
+    \caption{DP with $\mathcal{H}_2$ Objective}
+    \label{alg:H2}
+    \begin{algorithmic}[1]
+    \REQUIRE Per-step costs $g_{\tau}(\Pxx[\tau],\Pxy[\tau],\Pux[\tau],\Puy[\tau])$ for all $\tau = 0, \dots, T$ and the matrices $A$, $B$, and $C$ in \eqn{SLS_output_feedback}; $F$ and $G$.
+    % \SHT{also need $F$ and $G$}
+    \ENSURE $\Pxx[\tau],\Pxy[\tau],\Pux[\tau],\Puy[\tau]$ for all $\tau = 0, \dots, T$.
+    \STATE Derive $h_\tau$ from $g_{\tau}$ for all $\tau = 0, \dots, T$.
+    \STATE Derive $\tdA$, $\tdB$, $\tdA_{eq}$, and $\tdB_0$ from $A$, $B$ and $C$ according to \eqn{SLS_output_feedback}.
+    \STATE $\Psi_x[T+1] = I$.
+    \STATE $P[T]=0$. %$V_{t+1}(x[\tau])=0$
+    \FOR{$\tau=T,\dots,1$}
+    \STATE Derive $\mathcal{A}_u$ and $\nullspace(\Psi_x[\tau])$ by \thm{feasible_set}.
+    \STATE Compute $K_{\tau}(x_{\tau})$ by \eqn{Kt_H2}.
+    \STATE Compute $P[\tau-1]$ from $P[\tau]$ by \eqn{update_p}.
+    \ENDFOR
+    \STATE Derive $\Acal_u[0]$ by \thm{feasible_set0}.
+    \STATE Compute $u[0]$ by \eqn{K0_H2}.
+	\STATE Set $\Puy[0] = \unvec{u[0]}$ and $\Pxx[0] = \Pxy[0] = \Pux[0] = 0$.
+    \STATE Compute $x[1]$ by \eqn{of-initial-condition}.
+    \STATE Perform line \ref{plainSLS-final0.0} to \ref{plainSLS-final1} in \alg{plainSLS}.
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Quadratic Objective}
+Now we consider the algorithm under the quadratic objective. We derive an explicit cost-to-go function under 
+this objective as
+\begin{align*}
+V_{\tau}(x[\tau]) = \min\limits_{\hat{u} \in \Acal_u[\tau]} x[\tau]^\top  Q x[\tau] + \hat{u}^\top  R \hat{u} + V_{\tau+1}(f(x[\tau],\hat{u})).
+\end{align*}
+Starting from $\tau = T$ and recursively computing backward, from \cite{tseng2020system} we have that $V_{\tau}(x[\tau])$ can be written as $x[\tau]^\top  V_{(\tau)} x[\tau]$.
+We know the future cost at time $\tau=T$ is zero, and $u[T]$ takes the form $u[T]=H_{\lambda}\lambda + H_x x[T]$, so we can write the overall cost-to-go as 
+\begin{align*}
+    \begin{gathered}
+        V_{T}(x[T])
+        = \min\limits_{\lambda} x[T]^\top  Q x[T] \\
+        + (H_{\lambda}\lambda + H_x x[T])^\top  R (H_{\lambda}\lambda + H_x x[T]).
+    \end{gathered}
+\end{align*}
+After solving for the value of $\lambda$ that minimizes $V_T(x[T])$, and assuming that $R$ is symmetric, we can write the cost as
+\begin{align*}
+    \begin{gathered}
+        V_T(x[T]) = x[T]^\top  V_{(T)} x[T] \\
+        \text{where }\ V_{(T)}= Q + \bar{Q} \\
+        \bar{Q} = \tilde{Q}^\top  R \tilde{Q} \\
+        \tilde{Q} = I-H_{\lambda}(H_{\lambda}^\top RH_{\lambda})^{-1}H_x.
+    \end{gathered}
+\end{align*}
+Each $V_{\tau}(x[\tau])$ can also be written in this quadratic form. Pugging in the form of $u[\tau]$ and the 
+quadratic form of the future cost-to-go function, we set the derivative equal to zero and solve for 
+the $\lambda$ which minimizes $V_\tau(x[\tau])$, resulting in the following definitions for 
+$V_{\tau}(x[\tau])$ and $K[\tau]$:
+\begin{align}\label{eqn:V_LQ}
+    \begin{gathered}
+        V(x[\tau]) = x[\tau]^\top  V_{(\tau)} x[\tau]\ \ \text{where }\\
+        V_{(\tau)} = Q + K[\tau]^\top  R K[\tau] + \\
+        (\tilde{A}+\tilde{B}K[\tau])^\top  V_{(\tau+1)}(\tilde{A}+\tilde{B}K[\tau])
+    \end{gathered}
+\end{align}
+and
+\begin{align}\label{eqn:K_LQ}
+    \begin{gathered}
+        K[\tau] = H_x - H_{\lambda} L_d^{-1} L_n\ \ \text{where } \\
+        L_d = H_{\lambda}^\top  R H_{\lambda} + (\tilde{B} H_{\lambda})^\top  V_{(t+1)} \tilde{B} H_{\lambda} \\
+        L_n = H_{\lambda}^\top  R H_x + (\tilde{B} H_{\lambda})^\top  V_{(t+1)} (\tilde{A}+\tilde{B}H_x).
+    \end{gathered}
+\end{align}
+Lastly, we compute the control input for the special case where $\tau = 0$. The input $u[0]$ takes the form 
+from \thm{feasible_set0}, and we know the state at time $t=0$ is zero. We have the control  given by 
+\begin{align}\label{eqn:K0_LQ}
+    \begin{gathered}
+        u[0] = H_{\lambda}\lambda^* + w \\
+        \lambda^* = \argmin_{\lambda} (H_{\lambda}\lambda + w)^\top  R (H_{\lambda}\lambda + w) \\
+        + \mat{\vec{I}\\ \tilde{B}_0(H_{\lambda}\lambda + w)}^\top  V_{(1)} \mat{\vec{I}\\ \tilde{B}_0(H_{\lambda}\lambda + w)}
+    \end{gathered}
+\end{align}
+The steps are enumerated in \alg{LQ}.
+% algorithm
+\begin{algorithm}
+    \caption{DP with Quadratic Objective}
+    \label{alg:LQ}
+    \begin{algorithmic}[1]
+    \REQUIRE Per-step costs $g_{\tau}(\Pxx[\tau],\Pxy[\tau],\Pux[\tau],\Puy[\tau])$ for all $\tau = 0, \dots, T$ and the matrices $A$, $B$, $C$ in \eqn{SLS_output_feedback}; $Q$ and $R$.
+    % \SHT{also need $Q$ and $R$}
+    \ENSURE $\Pxx[\tau],\Pxy[\tau],\Pux[\tau],\Puy[\tau]$ for all $\tau = 0, \dots, T$.
+    \STATE Derive $h_\tau$ from $g_{\tau}$ for all $\tau = 0, \dots, T$.
+    \STATE Derive $\tdA$, $\tdB$, $\tdA_{eq}$, and $\tdB_0$ from $A$, $B$ and $C$ according to \eqn{SLS_output_feedback}.
+    \STATE $\Psi_x[T+1] = I$.
+    \STATE $V_{T+1}(x[T+1]) = 0$.
+    \FOR{$\tau=T,\dots,1$}
+        \STATE Derive $\Acal_u[\tau]$ and $\Psi_x[\tau]$ by \thm{feasible_set}.
+        \STATE Compute $K_{\tau}(x[\tau])$ by \eqn{K_LQ}.
+        \STATE Derive $V_{\tau}(x_{\tau})$ by \eqn{V_LQ}.
+    \ENDFOR
+    \STATE Derive $\Acal_u[0]$ by \thm{feasible_set0}.
+    \STATE Compute $u[0]$ by \eqn{K0_LQ}.
+	\STATE Set $\Puy[0] = \unvec{u[0]}$ and $\Pxx[0] = \Pxy[0] = \Pux[0] = 0$.
+    \STATE Compute $x[1]$ by \eqn{of-initial-condition}.
+    \STATE Perform line \ref{plainSLS-final0.0} to \ref{plainSLS-final1} in \alg{plainSLS}.
+    \end{algorithmic}
+\end{algorithm}

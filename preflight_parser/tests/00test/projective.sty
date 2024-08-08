@@ -1,0 +1,129 @@
+%
+% projective.sty
+%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{projective}[1998/03/01]
+\typeout{Package: 'projective' [1998/03/01]}
+%
+% Packages
+%
+\usepackage{logic}
+\usepackage{calligraphic}
+\usepackage{xspace}
+%
+% Mathematical Defintions
+%
+%\DeclareMathSymbol{\cI}{\mathrel}{symbols}{`I}
+%\newcommand{\notcI}{\cI\!\!\!\!|\:\,}
+%
+% oder 
+% \def\cI{\mathrel{\cal I}}
+\newcommand{\notcI}{\cI\!\!\!|\,}
+\newcommand{\tcI}{$\cI$}
+
+%
+% Functions
+%
+\newcommand{\koll}{\mathrm{coll}}
+\newcommand{\Kollineation}{\mathrm{Kollineation}}
+\newcommand{\perspKoll}{\mathrm{perspKoll}}
+\newcommand{\connect}{\mathrm{con}}
+\newcommand{\tconnect}{\textrm{con}}
+\newcommand{\intsec}{\mathrm{intsec}}
+\newcommand{\tintsec}{\textrm{intsec}}
+
+%
+% Shortcuts
+%
+\newcommand{\pt}{proof theory\xspace}
+\newcommand{\Pt}{Proof theory\xspace}
+\newcommand{\Ptq}{Proof theory}
+\newcommand{\ptq}{proof theory}
+\newcommand{\pg}{projective geometry\xspace}
+\newcommand{\pgq}{projective geometry}
+\newcommand{\Pg}{Projective geometry\xspace}
+\newcommand{\Pgq}{Projective geometry}
+\newcommand{\ag}{affine geometry\xspace}
+\newcommand{\agq}{affine geometry}
+\newcommand{\Ag}{Affine geometry\xspace}
+\newcommand{\Agq}{Affine geometry}
+\newcommand{\pelk}{$\mathbf{L_{PG}K}$\xspace}
+\newcommand{\pelkq}{$\mathbf{L_{PG}K}$}
+\newcommand{\pelang}{$\mathbf{L_{PG}}$\xspace}
+\newcommand{\pelangq}{$\mathbf{L_{PG}}$}
+\newcommand{\piae}{\Pi_{EP}}
+\newcommand{\ttrue}{{\fontfamily{cmss}\selectfont T}}
+\newcommand{\deeq}{{\Delta_=}}
+\newcommand{\dein}{{\Delta_{\cI}}}
+\newcommand{\gabar}{\overline{\Gamma}}
+
+\newcommand{\vect}[2]{\ensuremath{#1_1,\ldots,#1_{#2}}}
+
+\newcommand{\fu}{{\cal FU}}
+\newcommand{\cwc}{\textrm{CWC}}
+\newcommand{\ao}{A_0}
+\newcommand{\tao}{$\ao$}
+\newcommand{\bo}{B_0}        
+\newcommand{\tbo}{$\bo$}     
+\newcommand{\co}{C_0}        
+\newcommand{\tco}{$\co$}     
+\newcommand{\deo}{D_0}        
+\newcommand{\tdo}{$\deo$}     
+\newcommand{\tga}[1][]{$\ensuremath{\Gamma_{#1}}$}
+\newcommand{\tde}[1][]{$\ensuremath{\Delta_{#1}}$}
+\newcommand{\tpi}[1][]{$\ensuremath{\Pi_{#1}}$}
+\newcommand{\tla}[1][]{$\ensuremath{\Lambda_{#1}}$}
+\newcommand{\eplus}{\cE_{+}}
+\newcommand{\eminus}{\cE_{-}}
+\renewcommand{\assum}{\mbox{As}}
+\newcommand{\eassum}{\mbox{e}\assum}
+\newcommand{\cassum}{\mbox{c}\assum}
+\newcommand{\Nbar}{{\bar N}}
+
+
+%
+% rules
+%
+\newcommand{\pei}{\mbox{(PG1)}\xspace}
+\newcommand{\peii}{\mbox{(PG2)}\xspace}
+\newcommand{\peiii}{\mbox{(PG3)}\xspace}
+\newcommand{\peiid}{\mbox{(PG1-ID)}\xspace}
+\newcommand{\streichung}{\mbox{(Erase)}\xspace}
+
+\newcommand{\incipoleft}{\mbox{(id-$\cI_{\typpo}$:left)}\xspace}
+\newcommand{\inciporight}{\mbox{(id-$\cI_{\typpo}$:right)}\xspace}
+\newcommand{\incilileft}{\mbox{(id-$\cI_{\typli}$:left)}\xspace}
+\newcommand{\inciliright}{\mbox{(id-$\cI_{\typli}$:right)}\xspace}
+
+\newcommand{\connfirst}{\mbox{(id-con:1)}\xspace}
+\newcommand{\connsecond}{\mbox{(id-con:2)}\xspace}
+\newcommand{\interfirst}{\mbox{(id-int:1)}\xspace}
+\newcommand{\intersecond}{\mbox{(id-int:2)}\xspace}
+
+%
+% Types
+%
+\newcommand{\typpo}{\tau_{\cal P}}
+\newcommand{\ttyppo}{$\typpo$\xspace}
+\newcommand{\typli}{\tau_{\cal L}}
+\newcommand{\ttypli}{$\typli$\xspace}
+
+\newcommand{\typefun}[3]{\mathbf{[}#1,#2\to#3\mathbf{]}}
+\newcommand{\typepre}[2]{\mathbf{[}#1,#2\mathbf{]}}
+\newcommand{\ttypefun}[3]{$\typefun{#1}{#2}{#3}$}   
+\newcommand{\ttypepre}[2]{$\typepre{#1}{#2}$}
+
+
+%
+% pictures
+%
+%
+% \point(xcor,ycor)<schrift_x_shift,schrift_y_shift>[b|t|..]{Beschriftung}
+%
+\def\point(#1,#2)<#3,#4>[#5]#6{%
+        \put {\circle{0.1}} [Bl] at #1 #2
+        \put {#6} [#5] <#3,#4> at #1 #2}
+\def\epoint(#1,#2){\put {\circle{0.1}} [Bl] at #1 #2}
+
+\endinput
+

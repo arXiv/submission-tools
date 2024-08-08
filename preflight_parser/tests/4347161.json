@@ -1,0 +1,36 @@
+{
+   "detected_toplevel_files" : [
+      {
+         "filename" : "3DProtoPlasmic-V3.tex",
+         "process" : {
+            "compiler" : "pdflatex"
+         }
+      }
+   ],
+   "status" : {
+      "key" : "success"
+   },
+   "tex_files" : [
+      {
+         "filename" : "3DProtoPlasmic-V3.tex",
+         "language" : "latex",
+         "output_type" : "pdf",
+         "used_other_files" : [
+            "fig-1-crop.pdf",
+            "fig-2-crop.pdf",
+            "fig-3-crop.pdf",
+            "fig-4-crop.pdf",
+            "fig-5-crop.pdf",
+            "fig-6-crop.pdf",
+            "fig-7-crop.pdf",
+            "fig-8-crop.pdf",
+            "fig-9-crop.pdf",
+            "fig-A0-crop.pdf",
+            "fig-A1-crop.pdf",
+            "fig-A2-crop.pdf",
+            "fig-A3-crop.pdf",
+            "fig-A4-crop.pdf"
+         ]
+      }
+   ]
+}

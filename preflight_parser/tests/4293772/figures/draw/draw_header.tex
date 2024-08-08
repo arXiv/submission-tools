@@ -1,0 +1,131 @@
+\documentclass{IEEEtran}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{datatool}
+
+\pgfplotsset{compat=newest}
+\usepackage{bm}  % bold greek letters
+
+\usepackage[margin=0in]{geometry}
+\pagenumbering{gobble}
+
+\newlength{\origwidth}
+\newlength{\origheight}
+\newlength{\origcolumnwidth}
+
+\setlength{\origwidth}{12.8cm}
+\setlength{\origheight}{9.6cm}
+\setlength{\origcolumnwidth}{20pc}
+%\setlength{\paperwidth}{\origwidth}
+%\setlength{\paperheight}{\origheight}
+
+\setlength\parindent{0pt}
+
+\usepgfplotslibrary{statistics}
+\usepgfplotslibrary[statistics]
+\usetikzlibrary{pgfplots.statistics}
+\usetikzlibrary[pgfplots.statistics]
+\usetikzlibrary{patterns}
+
+% the command uses macro keys
+\def\mackey#1{\edef\TEMP{\noexpand#1}\TEMP}
+
+\newcommand{\percentileBar}[7][1]{
+\draw[color_#1, thick] ([yshift=-2pt]axis cs:#3,#2)--([yshift=2pt]axis cs:#3,#2);
+\draw[color_#1, thick] (axis cs:#3,#2)--(axis cs:#4,#2);
+\draw[color_#1, pattern=pattern_#1, pattern color=color_#1, thick] ([yshift=-2pt]axis cs:#4,#2) rectangle([yshift=2pt]axis cs:#6,#2);
+\draw[color_#1, thick] ([yshift=-2pt]axis cs:#5,#2) rectangle([yshift=2pt]axis cs:#5,#2);
+\draw[color_#1, thick] (axis cs:#6,#2)--(axis cs:#7,#2);
+\draw[color_#1, thick] ([yshift=-2pt]axis cs:#7,#2)--([yshift=2pt]axis cs:#7,#2);
+}
+
+\newcommand{\autoboundingby}[1]{\setbox0=\vbox{\hbox{%
+\begin{tikzpicture}
+#1
+\end{tikzpicture}%
+}}
+\setlength{\paperwidth}{\wd0}
+\setlength{\paperheight}{\ht0}}
+
+
+% firstpage, following pages
+\newcommand{\autoboundingmultipage}[2]{\autoboundingby{#1%
+\coordinate (AUTOBOUNDING-NE) at (current bounding box.north east);%
+\coordinate (AUTOBOUNDING-SW) at (current bounding box.south west);%
+}\begin{document}
+\box0
+#2
+\end{document}}
+
+\newcommand{\tikzpage}[1]{\clearpage\newpage%
+\begin{tikzpicture}%
+\useasboundingbox (AUTOBOUNDING-SW) rectangle (AUTOBOUNDING-NE);
+#1
+\end{tikzpicture}%
+}
+
+\newcommand{\autobounding}[1]{\autoboundingmultipage{#1}{}}
+
+\newcommand{\tikzlegend}[2]{\autobounding{%
+\begin{axis}[
+    hide axis,
+    xmin=0,xmax=1,
+    ymin=0,ymax=1,
+	legend style={
+		fill=none,%
+		#1
+	}
+]
+#2
+\end{axis}}}
+
+\newcommand{\tikzcolorbar}[2]{\autobounding{%
+\begin{axis}[
+    hide axis,
+    xmin=0,xmax=1,
+    ymin=0,ymax=1,
+    colormap={map}{
+		#1
+    },
+    colorbar horizontal,
+	#2
+]
+\end{axis}}}
+
+\usetikzlibrary{calc}
+\tikzset{
+jump/.style={
+     to path={
+         let \p1=(\tikztostart),\p2=(\tikztotarget),\n1={atan2(\y2-\y1,\x2-\x1)} in
+         (\tikztostart) -- ($($(\tikztostart)!#1!(\tikztotarget)$)!0.1cm!(\tikztostart)$)
+         arc[start angle=\n1+180,end angle=\n1,radius=0.1cm] -- (\tikztotarget)}
+},
+jump/.default={0.5},
+jumpat/.style={
+     to path={
+         let \p1=(\tikztostart),\p2=(\tikztotarget),\n1={atan2(\y2-\y1,\x2-\x1)} in
+         (\tikztostart) -- ($($#1$)!0.1cm!(\tikztostart)$)
+         arc[start angle=\n1+180,end angle=\n1,radius=0.1cm] -- (\tikztotarget)}
+},
+}
+
+\newcommand{\coordbase}[5]{
+% scale (0,0)--(1,1) to the figure size
+\begin{scope}[xscale=#1,yscale=#2]
+% scale (0,0)--(\xmax,\ymax) to (0,0)--(1,1) 
+\begin{scope}[xscale=1/#3,yscale=1/#4]
+#5
+\end{scope}
+\end{scope}
+}
+
+\newcommand{\defaultcoordbase}[1]{%
+\coordbase{\xspan}{\yspan}{\xmax}{\ymax}{%
+#1
+}}
+
+\newcommand{\coordpage}[1]{\tikzpage{%
+\defaultcoordbase{%
+#1
+}}}

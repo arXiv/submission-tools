@@ -1,0 +1,85 @@
+{
+   "detected_toplevel_files" : [
+      {
+         "filename" : "arXivPotentialVersusGeometryRevisited.tex",
+         "issues" : [
+            {
+               "filename" : "arXivPotentialVersusGeometryRevisited.tex",
+               "info" : "14",
+               "key" : "issue_in_subfile"
+            }
+         ],
+         "process" : {
+            "compiler" : "pdflatex"
+         }
+      }
+   ],
+   "status" : {
+      "key" : "success"
+   },
+   "tex_files" : [
+      {
+         "filename" : "arXivPotentialVersusGeometryRevisited.tex",
+         "issues" : [
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/PVGRFig1__1.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/PVGRFig2__2.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/DevilsTower__3.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/CylinderWormhole__4.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/Wormhole0Amp__5.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/Wormhole1Amp__6.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/Spiral2CylinderForward__7.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/Wormhole2D3D__8.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/p2vsp4__9.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/p2vsp8__10.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/p2vsp16__11.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/p2vsp32__12.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/p2vsp64__13.pdf",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "C:/Users/Thomas Curtright/OneDrive - University of Miami/Desktop/arXiv attempts/graphics/p2vsp128__14.pdf",
+               "key" : "file_not_found"
+            }
+         ],
+         "language" : "latex",
+         "output_type" : "pdf"
+      }
+   ]
+}

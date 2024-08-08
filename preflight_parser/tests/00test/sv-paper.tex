@@ -1,0 +1,48 @@
+%
+% File:         paper.tex
+% Date:         Thu Oct  1 12:53:09 1998
+% Author:        (norbert)      
+%
+\documentclass[matlog%
+%,draft%
+,final%
+%,referee%
+]{svjour}
+%\usepackage{a4}
+\usepackage{times}
+%\renewcommand{\familydefault}{\sfdefault}
+%\usepackage{mathpple}
+\usepackage{current-macros}
+%\usepackage{changebar}
+
+%
+% HEADER
+%
+\title{Herbrand Disjunctions and Extraction of Proofs from Sketches}
+%\subtitle{}
+%\headnote{}
+%\dedication{}
+
+\author{Matthias Baaz \and Norbert Preining}
+\institute{Institute for Algebra and Computational Mathematics\\%
+  University of Technology\\%
+  Vienna, Austria\\%
+  \email{\{baaz,preining\}@logic.at}}
+
+\begin{document}
+
+\maketitle
+\input abstract
+%\keywords{blabla -- blabla -- blabla}
+\tableofcontents
+\listoffigures
+\input introduction
+\input herbrand-disjunction
+\input sketches
+\input herbrand-sketches
+\input howfast
+\input closing
+\addcontentsline{toc}{section}{Bibliography}
+\bibliography{currentbib}
+\bibliographystyle{alpha}
+\end{document}

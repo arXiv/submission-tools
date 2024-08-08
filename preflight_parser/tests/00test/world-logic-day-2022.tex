@@ -1,0 +1,2041 @@
+\documentclass[aspectratio=169]%[t]
+  {beamer}
+\usepackage{etex}
+\usefonttheme{serif}
+\usefonttheme{professionalfonts}
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage{hhline,bm,xspace}
+\usepackage{bussproofs,bpextra}
+%
+\renewcommand{\rmdefault}{pasj}
+\usepackage[small,euler-digits]{eulervm}
+\usepackage{bm}
+%
+%\let\digamma\relax
+%\usepackage[romanfamily=bright-osf,seriftt=true,stdmathdigits=true,lucidascale]{lucimatx}
+%
+\usepackage{amsmath}
+\usepackage{natbib}
+\usepackage{mathrsfs,proof,prooftree}
+\usepackage{tikz,pgfheaps}
+\usetikzlibrary{shapes,arrows,positioning,decorations,calc,snakes}
+\usepackage{ctable}
+\newif\ifoldstyle
+\oldstyletrue
+\newcommand{\nscosf}[1]{%
+  \ifoldstyle\textsc{\MakeLowercase{#1}}\else#1\fi}
+\usetheme{default}
+\setbeamercolor*{black on white}{bg=white,fg=black}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{theorems}[unnumbered]
+\setbeamersize{text margin left=3em,text margin right=3em}
+\setbeamertemplate{frametitle}
+{
+  %\begin{centering}
+    %\hbox{~}
+    \vspace{0.5em}
+    %\par
+    \textsc{\insertframetitle}
+    \par
+    %\medskip
+  %\end{centering}
+}
+\setbeamersize{text margin left=14pt,text margin right=14pt}
+
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\bibpunct{(}{)}{; }{a}{,}{,}
+\newcommand{\cutin}[1]{%
+\frame[c]{\begin{center}{\Large\bf\color{blue}#1}\end{center}}}
+\def\mis{\\[\medskipamount]}
+\def\bis{\\[\bigskipamount]}
+
+\newcommand{\kO}{\ensuremath 0_K}
+\newcommand{\kI}{\ensuremath 1_K}
+\newcommand{\Up}{\mathrm{Up}}
+\newcommand\HS{{\,\,|\,\,}}
+\newcommand\ProofLabel[1]{\LeftLabel{\emph{#1}}}
+\newcommand\SplitR[4]{{\ensuremath{}#1{:}{}^{#2}\,{\mathrm{Spt}_{#3,#4}}}}
+\newcommand\ComR[3]{{\ensuremath\mathrm{com}^{#1}_{#2,#3}}}
+\newcommand\ConR[1]{{\ensuremath{}#1{:}\,\mathrm{Ctr}}}
+\newcommand\Ga{\Gamma}
+\newcommand\De{\Delta}
+\newcommand\si{\sigma}
+\newcommand{\HND}{Hyper Natural Deduction\xspace}
+\newcommand{\HLK}{Hypersequent Calculus\xspace}
+\newcommand{\hnd}{GLHN\xspace}
+\newcommand{\hlk}{HLK\xspace}
+
+\newcommand\iSAT{\mathnormal{1}\hbox{\upshape -SAT}}
+\newcommand\iSATd{\iSAT^\bd}
+\newcommand\oSAT{\mathnormal{0^*}\hbox{\upshape -SAT}}
+\newcommand\oSATd{\oSAT^\bd}
+\newcommand\VAL{\hbox{\upshape VAL}}
+\newcommand\VALd{\VAL^\bd}
+\newcommand{\al}{\alpha}
+\newcommand{\be}{\beta}
+\newcommand{\ga}{\gamma}
+\newcommand{\om}[1]{\omega^{#1}}
+\newcommand{\up}[1]{{#1}^{\uparrow}}
+\def\ordinal#1{%
+  \ordord#1::}
+\def\ordord#1,#2,#3::{
+  \omega^2 #1 + \omega^1 #2 + \omega^0 #3}
+
+\def\zerord#1#2{%
+  \draw [line width=0.5] (#1-1pt,#2) -- (#1+1pt,#2) ;
+  %\draw (0,#1) node[anchor=east] {#2} ;
+}
+\def\zerohor#1#2{%
+  \draw [line width=0.5] (#1,#2-1pt) -- (#1,#2+1pt) ;
+  %\draw (0,#1) node[anchor=east] {#2} ;
+}
+
+\def\oneord#1#2#3{%
+  %\draw (0,0) node {#1 -- #2 -- #3};
+  \draw[-stealth, line width=0.5pt] (#1,#2) -- (#1,#3) ;
+  \draw [line width=0.5] (#1-1pt,#2) -- (#1+1pt,#2) ;
+}
+\def\onehor#1#2#3{%
+  %\draw (0,0) node {#1 -- #2 -- #3};
+  \draw[-stealth, line width=0.5pt] (#1,#3) -- (#2,#3) ;
+  \draw [line width=0.5] (#1,#3-1pt) -- (#1,#3+1pt) ;
+}
+\def\tword#1#2#3{%
+  \draw [line width=0.5] (#1-4pt,#2) -- (#1+1pt,#2);
+  \oneord{#1}{#2}{#3}
+  \pgfmathparse{(#3-#2)/3}
+  \pgfmathtruncatemacro\u\pgfmathresult
+  \oneord{#1-3pt}{#2}{#2 + \u pt}
+  \oneord{#1-3pt}{#2+\u pt}{#2+2*\u pt}
+  \draw[dotted, line width=0.5] (#1-3pt,#2+2*\u pt) -- (#1-3pt,#3) ;
+  %\oneord{#1-2pt}{#2+2*\u pt}{#2+3*\u pt}
+}
+\def\twohor#1#2#3{%
+  \draw [line width=0.5] (#1,#3-4pt) -- (#1,#3+1pt); gut
+  \onehor{#1}{#2}{#3} %gut
+  \pgfmathparse{((#1)-(#2))/3}
+  \pgfmathtruncatemacro\u\pgfmathresult
+  \onehor{#1}{#1-\u pt}{#3-3pt}
+  \onehor{#1-\u pt}{#1-2*\u pt}{#3-3pt}
+  \draw[dotted, line width=0.5] (#1-2*\u pt,#3-3pt) -- (#2,#3-3pt) ;
+  %\oneord{#1-2pt}{#2+2*\u pt}{#2+3*\u pt}
+}
+
+\def\axdelta{\mathnormal{\bd}}
+\def\axdi{{\ensuremath{\axdelta1}}}
+\def\axdii{{\ensuremath{\axdelta2}}}
+\def\axdiii{{\ensuremath{\axdelta3}}}
+\def\axdiv{{\ensuremath{\axdelta4}}}
+\def\axdv{{\ensuremath{\axdelta5}}}
+\def\axdr{{\ensuremath{\axdelta R}}}
+\def\axdel{{\ensuremath{\hbox{\scshape ax}\axdelta}}}
+\def\axdense{{\ensuremath{\hbox{\scshape den}}}}
+\def\proves{\mathrel{\vdash}}
+\def\nproves{\mathrel{\nvdash}}
+\newcommand\lOr{\bigvee}
+\newcommand\lequiv{\leftrightarrow}
+\newcommand\bd{\bigtriangleup} % Baaz Delta
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cC}{\mathcal{C}}
+\newcommand{\suchthat}{\mathrel{:}}
+\newcommand{\I}{v}
+\newcommand\qe[1]{\exists #1}
+\newcommand\qa[1]{\forall #1}
+\newcommand{\vup}{{\uparrow}}
+\newcommand{\vdn}{{\downarrow}}
+\newcommand{\dequiv}{\Leftrightarrow}
+\newcommand{\limp}{\supset}
+\newcommand{\Impl}{\limp}
+\newcommand{\bbR}{\mathbb{R}}
+\newcommand{\bbN}{\mathbb{N}}
+\newcommand{\bbC}{\mathbb{C}}
+\newcommand{\bbQ}{\mathbb{Q}}
+\newcommand{\entails}{\mathrel{\Vdash}}
+\newcommand{\gdl}[1]{{\bf G}_{#1}}
+\newcommand{\oper}{\mathnormal{\circ}}
+\newcommand{\lgc}{\mathnormal{\bf L}}
+\def\lequiv{\leftrightarrow}
+\def\Feq{{\cF\!/\mathnormal{\equiv}}}
+\newcommand{\sis}{\\[\medskipamount]}
+\newcommand{\hh}{\ |\ }
+\newcommand{\seq}{\Rightarrow}
+\newcommand\movemakebox[3]{%
+  \bgroup%
+  \setbox0=\hbox{\hskip #2\vbox to 0pt{\vskip #3 {#1}}}%
+  \dp0=0pt %
+  \ht0=0pt %
+  \wd0=0pt %
+  %\hbox to \textwidth{\hfill\hbox{\box0}}%
+  \hbox{\box0}
+  \egroup}
+\newcommand\img[4]{%
+  \bgroup%
+  \setbox0=\hbox{\hskip #3\vbox to 0pt{\vskip #4 \includegraphics[height=#2]{#1}}}%
+  \dp0=0pt %
+  \ht0=0pt %
+  \wd0=0pt %
+  %\hbox to \textwidth{\hfill\hbox{\box0}}%
+  \hbox{\box0}
+  \egroup}
+
+
+\pgfdeclareimage[interpolate=true,width=8cm]{luka}{lukasiewicz}
+\pgfdeclareimage[interpolate=true,width=8cm]{goedel}{goedel}
+\pgfdeclareimage[interpolate=true,width=8cm]{product}{product}
+\pgfdeclareimage[interpolate=true,width=3cm]{lukasmall}{lukasiewicz-tnorm}
+\pgfdeclareimage[interpolate=true,width=3cm]{goedelsmall}{goedel}
+\pgfdeclareimage[interpolate=true,width=3cm]{productsmall}{product}
+
+
+\parskip=8pt plus 3pt minus 3pt
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% here begins the stuff
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{\textsc{Gödel Logics -- a short survey}}
+\author{Norbert Preining\thanks{\url{norbert@preining.info}}}
+
+\date{Logic For the Friendship of Nations\\ 
+  UNESCO World Logic Day 2022\\
+  Virtual, January 2022}
+\institute{Japan} %Fujitsu Research}
+
+\begin{document}
+
+
+\frame{\titlepage}
+
+
+\begin{frame}
+  \frametitle{Today's program\hspace{4cm}}
+
+  \begin{itemize}
+  \item Development of many-valued logics\\
+    $t$-norm based logics
+  \item Gödel logics (propositional\\
+    quantified propositional, first order)
+  \item Gödel logics and \ldots
+  % \item Quantified propositional Gödel logics
+  % \item First Order Gödel Logics%
+    \movemakebox{\begin{tikz} \draw (0,0) node [rotate=90] {\tiny Gödel with a somehow famous physicist}; \end{tikz}}{195pt}{-80pt}
+    \img{goedeleistein.png}{130pt}{100pt}{-85pt}
+
+    \begin{itemize}
+    \item Topology
+    \item Order Theory
+    \item Computability
+    \end{itemize}
+  \item Other topics
+    \begin{itemize}
+    \item Kripke frames and beyond the reals
+    \item Monadic fragment
+    \item Proof theory
+    \end{itemize}
+  \item History
+  \item Conclusion
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Development of many-valued logics}
+  
+  \begin{block}{The most important stops}
+    \begin{itemize}
+    \item \textsc{Platon}, \textsc{Aristoteles} (De Interpretatione IX), 
+      \textsc{Ockham}: 
+      \emph{future possibilities}, problem of determination vs. fatalism.
+      \uncover<1-1>{\img{platon.jpg}{110pt}{-130pt}{10pt}}
+      \uncover<1-1>{\img{aristotle.jpg}{110pt}{-50pt}{10pt}}
+      \uncover<1-1>{\img{William_of_Ockham.png}{110pt}{40pt}{10pt}}\pause
+    \item \textsc{\L ukasiewicz} 1920: 3-valued logic of
+      \emph{non-determinism}
+      \uncover<2-2>{\img{Lukasiewicz.jpeg}{110pt}{-180pt}{10pt}}\pause
+    \item \textsc{Post} 1920: Many-valued logic dealing with
+      functional completion
+    \pause
+    \item \textsc{Gödel} 1932: Finite valued logics for approximation
+      of intuitionistic logic
+      \uncover<4-4>{\img{goedel1.jpeg}{110pt}{90pt}{0pt}}\pause
+    \item \textsc{Bo\v cvar} 1938: Logic of \emph{Paradoxa}
+    \item \textsc{Kleene} 1952: Logic of the \emph{unknown}
+    \item \textsc{Zadeh} 1965: Fuzzy sets and fuzzy logics
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+%\subsection{Generalization}
+
+\begin{frame}
+  \frametitle{How do we continue?}
+
+  \begin{block}{Arbitrary finite-valued logics}
+    For all finite-valued logics with truth-value functions there is
+    an automatic algorithm for generating a sequent calculus, proving
+    completeness etc (MultLog, MultSeq: \relax{Baaz, Fermüller,
+    Salzer, Zach et al.} 1996ff). 
+  \end{block}
+
+  \pause
+  \begin{block}{Infinite valued logics}
+    Does it make sense to take truth values from arbitrary partial
+    orderings? 
+  \end{block}
+
+  \pause
+  $\Rightarrow$ No, because \alert{every} logics with substitution property would
+    be a many-valued logic!
+    
+    \medskip
+    Take all sentences as truth values, and all sentences of the logic
+    as designated truth values.
+\end{frame}
+
+\section{$t$-norm based logics}
+\subsection{Design decisions}
+\begin{frame}
+  \frametitle{Design decisions}
+
+  \begin{block}{Basic requirements}
+    \begin{itemize}
+    \item Extension of classical logic
+    \item $[0,1]$ as super-set of the truth value set
+    \item functional relation between the truth value of a formula and
+      the one of its sub-formulas.
+    \end{itemize}
+  \end{block}
+
+  \pause
+  \begin{block}{Additional `natural' properties of the conjunction}
+    \begin{itemize}
+    \item associative ($(A\land B)\land C \Leftrightarrow A\land(B\land
+      C)$) 
+    \item commutative ($A\land B \Leftrightarrow B\land A$)
+    \item order preserving\\ 
+      If $A$ is less true than $b$, then $A\land C$ is less (or equal)
+      true than $B\land C$.
+    \item continuous
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\subsection{$t$-norms}
+\begin{frame}
+  \frametitle{Definition of (continuous) $t$-norms}
+
+  \begin{definition}
+    A $t$-norm is an associative, commutative, and monotone mapping
+    from $[0,1]^2\to [0,1]$ with $1$ as neutral element.
+    \begin{itemize}
+    \item $(x \star y) \star z = x \star (y \star z)$
+    \item $x \star y = y \star x$
+    \item $x\le y \limp x\star z \le y\star z$
+    \item $1\star x = x$
+    \item $\star$ is continuous
+    \end{itemize}
+  \end{definition}
+
+  \pause
+  \begin{block}{Algebraic view}
+    $\left<[0,1], \star, 1, \le\right>$ is a commutative and ordered monoid.
+  \end{block}
+\end{frame}
+
+% %\subsection{\L ukasiewicz $t$-norm}
+
+% \begin{frame}
+%   \frametitle{\L ukasiewicz $t$-norm}
+ 
+%  \begin{center}
+%    \begin{pgfpicture}{0cm}{0cm}{8cm}{6cm}
+%      \pgfputat{\pgfxy(0,0)}%
+%      {\pgfbox[left,base]{\pgfuseimage{luka}}}
+%      \pgfputat{\pgfxy(-1,5.5)}{\pgfbox[left,center]{$x \star_{\L} y = \max\{0,x+y-1\}$}}
+%    \end{pgfpicture}
+%  \end{center}
+% \end{frame}
+
+
+% %\subsection{Gödel $t$-norm}
+
+% \begin{frame}
+%   \frametitle{Gödel $t$-norm}
+ 
+%  \begin{center}
+%    \begin{pgfpicture}{0cm}{0cm}{8cm}{6cm}
+%      \pgfputat{\pgfxy(0,0)}%
+%      {\pgfbox[left,base]{\pgfuseimage{goedel}}}
+%      \pgfputat{\pgfxy(-1,5.5)}{\pgfbox[left,center]{$x \star_{G} y = \min\{x,y\}$}}
+%    \end{pgfpicture}
+%  \end{center}
+% \end{frame}
+
+% %\subsection{Product $t$-norm}
+
+% \begin{frame}
+%   \frametitle{Product $t$-norm}
+ 
+%  \begin{center}
+%    \begin{pgfpicture}{0cm}{0cm}{8cm}{6cm}
+%      \pgfputat{\pgfxy(0,0)}%
+%      {\pgfbox[left,base]{\pgfuseimage{product}}}
+%      \pgfputat{\pgfxy(-1,5.5)}{\pgfbox[left,center]{$x \star_{\Pi} y = xy$}}
+%    \end{pgfpicture}
+%  \end{center}
+% \end{frame}
+
+%\subsection{From $t$-norm to the logic}
+
+\begin{frame}
+  \frametitle{From $t$-norm to the logic}
+
+  \pause
+  \begin{block}{The residuum of a $t$-norm}
+    Every $t$-norm has a residuum
+    \begin{eqnarray*} 
+      x \star z \le y &\Leftrightarrow& z \le (x\Rightarrow y)\\
+      x \Rightarrow y &:=& \max \{ z \suchthat x\star z \le y \}
+    \end{eqnarray*}
+  \end{block}
+
+  \pause
+  \begin{block}{Truth functions for operators}
+    \begin{itemize}
+    \item strong conjunction $\&$: defined via the $t$-norm
+    \item implication $\limp$: defined via the residuum
+    \item Negation: $¬A := A \limp \bot$
+    \item (weak) disjunction: $A\lor B := (A\limp B)\limp B$
+    \item (weak) conjunction: $A\land B := ¬(¬A\lor¬B)$
+    \item strong disjunction: $A\lOr B := ¬(A\limp¬B)$
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+%\subsection{Properties of $t$-norms}
+\begin{frame}
+  \frametitle{Basic $t$-norms}
+
+  \begin{center}
+    \begin{tabular}{p{3.7cm}p{3.7cm}p{3.7cm}}
+      Gödel & \only<2->{\L ukasiewicz} &  \only<3->{Product}\\
+      \begin{pgfpicture}{0cm}{0cm}{3cm}{3cm}
+        \pgfputat{\pgfxy(0,0)}{\pgfbox[left,base]{\pgfuseimage{goedelsmall}}}
+      \end{pgfpicture}
+      &
+      \only<2->{%
+        \begin{pgfpicture}{0cm}{0cm}{3cm}{3cm}
+          \pgfputat{\pgfxy(0,0)}{\pgfbox[left,base]{\pgfuseimage{lukasmall}}}
+        \end{pgfpicture}
+      }
+      &
+      \only<3->{%
+        \begin{pgfpicture}{0cm}{0cm}{3cm}{3cm}
+          \pgfputat{\pgfxy(0,0)}{\pgfbox[left,base]{\pgfuseimage{productsmall}}}
+        \end{pgfpicture}
+      }
+      \\
+      \raggedright non-trivial idempotent elements
+      \hphantom{hheaffd af kada dj ka} &
+      \only<2->{%
+        \raggedright no non-trivial idempotent elements, but zero
+	divisors &
+      }
+      \only<3->{%
+        \raggedright  no non-trivial idempotent elements, no zero divisors
+      }
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Representation of  $t$-norm}
+  \begin{theorem}[Mostert and Shields, 1957]
+    Every $t$-norm is the ordinal sum of \L ukasiewicz $t$-norm and
+    Product $t$-norm.
+  \end{theorem}
+
+  \begin{center}
+    \begin{pgfpicture}{0cm}{0cm}{5cm}{5cm}
+      \pgfrect[stroke]{\pgfxy(0,0)}{\pgfxy(5,5)}
+      \pgfrect[stroke]{\pgfxy(0.5,0.5)}{\pgfxy(1,1)}
+      \pgfrect[stroke]{\pgfxy(1.5,1.5)}{\pgfxy(0.5,0.5)}
+      \pgfrect[stroke]{\pgfxy(3,3)}{\pgfxy(1,1)}
+      \pgfrect[stroke]{\pgfxy(4.5,4.5)}{\pgfxy(0.5,0.5)}
+      \pgfsetdash{{0.05cm}{0.2cm}}{0.1cm}
+      \pgfxyline(0,0)(0.5,0.5)
+      \pgfxyline(2,2)(3,3)
+      \pgfxyline(4,4)(4.5,4.5)
+      \pgfputat{\pgfxy(1,1)}{\pgfbox[center,center]{\L}}
+      \pgfputat{\pgfxy(1.75,1.75)}{\pgfbox[center,center]{$\Pi$}}
+      \pgfputat{\pgfxy(3.5,3.5)}{\pgfbox[center,center]{$\Pi$}}
+      \pgfputat{\pgfxy(4.75,4.75)}{\pgfbox[center,center]{\L}}
+      \pgfputat{\pgfxy(1.5,3.5)}{\pgfbox[center,center]{G}}
+      \pgfputat{\pgfxy(3.5,1.5)}{\pgfbox[center,center]{G}}
+    \end{pgfpicture}
+  \end{center}
+\end{frame}
+
+
+%\section{Questions and results}
+\subsection{Basic Logic}
+\begin{frame}
+  \frametitle{Questions and results}
+  \begin{itemize}
+    \item Basic logic: the logic of all $t$-norms (\relax{Hajek} 1998)
+    \item Axiomatizability: propositional logic: easy, first-order:
+      only Gödel logics are axiomatizable (\relax{Scarpellini} 1962,
+      \relax{Horn} 1969, \relax{Takeuti, Titani} 1984, \relax{Takano}
+      1987) 
+    \item calculi for propositional logic: sequent calculus for Gödel
+      logic (\relax{Avron} 1991, \emph{hyper sequent calculus}), $\Pi$- und
+      \L-Logik (\relax{Gabbay}, \relax{Metcalfe}, \relax{Olivetti}
+      2003). 
+    \item calculi for first order logic: only for Gödel logic
+      (\relax{Baaz}, \relax{Zach} 2000) 
+    \item Game interpretation: \L ukasiewicz Logic: interpretation via
+      Ulam's games (\relax{Mundici}, 1991-93),
+      Gödel, Product, \L ukasiewicz: interpretation via Lorenzen style
+      games (\relax{Giles} 1970; \relax{Fermüller},
+      \relax{Metcalfe}, \relax{Ciabattoni} 2003-04)
+    \item other questions: automatic theorem proving, size of
+      families, \dots
+  \end{itemize}
+\end{frame}
+
+
+\cutin{Gödel Logics}
+
+\def\aaaa#1#2#3#4#5#6#7{%
+  \only<#6->{\draw (#1, #3) -- (#1, #2);
+  \draw (#1, #3) node[anchor=south] {\alt<#6>{\alert{#4}}{#4}};
+  \draw (#1, #2) node[anchor=north] {\alt<#6>{\alert{#5}}{#5}};}
+  \only<#6>{\draw (0,-3) node[anchor=south west] {#7};}
+}
+\begin{frame}
+  \frametitle{History}
+  \begin{center}
+  \begin{tikzpicture}
+    \shade[left color=gray,right color=gray!30] (0,0) rectangle +(10,0.5);
+    \draw (0,1.7) node[anchor=south west] {Timeline};
+    \aaaa{0.42}{-0.4}{0.5}{1933}{Gödel\strut}1{finitely valued logics}
+    \aaaa{4.08}{-0.4}{0.5}{1959}{Dummett\strut}2{infinitely valued propositional Gödel logics}
+    \aaaa{5.57}{-0.4}{0.5}{1969}{Horn\strut}3{linearly ordered Heyting algebras}
+    \aaaa{7.71}{-0.4}{0.5}{1984}{Takeuti-Titani\strut}4{intuitionistic fuzzy logic}
+    \aaaa{8.71}{-0.9}{1}{1991}{Avron\strut}5{hypersequent calculus}
+    \aaaa{9.4}{-1.4}{0.5}{1998}{Hájek\strut}6{$t$-norm based logics}
+    \aaaa{8.57}{-1.9}{1.5}{since 90ies}{Viennese group\strut}7{proof theory,
+      \#, Kripke, qp, fragments, \ldots}
+  \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+\cutin{Propositional Logics}
+
+\begin{frame}
+  \frametitle{Propositional logic}
+
+  Usual propositional language, $\lnot A$ is
+  defined as $A\limp\bot$.
+
+  \begin{block}{Evaluations} 
+  Fix a truth value set 
+  $\{0,1\}\subseteq V \subseteq [0,1]$\\
+  $v$ maps propositional variables to elements of~$V$
+  \begin{align*}
+    \I(A\land B) &= \min\{\I(A),\I(B)\}\\
+    \I(A\lor B)  &= \max\{\I(A),\I(B)\}\\
+    \I(A\limp B) &= \begin{cases}\I(B) & \text{if $\I(A) > \I(B)$} \\
+      1     & \text{if $\I(A) \le \I(B)$.}\end{cases}
+  \end{align*}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Negation}
+
+  This yields the following definition of the semantics of~$\lnot$:
+  \[\I(\lnot A) = \begin{cases} 0 & \text{if $\I(A)>0$}\\
+    1 & \text{otherwise}\end{cases}\]
+\end{frame}
+
+\begin{frame}
+  \frametitle{Takeuti's observation}
+    Gödel implication
+    \[
+    \I(A\limp B) = \begin{cases}\I(B) & \text{if $\I(A) > \I(B)$} \\
+      1     & \text{if $\I(A) \le \I(B)$.}\end{cases}
+    \]
+    is the only one satisfying: 
+    \begin{itemize}
+    \item $\I(A)\le\I(B) \dequiv \I(A\limp B)=1$
+
+      \medskip
+    \item $\Pi \cup \{ A \} \entails B \dequiv \Pi \entails A\limp B$
+
+      \medskip
+    \item $\Pi \entails B \Rightarrow 
+      \min\{\I(A) \suchthat A\in\Pi \} \le \I(B)$\\ (and if 
+      $\Pi=\emptyset\Rightarrow 1\le\I(B)$)
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Definition of the logic}
+
+  \[ \gdl{V} = \{ A \suchthat \forall v \mbox{ into $V$}: v(A) = 1\} \]
+
+  \pause
+  \begin{block}{Examples}
+    \begin{tabbing}
+      $V_1 = \{0, 1/2, 1\}, V_2 = \{0, 1/3, 1\} \quad$ \=\kill
+      $V = \{0,1\}$ \> $\to \gdl V = CPL$\\[4pt]
+      $V_1 = \{0, 1/2, 1\}, V_2 = \{0, 1/3, 1\}$ \> 
+        $\to \gdl{V_1} = \gdl{V_2}$\\[4pt]
+      $V_\vup = \{1 - 1/n \suchthat n\ge1\} \cup \{1\}$ \>
+        $\to \gdl{V_\vup} = \gdl\vup$\\[4pt]
+      $V_\vdn = \{1/n \suchthat n\ge1\} \cup \{0\}$ \>
+        $\to \gdl{V_\vdn} = \gdl\vdn$
+    \end{tabbing}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Propositional completeness}
+  \begin{itemize}
+  \item Lindenbaum algebra of the formulas
+  \item show that the algebra $\Feq$ is a subalgebra of
+    \[X = \prod_{i=1}^{n!} \cC(\bot,\pi_i(p_1,\ldots,p_n),\top)\]
+    ($\cC(\ldots)$ being the chain consisting of the listed elements, and
+    the $\pi_i$ all the permutations) by defining
+    \[\phi(|\alpha|) = (|\alpha|_{\cC_1},\ldots,|\alpha|_{\cC_{n!}})\]
+  \end{itemize}
+\end{frame}
+
+% \begin{frame}
+%   \frametitle{Example L-algebra and chains}
+%   \begin{tikzpicture}[scale=1]
+%     \draw (-3,0) -- (0,3) -- (3,0) -- (0,-3) -- (-3,0);
+%     \draw (-2,-1) -- (1,2);
+%     \draw (-1,-2) -- (2,1);
+%     \draw (1,-2) -- (-2,1);
+%     \draw (2,-1) -- (-1,2);
+%     \draw (0,-3) node[anchor=north] {$\bot,\bot$};
+%     \draw (0,-3) node[anchor=south] {$\bot$};
+
+%     \draw (-1,-2) node[anchor=north] {$p,\bot$};
+%     \draw ( 1,-2) node[anchor=north] {$\bot,q$};
+
+%     \draw (-2,-1) node[anchor=north] {$q,\bot$};
+%     \draw ( 2,-1) node[anchor=north] {$\bot,p$};
+
+%     \draw (0,-1) node[anchor=north] {$p,q$};
+%     \draw (0,-1) node[anchor=south] {$p\land q$};
+%     \draw (-3,0) node[anchor=north] {$\top,\bot$};
+%     \draw ( 3,0) node[anchor=north] {$\bot,\top$};
+    
+%     \draw (-1,0) node[anchor=north] {$q,q$};
+%     \draw (-1,0) node[anchor=south] {$q$};
+
+%     \draw ( 1,0) node[anchor=north] {$p,p$};
+%     \draw ( 1,0) node[anchor=south] {$p$};
+    
+%     \draw (-2,1) node[anchor=north] {$\top,q$};
+%     \draw (-2,1) node[anchor=south east] {$p\limp q$};
+
+%     \draw ( 2,1) node[anchor=north] {$p,\top$};
+%     \draw ( 2,1) node[anchor=south west] {$q\limp p$};
+
+%     \draw (-1,2) node[anchor=north] {$\top,p$};
+%     \draw (-1,2) node[anchor=south east] {$(p\limp q)\lor q$};
+
+%     \draw ( 1,2) node[anchor=north] {$q,\top$};
+%     \draw ( 1,2) node[anchor=south west] {$(q\limp p)\lor p$};
+%     \draw ( 0,3) node[anchor=north] {$\top,\top$};
+%     \draw ( 0,3) node[anchor=south] {$\top$};
+
+%     \draw ( 2,-3) node[anchor=west] {\vbox{$L$-algebra of\\
+%          $\cC(\bot,p,q,\top) \times \cC(\bot,q,p,\top)$}};
+
+%     \draw ( 4,0) node[anchor=west] {\vbox{%
+%       \tiny 
+%             upper label\\representatives%
+% 	    \\[\medskipamount]%
+%             lower label\\elements of direct product%
+% 	    }};
+%   \end{tikzpicture}
+% \end{frame}
+
+\begin{frame}
+  \frametitle{Consequences}
+  \begin{itemize}
+  \item countably many propositional Gödel logics
+   \[ 
+     \gdl{2} \supset \gdl{3} \supset \ldots \supset \gdl n \supset \ldots
+     \supset \gdl\vup = \gdl\vdn = \gdl V = \gdl\infty = \bigcap_{n\ge 2} \gdl n
+   \]
+   (where $V$ is any infinite truth value set)\sis
+  \item if $f: V_1 \mapsto V_2$ with $f(0) = 0$ and $f(1) = 1$, order-preserving
+    ($x<y \Rightarrow f(x) < f(y)$), then
+    \[ \gdl{V_1} \supseteq \gdl{V_2} \]\sis
+  \item check on satisfiability and validity
+  \end{itemize}
+\end{frame}
+
+\cutin{Quantified Propositional Logics}
+
+\begin{frame}
+  \frametitle{\onslide<2->{\cred{Quantified} }Propositional Logic}
+
+  Fix a truth value set 
+  $\{0,1\}\subseteq V \subseteq [0,1]$%
+  \onslide<2->{, \cred{$V$ closed}}\\
+  $v$ maps propositional variables to elements of~$V$
+  \begin{align*}
+    \I(A\land B) &= \min\{\I(A),\I(B)\}\\
+    \I(A\lor B)  &= \max\{\I(A),\I(B)\}\\
+    \I(A\limp B) &= \begin{cases}\I(B) & \text{if $\I(A) > \I(B)$} \\
+      1     & \text{if $\I(A) \le \I(B)$}\end{cases}\\
+    \onslide<2->{
+    \cred{\I(\qa p A(p))} &\cred{= \inf \{ \I(A(p)) \suchthat p\in P \}}\\
+    \cred{\I(\qe p A(p))} &\cred{= \sup \{ \I(A(p)) \suchthat p\in P \}}
+    }
+  \end{align*}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Properties}
+
+  \begin{center}
+    \begin{tabular}[h]{lcccc}
+      \toprule%
+       & $V_\downarrow$ & $V_\uparrow$ & $V_\infty$\\
+       \midrule
+       Decidability & \textsc{s1s} & \textsc{s1s} & \textsc{qe}\\
+       Axiomatisation & \textsc{hs+$\oper$} & \textsc{hs+$\oper$}
+       & \textsc{hs, gs}\\
+       QE & {with $\oper$} & {with $\oper$} & {yes}\\
+       \bottomrule
+    \end{tabular}
+  \end{center}
+  (Baaz, Veith, Zach, P. 2000--)
+  \pause
+  \begin{itemize}
+  \item uncountably many different quantified propositional logics
+    (coding the topological structure)\pause
+  \item $\gdl{\uparrow}^{qp} = \bigcap_{n\in \bbN} \gdl{n}^{qp}$
+  \item $\bigcap_{V\subseteq[0,1]}\gdl{V}^{qp}$ is \cred{not} a
+    quantified propositional Gödel logic (in contrast
+    to propositional and first-order Gödel logics)
+  \end{itemize}
+\end{frame}
+
+
+\cutin{First Order Logics}
+
+
+\begin{frame}
+  \frametitle{First Order Gödel Logics}
+
+  Fix a truth value set 
+  $\{0,1\}\subseteq V \subseteq [0,1]$, $V$ closed
+
+  Interpretation $\I$ consists of
+  \begin{itemize}
+  \item a nonempty set $U$, the universe of $\I$
+
+    \medskip
+  \item for each $k$-ary predicate symbol~$P$ a function $P^\I: U^k\to V$
+
+    \medskip
+  \item for each $k$-ary function symbol~$f$, a function $f^\I: U^k\to U$
+
+    \medskip
+  \item for each variable~$x$ an object $x^\I\in U$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Semantic cont.}
+  Extend the valuation to all formulas
+  \begin{align*}
+    \I(A\land B) &= \min\{\I(A),\I(B)\}\\[\medskipamount]
+    \I(A\lor B)  &= \max\{\I(A),\I(B)\}\\[\medskipamount]
+    \I(A\limp B) &= \begin{cases}\I(B) & \text{if $\I(A) > \I(B)$} \\[\medskipamount]
+      1     & \text{if $\I(A) \le \I(B)$}\end{cases}\\[\medskipamount]
+    \I(\qa x A(x)) &= \inf \{ \I(A(u)) \suchthat u\in U \}\\[\medskipamount]
+    \I(\qe x A(x)) &= \sup \{ \I(A(u)) \suchthat u\in U \}
+  \end{align*}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Horn-Takeuti-Titani-Takano -- axiomatizability}
+
+  Axiomatizability of $\gdl{[0,1]}$:
+  \begin{eqnarray*}
+    \text{LIN:} & A\limp B \lor B\limp A\\
+    \text{QS:}  & \qa x(A(x) \lor B) \limp (\qa xA(x) \lor B)\\[10pt]\pause
+    \text{\textsf{GL}:} & \text{IL} +  \text{LIN} + \text{QS}
+  \end{eqnarray*}
+
+  \pause
+  \begin{itemize}
+  \item Horn (1969)\\
+    \emph{logic with truth values in a linearly ordered Heyting
+      algebra}
+
+    \medskip
+  \item Takeuti-Titani (1984), Takano (1987)\\
+    \emph{intuitionistic fuzzy logic}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Takano's proof}
+  
+  \begin{itemize}
+  \item set of formulas $\cF$, equivalence relation $\equiv$ by
+    provable equivalence
+    
+    \medskip
+  \item show that $\cF/\mathnormal{\equiv}$ is a (linear) Gödel
+    algebra
+
+    \medskip
+  \item embed $\cF/\mathnormal{\equiv}$ into $[0,1]$
+
+    \medskip
+  \item show that embedding preserves infima and suprema
+    (order-theoretic infima versus topological infima)
+  \end{itemize}
+\end{frame}
+
+
+
+
+% \newcommand{\nnn}[2]{
+%   \draw[line width=1pt] (#1,-0.2) -- (#1,0.2);
+%   \draw (#1,0.3) node[anchor=south] {#2};
+% }
+% \begin{frame}
+%   \frametitle{Embedding procedure}
+%   \[ \cF = \{ F_1 = [\bot], F_2 = [\top], F_3, \ldots \} \]
+  
+
+%   \begin{tikzpicture}
+%     \draw[line width=1pt] (0,0) -- (6,0);
+%     \nnn{0}{$F_1$}
+%     \nnn{6}{$F_2$}
+%     \draw (0,-0.3) node[anchor=north] {$0$};
+%     \draw (6,-0.3) node[anchor=north] {$1$};
+
+%     \onslide<2->{
+%       \nnn{3}{$F_3$}
+%       \draw (8,1) node {$F_1 < F_3 < F_2$};
+%     }
+%     \onslide<3->{
+%       \nnn{4.5}{$F_4$}
+%       \draw (8,0.5) node {$F_3 < F_4 < F_2$};
+%     }
+%     \onslide<4->{
+%       \nnn{3.75}{$F_5$}
+%       \draw (8,0) node {$F_3 < F_5 < F_4$};
+%     }
+%     \onslide<5->{
+%       \nnn{1.5}{$F_6$}
+%       \draw (8,-0.5) node {$F_1 < F_6 < F_3$};
+%     }
+%     \onslide<6->{
+%       \nnn{5.25}{$F_7$}
+%       \draw (8,-1) node {$F_4 < F_7 < F_2$};
+%     }
+%   \end{tikzpicture}
+% \end{frame}
+
+% \begin{frame}
+%   \frametitle{Conditions on truth value set and embedding}
+%   \begin{itemize}
+%   \item contains a countable dense-in-itself subset that includes $0$
+%     and $1$
+    
+%     \medskip
+%   \item each element of this subset (but $0$ and $1$) is infimum and
+%     supremum of elements in the subset
+    
+%     \medskip
+%   \item the embedding preserves infima and suprema (order theoretic to
+%     topologic) 
+%   \end{itemize}
+% \end{frame}
+
+\begin{frame}
+  \frametitle{Connections}
+
+  Gödel Logics and \ldots
+  \begin{itemize}
+  \item topology\bis
+  \item order theory\bis
+  \item computation
+  \end{itemize}
+\end{frame}
+
+\cutin{Gödel Logics and Topology}
+
+\begin{frame}
+  \frametitle{Possible truth value sets}
+
+  \begin{block}{Perfect set}
+    A set $P\subseteq \bbR$ is perfect if it is closed and all its
+    points are limit points in $P$.
+  \end{block}
+
+  \begin{block}{Cantor-Bendixon}
+    Any closed $V\subseteq \bbR$ can be uniquely written as $V = P\cup
+    C$, with $P$ a perfect subset of $V$ and $C$ countable and open.
+  \end{block}
+% \end{frame}
+
+% \begin{frame}
+  \pause
+  \begin{block}{Examples for perfect sets}
+  \begin{itemize}
+  \item $[0,1]$, any closed interval, any finite union of closed
+    intervals
+
+    \medskip
+  \item Cantor Middle Third set $\bbC$: all numbers of $[0,1]$ that do
+    not have a $1$ in the triadic notation (cut out all open middle
+    intervals recursively)\\
+    (perfect but nowhere dense)
+  \end{itemize}
+\end{block}
+\end{frame}
+
+% \pause
+%   \begin{block}{Consequence}
+%     The first order Gödel logics of $[0,1]$ and of $\bbC$ coincide.
+%   \end{block}
+% \end{frame}
+
+% \begin{frame}
+%   \frametitle{Full characterization of Axiomatizability}
+
+%   \begin{block}{Recursively axiomatizable}
+%     \begin{itemize}
+%     \item finitely valued
+%     \item $V$ contains a perfect subset~$P$ and $0\in P$ (standard)
+%     \item $V$ contains a perfect subset~$P$ and $0$ is isolated
+%     \end{itemize}
+%   \end{block}
+
+%   \pause
+%   \begin{block}{Not recursively enumerable}
+%     \begin{itemize}
+%     \item countably infinite truth value set
+%     \item every neighbourhood of~$0$ is countably infinite
+%     \end{itemize}
+%   \end{block}
+
+%   (P. -- PhD; Baaz, P., Zach 2007)
+% \end{frame}
+
+% \cutin{Addition of $\bd$}
+
+\begin{frame}
+  \frametitle{The $\bd$ operator}
+  \[ \mathop{\bd}(x) = \begin{cases} 1 & \text{if $x=1$}\\ 0 & \text{otherwise} \end{cases} \]
+
+  \begin{itemize}
+  \item introduced and axiomatised by Takeuti and Titani in their discussion
+    of intuitionistic fuzzy logic\mis
+  \item Baaz introduced and axiomatised in the context of Gödel logics\mis
+  \item parallels the `recognizability' of $0$, i.e., makes $1$ recognizable.\mis
+  \item axiomatization of Gödel logics with $\bd$ using Hilbert style
+    calculus
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Axiomatisation of $\bd$}
+
+  Baaz gave the following Hilbert style axiomatisation of the $\bd$ 
+  operator:
+  \begin{align*}
+    \axdi &\quad \bd A\lor \lnot\bd A\\
+    \axdii &\quad \bd (A\lor B) \limp (\bd A \lor \bd B)\\
+    \axdiii&\quad \bd A \limp A\\
+    \axdiv &\quad \bd A \limp \bd\bd A\\
+    \axdv   &\quad \bd (A\limp B)\limp(\bd A\limp\bd B) \\
+    \axdr & \quad A \proves \bd A
+  \end{align*}
+  
+  Extension of the interpretation:
+  \[
+  \I(\bd A) = \begin{cases} 1 & \text{if\ } \I(A) = 1 \\
+    0 & \text{if\ } \I(A) < 1
+  \end{cases}
+  \]
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Full characterization of $\bd$-Axiomatizability}
+
+  \begin{block}{Recursively axiomatizable}
+    \begin{itemize}
+    \item finitely valued
+    \item $V$ contains a perfect subset~$P$ and for both~$0$ and~$1$
+      it holds that they are either in the perfect kernel or isolated
+      (4 cases)
+    \end{itemize}
+  \end{block}
+
+  \pause
+  \begin{block}{Not recursively enumerable}
+    \begin{itemize}
+    \item countably infinite truth value set
+    \item either~$0$ or~$1$ is not isolated but not in the perfect kernel
+    \end{itemize}
+  \end{block}
+
+  %(Baaz, P. 2016)
+\end{frame}
+
+%\cutin{Satisfiability}
+
+\begin{frame}
+  \frametitle{Axiomatizability}
+  
+\begin{center}
+\begin{tabular}[ht]{l|ccc|c|c}
+  \multicolumn{6}{c}{$\VALd_V$ \hspace{2em} $(\iSATd_V)^c$ \hspace{2em} $(\oSATd_V)^c$}\\
+  \toprule
+       & \multicolumn{3}{c|}{uncountable} & countable inf & finite \\
+  with~$\bd$ & $1\in V^\infty$ & $1$ isolated & otherwise  &  &\\
+  \midrule
+  $0\in V^\infty$ & re & re & not re & / & / \\
+  $0$ isolated & re & re & not re & not re & re\\
+  otherwise & not re & not re & not re & not re & / \\
+  \bottomrule
+
+\end{tabular}
+
+\end{center}
+
+\begin{center}
+\begin{tabular}[ht]{l|c|c|c}
+  \multicolumn{4}{c}{$\VAL_V$ \hspace{2em} $(\iSAT_V)^c = (\oSAT_V)^c$}\\
+  \toprule
+  without~$\bd$ & uncountable & countable inf & finite \\
+  \midrule
+  $0\in V^\infty$ & re & / & / \\
+  $0$ isolated & re & only $(\iSAT_V)^c$, $(\oSAT_V)^c$ re & re\\
+  otherwise & not re  & not re & / \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+  (Baaz, P., Zach 2007; Baaz, P. 2016)
+
+\end{frame}
+
+\cutin{Gödel Logics and Order Theory}
+
+\begin{frame}
+  \frametitle{Dummett -- number of different logics}
+
+  \begin{block}{Dummett (1959)}
+    All propositional (Gödel) logics based on infinite truth value sets
+    coincide. Thus, in total there are $\aleph_0$ different propositional logics.
+  \end{block}
+
+  \pause
+  \begin{block}{Quantified propositional}
+    $\aleph_1$ by coding empty and non-empty intervals
+  \end{block}
+
+  \pause
+  \begin{block}{First order?}
+    Lower bounds: always $\aleph_0$ (finitely valued, quantifier alterations,
+    Cantor-Bendixon rank)
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Counting first order logics}
+
+  \begin{block}{Comparing logic}
+    If there is an injective, continuous and order preserving
+    embedding from $V_1$ into $V_2$ that preserves~$0$ and~$1$, then
+    $\gdl{V_1}\supseteq\gdl{V_2}$.
+  \end{block}
+
+  \pause
+  \begin{block}{Fraïssé  Conjecture (1948), Laver (1971)}
+    A $(Q,\le)$ with reflexive and transitive $\le$ is a
+    \emph{quasi-ordering}.
+
+    The set of scattered linear orderings ordered by embeddability is
+    a \emph{well-quasi-ordering} (does not contain infinite
+    anti-chains nor infinitely descending chains)
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Examples for quasi-orderings}
+
+  \begin{block}{Example}
+    The collection of all  linear orderings together with 
+    embeddability form a quasi-ordering, but not a partial
+    ordering.
+
+    $\bm{\eta}$ and $\bm{\eta}+\mathbf{1}$ are different order types,
+    but each embeddable into the other.
+  \end{block}
+
+  \pause
+  \begin{block}{Example}
+    The collection of all linear orderings contain infinite descending
+    chains, e.g. the order types of dense suborderings of $\bbR$.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Transfer to Gödel logics}
+
+  \begin{block}{Generalized Fraïssé Conjecture}
+    The class of countable closed subsets of the reals with respect to
+    injective and continuous embeddability is a well-quasi-ordering.
+  \end{block}
+
+  \pause
+  \begin{block}{GFC for Gödel logics}
+    The class of countable Gödel logics, ordered by $\supseteq$, is a
+    wqo. 
+  \end{block}
+
+
+  \pause
+  \begin{block}{Final result}
+    The number of first order Gödel logics is $\aleph_0$.
+  \end{block}
+
+  (Beckmann, Goldstern, P. 2008)
+
+\end{frame}
+
+% \begin{frame}
+%   \frametitle{Counting in WQOs}
+
+%   Let $(Q, {\le})$ be a wqo
+%   with uncountable many $\equiv$-equivalence classes.
+%   Then there exists a  1-1 monotone map $f:\omega_1\to Q$. 
+
+%   Each countable Gödel logic is a subset of the fixed countable set
+%   of all formulas, thus it cannot contain a copy of $\omega_1$.
+
+%   \pause
+%   The class of countable Gödel logics is countable.
+
+%   \pause
+%   \begin{block}{Final result}
+%     The number of first order Gödel logics is $\aleph_0$.
+%   \end{block}
+% \end{frame}
+
+
+\cutin{Gödel Logics and Computation}
+
+
+
+\begin{frame}
+  \frametitle{Motivation}
+\begin{itemize}
+\item
+Arnon Avron: \emph{Hypersequents, Logical Consequence and Intermediate Logics
+  for Concurrency} 
+Ann.Math.Art.Int. 4 (1991) 225-248
+\pause
+
+\begin{itemize}
+\item
+\textit{The second, deeper objective of this paper is to contribute towards a
+  better understanding of the notion of logical consequence in general, and
+  especially its possible relations with parallel computations}
+%\pause
+
+\item
+\textit{We believe that these logics [...] could serve as bases for parallel
+  $\lambda$-calculi.} 
+%\pause
+
+\item
+\textit{The name ``communication rule'' hints, of course, at a certain
+  intuitive interpretation that we have of it as corresponding to the idea of
+  exchanging information between two multiprocesses: [...]}
+\end{itemize}
+%\pause
+
+% \item
+% General aim: provide Curry-Howard style correspondences for parallel
+% computation, starting from logical systems with good intuitive
+%   algebraic / relational semantics. 
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Setting the stage}
+  \begin{center}
+    \tikzset{every picture/.style={scale=1}}
+    \begin{tikzpicture}
+      \draw (0,-5) node {\ } ;
+        \draw (0,0) node[draw,thick,ellipse] {IL} ; 
+        \draw (8,0) node[draw,thick,ellipse] {$\lambda$} ; 
+
+% ND 
+        \draw (4,0) node[draw,thick,ellipse] {ND} ;
+        \draw (2.9,0) node {$\Leftrightarrow$} ;
+        \draw (2,0) node[draw,thick,ellipse] {LJ} ;
+        \draw (1,0) node {$\Leftrightarrow$} ;
+        \draw (6,0) node {$\Longleftrightarrow$} ;
+        \draw (6,0) node[anchor=south] {Curry Howard} ;
+
+      \onslide<2>{%
+        \draw (4,-2) node {\emph{\alert{Every proof system hides a model of
+            computation.}}} ;
+     }
+
+%GL
+	\onslide<3->{%
+      \draw (0,-3) node[draw,thick,ellipse] {GL} ; 
+        \draw (2,-3) node[draw,thick,ellipse] {HLK} ;
+        \draw (0.9,-3) node {$\Leftrightarrow$} ;
+        \draw (8,-3) node[draw,thick,ellipse] {?} ;
+        \draw (6,-3) node {$\Longleftrightarrow$?} ;
+      \alert{%
+        \draw (4,-3) node[draw,thick,ellipse] {HND} ;
+        \draw (2.95,-3) node {$\Leftrightarrow$} ;
+        % \draw (3.8,-4) node {today's topic} ;
+      }}
+      \onslide<4->{%
+        \draw (3.8,-5) node [align=center]
+        {General aim: provide Curry-Howard style\\
+          correspondences for parallel computation,\\
+          starting from logical systems with good intuitive\\
+          algebraic / relational semantics. } ;
+    }
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+
+% \begin{frame}
+%   \frametitle{Previous work}
+%   \begin{block}{Hirai, FLOPS 2012}
+%     \textit{A Lambda Calculus for Gödel-Dummett Logics Capturing
+%       Waitfreedom}
+%     \begin{itemize}
+%     \item change of both syntax and semantics
+%     \item different calculus
+%     \end{itemize}
+%   \end{block}
+
+%   \pause
+%   \begin{block}{Baaz, Ciabattoni, Fermüller 2000}
+%     \textit{A Natural Deduction System for Intuitionistic Fuzzy Logic}\\
+% % why is textit not visible?
+%     (will be discussed later)
+%     % \begin{itemize}
+%     % \item direct translation from HLK
+%     % \item inductive definition that does not interplay with normalisation
+%     % \item normalisation only via translation to HLK
+%     % \end{itemize}
+%   \end{block}
+% \end{frame}
+
+
+\begin{frame}
+  \frametitle{Wishlist}
+  Properties we want to have:
+
+  \begin{block}{(semi) local}
+    \begin{itemize}
+    \item construction of deductions:\\
+      apply ND inspired rules to extend a HND deductions
+    \item modularity of deductions:\\
+      reorder/restructure deductions
+    \item analyticity (sub-formula property, \ldots)
+    \end{itemize}
+  \end{block}
+
+  \pause
+  \begin{block}{normalisation}
+    \begin{itemize}
+    \item procedural normalisation via conversion steps
+%    \item by rearranging deductions -- computation steps
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Our approach to Hyper Natural Deduction}
+  \pause
+  \begin{center}
+    \tikzset{every picture/.style={scale=0.5}}
+    \begin{tikzpicture}
+      \draw (-2,0) node {%
+        \AxiomC{\alt<2>{$\alert{\Gamma\seq A}$}{$\Gamma\seq A$}} 
+        \AxiomC{\alt<3>{$\alert{\Delta\seq B}$}{$\Delta\seq B$}}
+        \LeftLabel{(com)}
+        \BinaryInfC{%
+          $
+          \alt<4>{\alert{\Gamma\seq B}}{\Gamma\seq B} 
+          \HS 
+          \alt<5>{\alert{\Delta\seq A}}{\Delta\seq A}
+          $
+        }
+        \DisplayProof
+      } ;
+      \onslide<2>{%
+        \draw (6.8,0) node {%
+          \alert{%
+            \AxiomC{$\Gamma$}
+            \DeduceC{$A$}
+            \noLine
+            \ProofLabel{}
+            \UnaryInfC{\strut}
+            \DisplayProof
+          }
+        };
+      }
+      \onslide<3>{%
+        \draw (6.8,0) node {%
+          \AxiomC{$\Gamma$}
+          \DeduceC{$A$}
+          \noLine
+          \ProofLabel{}
+          \UnaryInfC{\strut}
+          \DisplayProof
+        };
+      }
+      \onslide<4>{%
+        \draw (6.8,0) node {%
+          \AxiomC{$\Gamma$}
+          \DeduceC{$A$}
+          \ProofLabel{\alert{\llap{com}}}
+          \UnaryInfC{$\alert{\strut B}$}
+          \DisplayProof
+        };
+      }
+      \onslide<5->{%
+        \draw (6.8,0) node {%
+          \AxiomC{$\Gamma$}
+          \DeduceC{$A$}
+          \ProofLabel{\llap{com}}
+          \UnaryInfC{$\strut B$}
+          \DisplayProof
+        };
+      }
+      \onslide<3>{%
+        \draw (10,0) node {%
+          \alert{%
+            \AxiomC{$\Delta$}
+            \DeduceC{$B$}
+            \noLine
+            \UnaryInfC{\strut}
+            \DisplayProof
+          }
+        };
+      }
+      \onslide<4>{%
+        \draw (10,0) node {%
+          \AxiomC{$\Delta$}
+          \DeduceC{$B$}
+          \noLine
+          \ProofLabel{}
+          \UnaryInfC{\strut}
+          \DisplayProof
+        };
+      }
+      \onslide<5>{%
+        \draw (10,0) node {%
+          \AxiomC{$\Delta$}
+          \DeduceC{$B$}
+          \ProofLabel{\llap{\alert{$\overline{\text{com}}$}}}
+          \UnaryInfC{\strut$\alert{A}$}
+          \DisplayProof
+        };
+      }
+      \onslide<6->{%
+        \draw (10,0) node {%
+          \AxiomC{$\Delta$}
+          \DeduceC{$B$}
+          \ProofLabel{\llap{{$\overline{\text{com}}$}}}
+          \UnaryInfC{\strut $A$}
+          \DisplayProof
+        };
+      }
+    \end{tikzpicture}  
+  \end{center}
+
+  \pause\pause\pause\pause\pause
+  \begin{itemize}
+  \item consider sets of derivation trees\mis
+  \item divide communication (and split) into two dual parts\mis
+  \item search for minimal set of conditions  that provides sound
+    and complete deduction system
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Reasoning in \HND}
+  Double extension in \emph{the spirit} of ND:
+  \begin{itemize}
+  \item from one tree to set of trees
+  \item additional rules
+  \end{itemize}
+  
+  \pause
+  \begin{center}
+    From
+    \quad
+    \bottomAlignProof
+    \AxiomC{}
+    \DeduceC{$A$}
+    \DisplayProof
+    \quad
+    and
+    \quad
+    \bottomAlignProof
+    \AxiomC{}
+    \DeduceC{$B$}
+    \DisplayProof
+    \quad
+    % $\leadsto$
+    form
+    \quad
+    \bottomAlignProof
+    \AxiomC{}
+    % \ProofLabel{$\si_1$}
+    \DeduceC{$A$}
+    \ProofLabel{$\ComR {x}AB$}
+    \UnaryInfC{$B$}
+    \DisplayProof
+    \ 
+    \bottomAlignProof
+    \AxiomC{}
+    % \ProofLabel{$\si_2$}
+    \DeduceC{$B$}
+    \ProofLabel{$\ComR {\bar x}BA$}
+    \UnaryInfC{$A$}
+    \DisplayProof
+  \end{center}
+
+  \pause
+  \begin{center}
+    From
+    \quad
+    \bottomAlignProof
+  \AxiomC{$\Ga,\De$}
+  \ProofLabel{$\si$}
+  \DeduceC{$A$}
+  \DisplayProof 
+  \quad
+%  $\leadsto$
+form
+  \quad
+    \bottomAlignProof
+  \AxiomC{$[\Ga],\De$}
+  \ProofLabel{$\si$}
+  \DeduceC{$A$}
+  \ProofLabel{$\SplitR x{}{\Gamma}{\Delta}$}
+  \UnaryInfC{$A$}
+  \DisplayProof
+%\ 
+    \bottomAlignProof
+  \AxiomC{$\Ga,[\De]$}
+  \ProofLabel{$\si$}
+  \DeduceC{$A$}
+  \ProofLabel{$\SplitR {\bar x}{}{\Delta}{\Gamma}$}
+  \UnaryInfC{$A$}
+  \DisplayProof
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Results for \HND}
+  %\begin{block}{Properties of \HND}
+    \begin{itemize}
+    \item sound and complete for standard first order Gödel logic\bis
+    \item procedural normalization\bis
+    \item sub-formula property
+    \end{itemize}
+  %\end{block}
+
+  (Beckmann, P. 2016)
+% \end{frame}
+
+  \pause
+
+% \begin{frame}
+  \begin{block}{Beauty of this system}
+  \begin{itemize}
+  \item Hyper rules -- derivations are completely in ND style\bis
+  \item Hyper rules mimic HLK/BCF system\bis
+  \item natural style of deduction\bis
+  % \item but: procedural definition (like BCF system):
+  %   \begin{itemize}
+  %   \item difficult to check whether a given figure forms a proof
+  %   \item difficult to reason on normalisation (needs reshuffling of
+  %     proof trees)
+  %   \end{itemize}
+  \end{itemize}
+\end{block}
+% \pause
+  % We need criteria to check whether a set of trees forms a proof!
+\end{frame}
+
+
+
+\cutin{Other topics}
+
+
+
+%\cutin{Other semantics}
+
+% \begin{frame}
+%   \frametitle{Gödel, Kripke frames and Intuitionistic Logic}
+  
+%   \begin{block}{Gödel (1933)}
+%     Wanted to show that Intuitionistic Logic does not have a finite
+%     matrix, i.e., is not a finitely valued logic.
+%   \end{block}
+
+%   \begin{block}{Kripke (60ies)}
+%     Semantic for Intuitionistic Logic based on trees.
+
+%     Axiom $(A\limp B) \lor (B\limp A)$ of Gödel logics implies
+%     linearity on Kripke frames.
+%   \end{block}
+
+% \end{frame}
+
+% \begin{frame}
+%   \frametitle{Relating Gödel logics and logic on Kripke frames}
+
+%   \begin{block}{`Truth values in Kripke frames'}
+%     Sets of worlds in which a formula is true, is upward closed.
+
+%     The set of upwards closed sets in $K$, $\mathrm{Up}(K)$, is a
+%     Gödel algebra.
+
+%     A (order theoretic) upper limit point~$w$ generates two distinct
+%     upward closed sets:
+%     \begin{align*}
+%       w^\vup &= \{ v \in K \suchthat R(w,v) \}\\
+%       w^{\vup*} &= w^\vup\setminus \{w\}
+%     \end{align*}
+%   \end{block}
+% \end{frame}
+
+% \newcommand{\nd}[1]{\fill (0,#1) circle (2pt);}
+
+% \begin{frame}
+%   \frametitle{Example}
+%   $K = \omega + a + \omega^{-1}$ ($a$ being an arbitrary element)
+  
+%   The $a$ is upper and lower limit of the accessibility relation.
+  
+%   \begin{align*}
+%     \mathrm{Up}(K) = & \{ n^\vup \suchthat n\in \omega \}\ \cup\\
+%     & \{ a^\vup \}\ \cup\\
+%     & \{\omega^{-1}\}\ \cup\\
+%     & \{n^\vup \suchthat n\in \omega^{-1}\}
+%   \end{align*}
+% \end{frame}
+
+% \begin{frame}
+%   \frametitle{Mapping Kripke worlds into the reals}
+%   Embed $\mathrm{Up}(K)$ into the truth value set such that the order
+%   and existing infima and suprema are preserved.
+%   \[
+%   \begin{pgfpicture}{-5cm}{-4cm}{5cm}{2cm}
+%     % \pgfsetlinewidth{0.8pt}
+%     % \pgfxyline(-5,-5)(5,-5)
+%     \pgfxyline(0,1)(5,1)
+%     \pgfputat{\pgfxy(0,1)}{\pgfbox[right,center]{$V_K\quad$}}
+%     \pgfxyline(1,1.1)(1,0.9)
+%     \pgfxyline(2,1.1)(2,0.9)
+%     \pgfxyline(3,1.1)(3,0.9)
+%     \pgfxyline(4,1.1)(4,0.9)
+%     \pgfputat{\pgfxy(-3,-3)}{\pgfbox[right,center]{$\mathrm{Up}(K)$}}
+%     \pgfputat{\pgfxy(0,-3.5)}{\pgfbox[left,center]{ $K$}}
+%     % \pgfsetlinewidth{0.4pt}
+%     \pgfheaplabeledcentered{-1cm}{1cm}{}
+%     \pgfheaplabeledcentered{-1.93cm}{2cm}{}
+%     \pgfheaplabeledcentered{-2.07cm}{3cm}{}
+%     \pgfheaplabeledcentered{-3cm}{4cm}{}
+%     \pgfcircle[fill]{\pgfpoint{0cm}{-1cm}}{2pt}
+%     \pgfcircle[fill]{\pgfpoint{0cm}{-2cm}}{2pt}
+%     \pgfcircle[stroke]{\pgfpoint{0cm}{-3cm}}{2pt}
+%     \pgfsetdash{{1pt}{1pt}}{0pt}
+%     \pgfxyline(0,-1.4)(0,-2)
+%     \pgfxyline(0,-2.4)(0,-2.93)
+%     \pgfxyline(0,-3.07)(0,-3.8)
+%     \pgfxyline(1.4,0.9)(2,0.9)
+%     \pgfxyline(3.4,0.9)(4.6,0.9)
+%     \pgfputat{\pgfxy(4,0.3)}{\pgfbox[center,bottom]{$w^\vup$}}
+%     \pgfputat{\pgfxy(3,0.3)}{\pgfbox[center,bottom]{$w_3^\vup$}}
+%     \pgfputat{\pgfxy(2,0.3)}{\pgfbox[center,bottom]{$w_3^{*\vup}$}}
+%     \pgfputat{\pgfxy(1,0.3)}{\pgfbox[center,bottom]{$w_3^\vup$}}
+%     \pgfputat{\pgfxy(0,-2.1)}{\pgfbox[left,top]{$w_3$}}
+%     \pgfputat{\pgfxy(0,-0.9)}{\pgfbox[center,bottom]{$w_1$}}
+%   \end{pgfpicture}
+%   \]
+% \end{frame}
+
+
+% \newcommand{\pn}[2]{%
+%   \draw[line width=0.5pt] (#1,1.8) -- (#1,2.2);
+%   \draw (#1,1.8) node[anchor=north] {#2};
+% }
+% \begin{frame}
+%   %\frametitle{The case of $\bbQ$}
+%   \frametitle{The logic $\lgc(\bbQ)$}
+%   Let $K=\bbQ$. Every rational number is a supremum. Thus, every
+%   rational number is torn apart into two points. 
+
+%   \pause
+%   \medskip
+%   Take an enumeration of $\bbQ = \{q_1,q_2,\dots\}$ and consider the
+%   following enumeration induced on 
+%   $\bbQ'= \{q_1^\vup,q_1^{\vup*},q_2^{\vup},q_2^{\vup*},\dots\}$. 
+
+%   \begin{tikzpicture}
+%     \draw[line width=1pt,dotted] (2,0) -- (2,4);
+%     %\draw (0,4) circle (.2mm);
+%     %\draw (0,4) arc (210:330:3cm and 6cm);
+%     \pn{6}{$q_1^{\vup}$}
+%     \draw (2,1) node[anchor=north west] {$q_1$};
+%     \draw[dotted] (0,3) to[out=280,in=180] (2,1) to[out=0,in=260] (4,3);
+%     \draw[line width=1pt] (5,2) -- (10,2);
+%     \onslide<3->{
+%       \pn{6.5}{$q_1^{\vup*}$}
+%     }
+%     \onslide<4->{
+%       \draw[dotted] (0.5,3.5) to[out=280,in=180] (2,2) to[out=0,in=260] (3.5,3.5);
+%       \draw (2,2) node[anchor=north west] {$q_2$};
+%       \pn{8}{$q_2^{\vup}$}
+%       \pn{8.5}{$q_2^{\vup*}$}
+%     }
+%   \end{tikzpicture}
+% \end{frame}
+
+% \begin{frame}
+%   \frametitle{The logic $\lgc(\bbQ)$ cont.}
+
+%   An embedding of $\bbQ'$ into $[0,1]$ preserving the order, infima
+%   and suprema will generate a set which is isomorph to the border
+%   points of the Cantor middle third set. The closure of this set is
+%   the Cantor middle third set.
+
+%   \pause
+%   \medskip
+%   Thus, $\lgc(\bbQ) = \gdl {\bbC_{[0,1]}} = \gdl{[0,1]}$
+% \end{frame}
+
+\begin{frame}
+  \frametitle{Gödel Logics and Kripke Frames}
+
+  \begin{block}{Gödel logic to Kripke frame}
+    For each Gödel logic there is a countable linear Kripke frame such
+    that the respective logics coincide.
+  \end{block}
+
+  \begin{block}{Kripke frames to Gödel logic}
+    For each countable linear Kripke frame there is a Gödel truth
+    value set such that the respective logics coincide.
+  \end{block}
+
+  (Beckmann, P. 2007)
+\end{frame}
+
+\begin{frame}
+  \frametitle{Going beyond $\bbR$}
+
+  \begin{block}{Takano (1987)}
+    Axiomatization of the logic of linear Kripke frames based on
+    $\bbQ$ (which is that of $\gdl{[0,1]}$).
+
+    Axiomatization of the logic of linear Kripke frames based on
+    $\bbR$ needs an additional axiom.
+    
+  \end{block}
+\end{frame}
+
+\cutin{Monadic Fragment}
+
+\begin{frame}
+  \frametitle{Decidability of validity and satisfiability}
+  \begin{center}
+\begin{tabular}[ht]{l|l|c|c}
+  \toprule
+      \multicolumn{2}{c|}{} & validity & satisfiability \\
+  \midrule
+  finite~$V$ & full monadic & Yes  & Yes \\
+  \midrule
+  infinite $V$ & full monadic    & No  & No  \\
+  with         & witnessed       & No  & No  \\
+  $\bd$        & quantifer prefix & $\forall^*\exists^*$ & (open!) $\exists^*\forall^*$\\
+  \midrule
+               & full monadic    & No  & $0$ isolated: Yes \\
+               &                 &     & $0$ not isolated: No \\
+  infinite $V$ & prenex          & No  & Yes \\
+  without      & $\exists$, $\lnot$-free & No & Yes \\
+  $\bd$        & $\exists$       & No  & Yes \\
+               & $\lnot$-free    & No  & Yes \\
+               & witnessed       & No  & Yes \\
+  \bottomrule
+\end{tabular}
+\end{center}
+  (Baaz, Ciabattoni, P. 2011; Baaz, P. 2016)
+\end{frame}
+
+%\cutin{Expressivity of Monadic logics}
+  
+\begin{frame}
+  \frametitle{Expressivity of Monadic logics}
+  \begin{center}
+    Take standard first order language.
+
+    \bigskip
+    Question: What can we express over complete linear orders?
+
+    \pause
+    \bigskip
+    Same question with one (1) monadic predicate symbol?
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The results}
+  \begin{theorem}
+    If $0\prec\al\prec\be\prec\om{\omega}$ with $\be\succeq\omega$, then
+    $A_{\alpha,\beta} \in L(\alpha)$, 
+    but $A_{\alpha,\beta} \not\in L(\beta)$.
+  \end{theorem}
+
+  \pause
+  \begin{theorem}
+  If $0\prec\al\prec\be\prec\om{\omega}$, then
+  $A^*_\al \in L(\al^*)$, 
+  but $A^*_\al \notin L(\be^*)$.
+  \end{theorem}
+
+  (Beckmann, P 2014)
+\end{frame}
+
+\begin{frame}
+  \frametitle{Basic idea}
+  \begin{center}
+    Separate $2$ from $3$-valued logic
+
+    \medskip
+    \begin{tikzpicture}
+      \draw (0,3) -- (6cm,3) ;
+      \draw (0,3.2) -- (0,2.8) ;
+      \draw (6,3.2) -- (6,2.8) ;
+      \draw (0,2) -- (6cm,2) ;
+      \draw (0,2.2) -- (0,1.8) ;
+      \draw (6,2.2) -- (6,1.8) ;
+      \draw (3,2.2) -- (3,1.8) ;
+      \draw (0,2.5) node {$0$} ;
+      \draw (6,2.5) node {$1$} ;
+      \draw (3,2.5) node {$0.5$} ;
+      \onslide<2>{      \draw (0,1.5) node {$x_3$} ;
+      \draw (6,1.5) node {$x_1$} ;
+      \draw (3,1.5) node {$x_2$} ;}
+    \end{tikzpicture}
+
+    \medskip
+    \pause
+    $(x_1\limp x_2) \lor (x_2 \limp x_3)$
+
+    
+  \end{center}
+\end{frame}
+
+% \begin{frame}
+%   \frametitle{Example}
+%   \begin{center}
+%     $\alpha = \omega^22+\omega3 + 1\qquad\beta = \omega^22+\omega4$\\
+%     \begin{tikzpicture}
+%     \tword{0pt}{0pt}{1cm}
+%     \tword{0pt}{1cm}{2cm}
+%     \oneord{-1pt}{2cm}{2.4cm}
+%     \oneord{-1pt}{2.4cm}{2.8cm}
+%     \oneord{-1pt}{2.8cm}{3.2cm}
+%     \zerord{-1pt}{3.2cm} \zerord{-1pt}{3.4cm}
+%     \draw (0pt,0mm) node[anchor=west] {\tiny $0$} ;
+%     \draw (0pt,0.33cm) node[anchor=west] {\tiny $\omega$} ;
+%     \draw (0pt,0.66cm) node[anchor=west] {\tiny $\omega2$} ;
+%     \draw (0pt,1cm) node[anchor=west] {\tiny $\omega^2$} ;
+%     \draw (0pt,1.33cm) node[anchor=west] {\tiny $\omega^2+\omega$} ;
+%     \draw (0pt,1.66cm) node[anchor=west] {\tiny $\omega^2+\omega2$} ;
+%     \draw (0pt,2cm) node[anchor=west] {\tiny $\omega^22$} ;
+%     \draw (0pt,2.4cm) node[anchor=west] {\tiny $\omega^22+\omega$} ;
+%     \draw (0pt,2.8cm) node[anchor=west] {\tiny $\omega^22+\omega2$} ;
+%     \draw (0pt,3.2cm) node[anchor=west] {\tiny $\omega^22+\omega3$} ;
+%     \draw (0pt,3.4cm) node[anchor=west] {\tiny $\omega^22+\omega3 + 1$} ;
+%     \draw (0pt,-8pt) node {$\alpha$} ;
+%     \draw[dotted] (-1pt,3.6cm) circle (1mm) ;
+%     \draw (0pt,3.6cm) node[anchor=west] {\tiny $\alpha$} ;
+%     \def\aa{70pt}
+%     \draw (\aa,-10pt) node {$\beta$} ;
+%     \tword{\aa}{0pt}{1cm}
+%     \tword{\aa}{1cm}{2cm}
+%     \oneord{\aa - 1pt}{2cm}{2.4cm}
+%     \oneord{\aa - 1pt}{2.4cm}{2.8cm}
+%     \oneord{\aa - 1pt}{2.8cm}{3.2cm}
+%     \oneord{\aa - 1pt}{3.2cm}{3.6cm}
+%     \zerord{\aa-1pt}{3.6cm}
+%     \draw[dotted] (\aa-1pt,3.8cm) circle (1mm) ;
+%     \draw (\aa,3.8cm) node[anchor=west] {\tiny $\beta$} ;
+%     %
+%     \pause
+%     %
+%     \def\aa{-180pt}
+%     \def\bb{20mm}
+%     \twohor{\aa+128pt}{\aa+88pt}{\bb}
+%     \twohor{\aa+88pt}{\aa+48pt}{\bb}
+%     \onehor{\aa+48pt}{\aa+34pt}{\bb}
+%     \onehor{\aa+34pt}{\aa+20pt}{\bb}
+%     \onehor{\aa+20pt}{\aa+6pt}{\bb}
+%      \zerohor{\aa-10pt}{\bb} \zerohor{\aa+6pt}{\bb} \zerohor{\aa-26pt}{\bb}
+%     \draw (\aa+128pt,\bb+1mm) node[rotate=90,anchor=west] {\tiny $\up 0$} ;
+%     \draw (\aa+128pt,\bb-1mm) node[anchor=north] {\tiny $\kI$} ;
+%     \draw (\aa+108pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+88pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {\omega^2}$} ;
+%     \draw (\aa+68pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+48pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {({\omega^2}2)}$} ;
+%     \draw (\aa+41pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+34pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {(\omega^22+\omega)}$} ;
+%     \draw (\aa+27pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+20pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {(\omega^22+\omega2)}$} ;
+%     \draw (\aa+13pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+6pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {(\omega^22+\omega3)}$} ;
+%     \draw (\aa-2pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa-10pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {(\omega^22+\omega3+1)}$} ;
+%     \draw (\aa-18pt, \bb+5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa-26pt, \bb+1mm) node[rotate=90,anchor=west] {\tiny $\up {\alpha} = \emptyset$} ;
+%     \draw (\aa-26pt, \bb-1mm) node[anchor=north] {\tiny $\kO$} ;
+%     \draw (\aa+130pt,\bb) node[anchor=west] {\tiny $\Up(\alpha)$} ;
+%     \def\bb{6mm}
+%     \twohor{\aa+128pt}{\aa+88pt}{\bb}
+%     \twohor{\aa+88pt}{\aa+48pt}{\bb}
+%     \onehor{\aa+48pt}{\aa+34pt}{\bb}
+%     \onehor{\aa+34pt}{\aa+20pt}{\bb}
+%     \onehor{\aa+20pt}{\aa+6pt}{\bb}
+%     \onehor{\aa+6pt}{\aa-10pt}{\bb}
+%     \zerohor{\aa-10pt}{\bb} \zerohor{\aa+6pt}{\bb} \zerohor{\aa-26pt}{\bb}
+%     \draw (\aa+128pt,\bb-1mm) node[rotate=90,anchor=east] {\tiny $\up 0$} ;
+%     \draw (\aa+128pt,\bb+1mm) node[anchor=south] {\tiny $\kI$} ;
+%     \draw (\aa+108pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+88pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {\omega^2}$} ;
+%     \draw (\aa+68pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+48pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {({\omega^2}2)}$} ;
+%     \draw (\aa+41pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+34pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {(\omega^22+\omega)}$} ;
+%     \draw (\aa+27pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+20pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {(\omega^22+\omega2)}$} ;
+%     \draw (\aa+13pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa+6pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {(\omega^22+\omega3)}$} ;
+%     \draw (\aa-2pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa-10pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {(\omega^22+\omega4)}$} ;
+%     \draw (\aa-18pt, \bb-5mm) node[anchor=center] {\tiny $\subset$} ;
+%     \draw (\aa-26pt, \bb-1mm) node[rotate=90,anchor=east] {\tiny $\up {\beta} = \emptyset$} ;
+%     \draw (\aa-26pt, \bb+1mm) node[anchor=south] {\tiny $\kO$} ;
+%     \draw (\aa+130pt,\bb) node[anchor=west] {\tiny $\Up(\beta)$} ;
+    
+%     \def\bb{13mm}
+%     \draw (\aa+128pt,\bb) node {\tiny $x^3_1$} ;
+%     \draw (\aa+88pt,\bb) node {\tiny $x^2_1$} ;
+%     \draw (\aa+48pt,\bb) node {\tiny $x^2_2$} ;
+%     \draw (\aa+34pt,\bb) node {\tiny $x^1_1$} ;
+%     \draw (\aa+20pt,\bb) node {\tiny $x^1_2$} ;
+%     \draw (\aa+6pt,\bb) node {\tiny $x^1_3$} ;
+%     \draw (\aa-10pt,\bb) node {\tiny $x^1_4$} ;
+%   \end{tikzpicture}
+% \end{center}
+% \end{frame}
+
+%\cutin{Proof Theory}
+
+\begin{frame}
+  \frametitle{Proof theory}
+  \begin{block}{Hypersequent}
+    $\Gamma$, $\Pi$ finite multisets of formulas
+    \[
+    \Gamma_1 \seq \Pi_1 \hh \dots \hh \Gamma_n \seq \Pi_n
+    \]
+  \end{block}\pause
+  \begin{block}{Rules}
+    internal structural and logical (like LK)
+
+    external weakening and contraction
+
+    \[ \infer[(com)]{G\hh G'\hh \Gamma, \Delta' \seq A\hh \Delta, 
+\Gamma' \seq A' }{G \hh \Gamma, \Delta \seq A & 
+G'\hh \Gamma', \Delta' \seq A'} \]
+
+%    \[ \infer[(cut)]{G \hh G' \hh \Gamma, \Gamma' \seq C}
+%{G \hh \Gamma' \seq A  & G' \hh A, \Gamma \seq C} \]
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Calculus HG}
+  \begin{block}{Sound and completeness}
+    \textsf{\bfseries HG} is sound and complete for Gödel logics
+    (propositional and first order)
+
+    (Avron 1992, Baaz, Zach 2000)
+  \end{block}\pause
+  \begin{block}{Linearity}
+    \[
+    \infer{\seq (A \Impl B) \vee (B \Impl A)\strut}{%
+      \onslide<3->{\infer{\seq (A \Impl B) \vee (B \Impl A) \hh \seq (A \Impl B)
+        \vee (B \Impl A)\strut}{%
+        \onslide<4->{\infer{\seq A \Impl B \hh \seq B \Impl A\strut}{%
+          \onslide<5->{\infer[\onslide<6->{(com)}]{A\seq B \hh B \seq A\strut}{%
+            \onslide<6->{A \seq A &B \seq B\strut}}}}}}}}
+    \]
+  \end{block}
+\end{frame}
+
+
+% \def\aaaa#1#2#3#4#5#6#7{%
+%   \only<#6->{\draw (#1, #3) -- (#1, #2);
+%   \draw (#1, #3) node[anchor=south] {\alt<#6>{\alert{#4}}{#4}};
+%   \draw (#1, #2) node[anchor=north] {\alt<#6>{\alert{#5}}{#5}};}
+%   \only<#6>{\draw (0,-3) node[anchor=south west] {#7};}
+% }
+% \begin{frame}
+%   \frametitle{History}
+%   \begin{center}
+%   \begin{tikzpicture}
+%     \shade[left color=gray,right color=gray!30] (0,0) rectangle +(10,0.5);
+%     \draw (0,1.7) node[anchor=south west] {Timeline};
+%     \aaaa{0.42}{-0.4}{0.5}{1933}{Gödel\strut}1{finitely valued logics}
+%     \aaaa{4.08}{-0.4}{0.5}{1959}{Dummett\strut}2{infinitely valued propositional Gödel logics}
+%     \aaaa{5.57}{-0.4}{0.5}{1969}{Horn\strut}3{linearly ordered Heyting algebras}
+%     \aaaa{7.71}{-0.4}{0.5}{1984}{Takeuti-Titani\strut}4{intuitionistic fuzzy logic}
+%     \aaaa{8.71}{-0.9}{1}{1991}{Avron\strut}5{hypersequent calculus}
+%     \aaaa{9.4}{-1.4}{0.5}{1998}{Hájek\strut}6{$t$-norm based logics}
+%     \aaaa{8.57}{-1.9}{1.5}{since 90ies}{Viennese group\strut}7{proof theory,
+%       \#, Kripke, qp, fragments, \ldots}
+%   \end{tikzpicture}
+%   \end{center}
+% \end{frame}
+
+
+% \begin{frame}
+%   \frametitle{What we didn't discuss}
+%   \begin{itemize}
+%   \item Algebraic connections\\
+%     Gödel algebras, first order theory with safe interpretations in algebras\sis
+%   \item Proof theory\\
+%     Hypersequent calculus, calculus of relations\sis
+%   \item SAT and VAL in monadic (and sub-) class\\
+%     varied landscape, partly decidable, partly undecidable\sis
+%   \item Modalities\sis
+%   \item Complexity\sis
+%   \item Relation to game theory\sis
+%   \end{itemize}
+% \end{frame}
+
+
+\begin{frame}
+  \frametitle{Open problems}
+  \begin{itemize}
+  \item intensional versus extensional definition\sis
+  \item Herbrand disjunctions\sis
+  \item Calculi for other than the standard logic\sis
+  \item equivalent of $L(\bbR)$, the logic of the Kripke frame of
+    $\bbR$ within an extended `real' setting\sis
+  \item equivalence of `one logic per truth-value set' for Gödel
+    algebras\sis
+  \item quantified propositional logics -- largely untapped\sis
+  \item computational model
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Recapitulation}
+  \pause
+  \begin{block}{Standard meta-theory}
+    \begin{itemize}
+    \item soundness, completeness
+    \item axiomatizability
+    \item decidability of satisfiability an validity
+    \item sub-classes, monadic and other fragments
+    \item proof theory
+    \item representation theorems
+    \end{itemize}
+  \end{block}
+
+  \pause
+  \begin{block}{Relation to different areas}
+    \begin{itemize}
+    \item order theory, topology, polish spaces
+    \item Kripke frames
+    \item (Heyting) algebras
+    \item computation
+    \item \ldots
+    \end{itemize}
+  \end{block}
+
+  % \pause
+  % \begin{center}
+  %   \vspace{-10pt}
+  %   Proper logic -- no fuzzyness
+  % \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conclusion}
+  Although not \alert{traditional} logic, it provides a rich meta-theory and
+  there are still many unexplored topics.
+
+  Application-wise of relevance due to ease of modelling and
+  well-behaved logic even on first-order level. (medical expert
+  system, database modelling, \ldots)
+
+  % Lots of math, in particular order theory  and topology of the reals
+
+  \pause
+  Fun!
+
+  \pause
+  \begin{center}
+    \Large Thanks
+  \end{center}
+\end{frame}
+
+\end{document}
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

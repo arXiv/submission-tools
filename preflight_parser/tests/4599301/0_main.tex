@@ -1,0 +1,457 @@
+%%
+%% Copyright 2020 OXFORD UNIVERSITY PRESS
+%%
+%% This file is part of the 'oup-authoring-template Bundle'.
+%% ---------------------------------------------
+%%
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.2 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%%
+%% The list of all files belonging to the 'oup-authoring-template Bundle' is
+%% given in the file `manifest.txt'.
+%%
+%% Template article for OXFORD UNIVERSITY PRESS's document class `oup-authoring-template'
+%%
+
+%%%CONTEMPORARY%%%
+\documentclass[unnumsec,webpdf,contemporary,large]{oup-authoring-template}
+%\documentclass[unnumsec,webpdf,contemporary,large,namedate]{oup-authoring-template}% uncomment this line for author year citations and comment the above
+%\documentclass[unnumsec,webpdf,contemporary,medium]{oup-authoring-template}
+%\documentclass[unnumsec,webpdf,contemporary,small]{oup-authoring-template}
+
+%%%MODERN%%%
+%\documentclass[unnumsec,webpdf,modern,large]{oup-authoring-template}
+%\documentclass[unnumsec,webpdf,modern,large,namedate]{oup-authoring-template}% uncomment this line for author year citations and comment the above
+%\documentclass[unnumsec,webpdf,modern,medium]{oup-authoring-template}
+%\documentclass[unnumsec,webpdf,modern,small]{oup-authoring-template}
+
+%%%TRADITIONAL%%%
+%\documentclass[unnumsec,webpdf,traditional,large]{oup-authoring-template}
+%\documentclass[unnumsec,webpdf,traditional,large,namedate]{oup-authoring-template}% uncomment this line for author year citations and comment the above
+%\documentclass[unnumsec,namedate,webpdf,traditional,medium]{oup-authoring-template}
+%\documentclass[namedate,webpdf,traditional,small]{oup-authoring-template}
+
+\onecolumn % for one column layouts
+
+%\usepackage{showframe}
+%\graphicspath{{Fig/}}
+
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{threeparttablex}
+% line numbers
+%\usepackage[mathlines, switch]{lineno}
+%\usepackage[right]{lineno}
+
+\theoremstyle{thmstyleone}%
+\newtheorem{theorem}{Theorem}%  meant for continuous numbers
+%%\newtheorem{theorem}{Theorem}[section]% meant for sectionwise numbers
+%% optional argument [theorem] produces theorem numbering sequence instead of independent numbers for Proposition
+\newtheorem{proposition}[theorem]{Proposition}%
+%%\newtheorem{proposition}{Proposition}% to get separate numbers for theorem and proposition etc.
+\theoremstyle{thmstyletwo}%
+\newtheorem{example}{Example}%
+\newtheorem{remark}{Remark}%
+\theoremstyle{thmstylethree}%
+\newtheorem{definition}{Definition}
+\usepackage{url}
+
+
+\begin{document}
+
+\journaltitle{November}
+%\journaltitle{Briefings in Bioinformatics}
+\DOI{}
+\copyrightyear{2022}
+\pubyear{2022}
+\access{Advance Access Publication Date: 11 November 2022}
+\appnotes{Paper}
+
+\firstpage{1}
+
+%\subtitle{Subject Section}
+
+\title{Using Traditional Machine Learning and Deep Learning Methods for On- and Off-Target Prediction in CRISPR/Cas9: A Review}
+%\titlerunning {Application of Machine Learning Methods in CRISPR/Cas9: A Review}
+
+\author[1]{Zeinab Sherkatghanad}
+\author[2]{Moloud Abdar}
+\author[1]{Jeremy Charlier}
+%\author[3, 4]{Robert Nadon}
+\author[1,$\ast$]{Vladimir Makarenkov}
+
+\authormark{Sherkatghanad et al.}
+
+\address[1]{\orgdiv{Departement d'Informatique}, \orgname{Universite du Quebec a Montreal}, \orgaddress{\postcode{H2X 3Y7}, \state{Montreal, QC}, \country{Canada}}}
+\address[2]{\orgdiv{Institute for Intelligent Systems Research and Innovation (IISRI)}, \orgname{Deakin University}, \orgaddress{\postcode{3216}, \state{Geelong, VIC}, \country{ Australia}}}
+%\address[3]{\orgname{McGill University and Genome
+%Quebec Innovation Centre}, \orgaddress{\postcode{H3A 0C7}, \state{Montreal, QC}, \country{Canada}}}
+%\address[4]{\orgdiv{Department of Human Genetics}, \orgname{McGill University}, %\orgaddress{\postcode{H3A
+%0C7}, \state{Montreal, QC}, \country{Canada}}}
+% \corresp[$\ast$]{Corresponding author: \href{email:email-id.com}{makarenkov.vladimir@uqam.ca}}
+
+\received{Date}{0}{Year}
+\revised{Date}{0}{Year}
+\accepted{Date}{0}{Year}
+
+%\editor{Associate Editor: Name}
+
+%\abstract{
+%\textbf{Motivation:} .\\
+%\textbf{Results:} .\\
+%\textbf{Availability:} .\\
+%\textbf{Contact:} \href{name@bio.com}{name@bio.com}\\
+%\textbf{Supplementary information:} Supplementary data are available at \textit{Briefings in Bioinformatics}
+%online.}
+
+\abstract{
+    CRISPR/Cas9 (Clustered Regularly Interspaced Short Palindromic Repeats and CRISPR-associated protein 9) is a popular and effective two-component technology used for targeted genetic manipulation. It is currently the most versatile and accurate method of gene and genome editing, which benefits from a large variety of practical applications. For example, in biomedicine it has been used in research related to cancer, virus infections, pathogen detection and genetic diseases. Recent CRISPR/Cas9 research is based on data-driven models for on- and off-target prediction as a cleavage may occur at non-target sequence locations. Currently, conventional machine learning and deep learning methods are applied on a regular basis to accurately predict the sgRNA (single-guide RNA) on-target knockout efficacy and off-target profile. In this paper, we present an overview and a comparative analysis of traditional machine learning and deep learning models used in CRISPR/Cas9. We highlight the key research challenges and directions associated with target activity prediction. We discuss some recent advances in the sgRNA-DNA sequence encoding used in state-of-the-art on- and off-target prediction models. Furthermore, we present the most popular deep learning neural network architectures used in CRISPR/Cas9 prediction models. Finally, we summarize existing challenges and discuss possible future investigations in the field of on- and off-target prediction. Our paper provides valuable support for academic and industrial researchers interested in the application of machine learning methods in the field of CRISPR/Cas9 genome editing.
+}
+\keywords{
+    CRISPR-Cas9, theGenome Editing, Machine Learning, Deep Learning, On-Targets, Off-Targets
+}
+
+\maketitle
+
+% \blfootnote{
+\textbf{Zeinab Sherkatghanad} is a PhD student at the Department of Computer Science of Université du Québec à Montréal (Montreal, Canada). Her research interests are in the fields of data mining, deep learning, and computer vision.\\
+% }
+\textbf{Moloud Abdar} is an Associate Research Fellow with the Institute for Intelligent Systems Research and Innovation, Deakin University, Australia. His research interests include data mining, machine learning, uncertainty quantification, and medical image analysis. \\
+\textbf{Jeremy Charlier} is a Research Fellow at the Department of Computer Science of Université du Québec à Montréal (Montreal, Canada). His research interests include the application of deep learning methods in the fields of bioinformatics and finance. \\
+%\textbf{Robert Nadon} is an Associate Professor at the Department of Human Genetics of McGill University and Genome Quebec Innovation Centre (Montreal, Canada). His scientific interests include microarray expression, CRISPR-Cas9 technology, high-throughput screening of small molecule and RNAi data, image-based high-content screening, and genome-wide mRNA translation. \\
+\textbf{Vladimir Makarenkov} is a Full Professor and Director of a graduate Bioinformatics program at the Department of Computer Science of Université du Québec à Montréal (Montreal, Canada). His research interests are in the fields of bioinformatics, software engineering, and data mining. They include design and development of bioinformatics software and databases, reconstruction of phylogenetic trees and networks, and development of new statistical methods for analysis of CRISPR-Cas9 and high-throughput screening (HTS) data. \\
+% }
+%\onecolumn
+
+\section{Introduction}
+Advances in the area of genome editing (also called gene editing) in the 2010s revolutionized molecular biology, genetics and biomedicine. Genome editing techniques allow precise manipulation, deletion and insertion of sequence fragments within the DNA of living organisms. In recent years, three effective types of genome editing toolsets, called Zinc Finger Nucleases (ZFNs)\citep{esvelt2013genome}, Transcription Activator-Like Effector Nucleases (TALENs), and Clustered Regularly Interspaced Short Palindromic Repeats (CRISPR), have been developed to study the process of target modifications in gene sequences \citep{esvelt2013genome, puchta2013gene, barrangou2016applications, manghwar2019crispr, bogdanove2018engineering}. 
+
+%\citep{bogdanove2018engineering}.\\ % jch: for later work we could use a bib file. Nonetheless, we would need to re-structure all the bibliography using bibtex citation in google scholar. The current format is not admissible for a bib file to the best of my knowledge.
+% Significant properties of CRISPR-associated protein 9 (Cas9) such as flexibility, cost-efficiency, simplicity and ability to remove more than one gene at a time have evoked great enthusiasm on this technique. % -> repetition: already mentioned in the abstract. I suggestion to comment/remove these two sentences.
+
+Highly effective CRISPR/Cas9 gene editing system, co-invented in 2012 by Emmanuelle Charpentier and Jennifer Doudna \citep{jinek2012programmable}, has been used in various fields, ranging from basic research on genetic therapies at the cellular level to applied biomedical research \citep{jinek2012programmable, cho2013targeted, cong2013multiplex, mali2013cas9, chang2013genome, hsu2014development}. CRISPR/Cas9 demonstrated important clinical potential for treating human diseases such as cancer and genetic disorders \citep{kang2017addressing, liang2015crispr, ma2017correction}, for plant genetic engineering  \citep{liu2017crispr, tang2016single, raitskin2016multi}, and for animal disease treatment \cite{zarei2019creating, wang2013eradication}. Fig. \ref{fig:GE} presents a schematic view of CRISPR/Cas9 gene editing system and its practical applications.
+
+CRISPR/Cas9 genetic engineering system is an adapted version of the bacterial CRISPR-Cas9 antiviral defense system. CRISPR is a family of DNA sequences present in prokaryotic genomes that stems from DNA fragments of bacteriophages which had infected prokaryotic genomes in the past. These DNAs are used as antiviral defense elements to recognize and eliminate DNA from similar bacteriophages during eventual infections \citep{barrangou2007crispr}. Cas9 is a type of nuclease enzyme that uses CRISPR sequences as a guide to identify and cleave specific DNA fragments that are complementary to a given CRISPR sequence.
+
+ In a CRISPR/Cas9 gene editing system, the Cas9 nuclease combined with a guide RNA (gRNA) is delivered into a cell, allowing the cell's genome to be cut in a specific location, some targeted genes to be removed from it and some other added to it in vivo \cite{bak2018gene}. Guide RNA, or artificially programmed single guide RNA (sgRNA) used in type II CRISPR/Cas9 systems, is responsible for identifying the target DNA sequence in the cell's genome and ensuring that the cutting takes place at the desired sequence location. The Protospacer-Adjacent Motif (PAM), located at the end of the DNA target site, is a short three-to-five nucleobase sequence serving as the binding signal of the Cas protein \cite{shah2013protospacer}.
+
+
+%The CRISPR/Cas9 system is nonetheless prone to off-targets: a cleavage may occur at non-target locations. 
+%In CRISPR/Cas9, sgRNA and protein Cas9 are the two main features that makes this system based on the DNA-RNA interaction % (instead of DNA-protein interaction)
+%for target DNA sequence recognition. 
+%which is a 3 nt motif located at the end of the DNA target site, is required for Cas9 protein to cleave at a specified site \cite{PAM}.
+%The CRISPR/Cas9 technique is still nonetheless prone to 
+%The CRISPR/Cas9 is quite accurate in on-target editing, but it may wrongly target unwanted DNA fragments and lead to
+%unintended off-target activity. 
+The CRISPR/Cas9 system is nonetheless prone to unintended off-targets: a cleavage may occur at non-target locations \cite{zhang2015off, chen2017enhanced, kim2015digenome}. Thus, the safety aspect of the use of CRISPR/Cas9 on humans remains an open issue. % and there are concerns about the practical applications of this technique. 
+Over the last few years, data-driven machine learning methods emerged as a new modeling approach which outperforms the common scoring prediction methods, such as MIT CRISPR Design Tool2 \cite{ran2013genome}, CCTop algorithm \cite{stemmer2015cctop}, CRISPR Design \cite{hsu2013dna}, E-CRISP \cite{heigwer2014crisp}, and CHOPCHOP \cite{montague2014chopchop}, in terms of on- and off-target prediction. One of the main drawbacks of the latter methods is the lack of capacity to increase the prediction accuracy when the number of samples increases. In contrast, one of the main advantages of modern data-driven models that rely on deep learning is their ability to improve the predictive performance as the number of samples grows. Current state-of-the-art research aiming at designing robust clinical CRISPR/Cas9 applications looks for enhancing data-driven models by: (i) increasing on-target efficiency, (ii) improving off-target specificity, and (iii) simultaneously maximizing on-target activity and minimizing off-target effects. 
+%These data-driven models could ultimately %can improve our understanding of the mechanisms of CRISPR/Cas9 system and provoke more enthusiasm on the clinical application of this technique.
+%help in designing robust clinical applications of CRISPR/Cas9. \\
+%Current data-driven models have been focusing on off-target and on-target activity predictions. Investigating an informative encoding technique and designing effective models for learning features is a main challenge. This computational algorithms can improve our understanding of the mechanisms of CRISPR/Cas9 system and provoke more enthusiasm on the clinical application of this technique. \\
+%Before the data driven model was used as a common method in genome editing, some custom prediction methods based on scoring functions such as MIT CRISPR Design Tool2 \cite{ran2013genome}, CCTop algorithm \cite{stemmer2015cctop}, CRISPR Design \cite{hsu2013dna}, E-CRISP \cite{heigwer2014cris} and CHOPCHOP \cite{montague2014chopchop} were designed. These custom tools have their own limitations and there are concerns that they may miss extra information.\\
+
+\begin{figure*}
+\centering
+\includegraphics[width=0.7\textwidth]{pic.png}
+\caption{Schematic view of CRISPR/Cas9 gene editing system and its practical applications.}
+\label{fig:GE}
+\end{figure*}
+
+In this review paper, we provide a summary of studies that have examined the effectiveness of machine learning algorithms for on- and off-target activity prediction related to CRISPR/Cas9. In contrast to previous reviews \cite{naeem2020latest, almutiri2022survey, wilson2018current, wang2020overview, newman2020cas9}, our study discusses the use of both traditional machine learning and deep learning methods, focusing on the latest state-of-the-art on- and off-target prediction models. We describe the main advantages and disadvantage of existing prediction models, while highlighting noticeable progress that has been made in sequence encoding. 
+%We believe that this paper can serve as a comprehensive guide for academic and industrial researchers interested in different applications of machine learning techniques in the field of CRISPR/Cas9.
+\\
+%We aim that %cover the related articles in this scope and 
+%this review can serve as a  guide to the reader in navigating this fast-growing research field. % It is worth mentioning that the main goal of this study is not to compare the performance of various existing methods because; (1) the models have been trained on different data set, (2) the models have been concentrate on specific target prediction (3) consider different categories of off-target sites called as Mismatches, RNA bulges (insertion), and DNA bulges (deletion). For this reason, % -> not sure it is important to address it explicitly (we mentioned already that it was a survey paper)
+Our main contributions are as follows:
+\begin{itemize}
+\item To the best of our knowledge, this is the first comprehensive review of both traditional machine learning and deep learning methods used for on- and off-target prediction in CRISPR/Cas9 gene editing;
+\item A description of the benchmark data sets used for on- and off-target prediction in CRISPR/Cas9 is provided;
+\item The main sequence encoding techniques used in CRISPR/Cas9 are discussed along with their specific properties;
+\item The main deep learning architectures used for on- and off-target prediction in CRISPR/Cas9 are presented and their limitations are discussed;
+\item Research challenges and avenues of future investigation regarding the application of traditional machine learning and deep learning methods in the field of CRISPR/Cas9 gene editing are discussed.
+\end{itemize}
+
+
+\section{Data description}
+In this section, we present the most popular CRISPR/Cas9 benchmark data sets used in the literature for on- and off-target prediction. Table \ref{tab1} reports the main features of these data, including the original article describing the data set in question, the URL link to the data set, and the prediction target.
+
+%\input{table1}
+
+Wang et al. \cite{wang2014genetic} used a practical library containing $73,000$ sgRNAs to generate knockout collections and to investigate screens in human cell lines HL-$60$ and KBM$7$. The authors tested both ribosomal and non-ribosomal protein coding genes with all possible sgRNAs gathered in the library. Koike-Yusa et al. \cite{koike2014genome} conducted their investigation on a data set that consisted of $87,897$ guide RNAs targeting $19,150$ mouse protein-coding genes. They designed genome-wide mutant mouse embryonic stem cell libraries to identify unknown host factors that modulate toxin susceptibility. % \\ % I comment the new line because I am not sure to understand that we are discussing a new idea or concept.
+
+Doench et al. \cite{doench2014rational} generated two types of screening data, called Flow Cytometry (FC) and Doench V1, respectively. The FC data set consisted of 1,831 guides targeting three human (CD13, CD15, and CD33) and six mouse (Cd5, Cd28, H2-K, Cd45, Thy1, and Cd43) genes, all producing cell-surface markers which could be assayed by flow cytometry. Later on, RESistance assays (RES) data provided by Doench et al. \cite{doench2016optimized} consisted of a further 2,549 unique guides targeting eight additional  genes (i.e. CCDC101, MED12, TADA2B, TADA1, HPRT, CUL3, NF1, and NF2) from Human A375 cells. GUIDE-seq is another important data repository based on the results of the GUIDE-seq technique \cite{tsai2015guide}. It can serve as an accurate framework for genome-wide identification of off-target effects. The sgRNAs used in GUIDE-seq target the following sites: VEGFA site 1, VEGFA site 2, VEGFA site 3, FANCF, HEK293 site 2, HEK293 site 3, and HEK293 site 4, in which 28 off-targets with a minimum modification frequency of $0.1$ were identified (among 403 potential off-targets). % \\ % I comment the new line because I am not sure to understand that we are discussing a new idea or concept.
+
+Abadi et al. \cite{abadi2017machine} collected a training data set based on three genome-wide methods for unbiased CRISPR-Cas9 cleavage sites profiling, which are named: (i) Genome-wide unbiased identification of DSBs enabled by sequencing (GUIDE-Seq) \cite{tsai2015guide, kleinstiver2016high}, (ii) High-throughput genome-wide translocation sequencing (HTGTS) \cite{frock2015genome}, and (iii) Breaks labeling, enrichment on streptavidin and next-generation sequencing (BLESS) \citep{ran2015vivo, slaymaker2016rationally}. The resulting data set was assembled from the five following studies: \cite{tsai2015guide, kleinstiver2016high, frock2015genome, ran2015vivo, slaymaker2016rationally}. It includes 33 collections of sgRNAs and with their respective targets obtained from 25 unique sgRNAs. These sgRNAs cleaved 872 and 491 genomic targets across the genome before and after data filtration, respectively.
+
+The well-known CRISPOR database organized and maintained by Haeussler et al. \cite{haeussler2016evaluation} aggregates different public data sets that were used to detect and quantify off-target cleavage sites, including: Wang-Xu et al. data set (2,076 guides targeting 221 genes in Human HL-60 cells) \cite{wang2014genetic, xu2015sequence}, Koike-Yusa et al. data set \cite{koike2014genome}, Doench V1 and V2 data sets \cite{doench2014rational, doench2016optimized}, Hart et al. data set (4,239 guides targeting 829 genes in Human Hct116 cells) \cite{hart2015high}, Z\_fish MM data set (1,020 guides targeting 128 genes in Zebrafish genome) \cite{moreno2015crisprscan}, Z\_fish VZ data set (102 guides targeting different genes in Zebrafish genome) \cite{varshney2015high}, Z\_fish GZ data set (111 guides targeting different genes in Zebrafish genome) \cite{gagnon2014efficient}, Drosophila data set \cite{ren2014enhanced}, Chari et al. data set (1234 guides targeting Human 293T cells) \cite{chari2015unraveling}, Ciona data set (72 guides targeting different genes in Ciona genome) \cite{gandhi2016rational}, Farboud et al. data set (50 guides targeting different genes in Caenorhabditis elegans genome) \cite{farboud2015dramatic}. Moreover, Haeussler et al. \cite{haeussler2016evaluation} developed the CRISPOR web tool (available at: crispor.org) that is intended to design, evaluate and clone guide sequences for the CRISPR/Cas9 system. This web tool incorporates several off-target scoring algorithms. It also displays pre-calculated results for all human exons from the UCSC Genome Browser tracks. On the first page of crispor.org, the user enters three pieces of information: (i) a single genomic sequence, typically an exon under 2300 bp; (ii) a genome (from the list of more than 150 genomes, including plants and emerging model organisms); (iii) a PAM motif. The main output of CRISPOR is a web page that shows the annotated input sequence and the list of possible guides in the input sequence. Furthermore, CRISPOR also generates a list of primers related to a selected guide. \\
+Munoz et al. \cite{munoz2016crispr} designed the CRISPR tiling library, which is a large tiling-sgRNA data set containing data for 139 genes with an average of 364 sgRNAs/gene for three cancer cell lines DLD1, RKO, and NCI-H1299. Chen et al. \cite{chen1optimizing} generated the CRISPEY data set consisting of 23,936 samples, each of which contains a 20-nucleotide gRNA sequence and a 100-basepair donor DNA sequence. In this data set used to generate the off-target predictions, 306 samples are labeled as effect samples and 23,630 samples are labeled as no-effect samples.  % \\ I comment the new line because I am not sure to understand that we are discussing a new idea or concept.
+% In fact, % -- not really academic --
+%The experimental methods for whole-genome-based off-target detection can be divided into two categories: in vitro and in vivo methods. 
+
+Lazzarotto et al. \cite{lazzarotto2020change} applied their CHANGE-seq automatable tagmentation-based method to analyse the related in vitro Cas9 genome-wide nuclease activity data set. CHANGE-seq was carried out to analyze 110 sgRNA targets across 13 therapeutically relevant loci in human primary T cells. A total of 201,934 off-target sites were identified with variable numbers of off-target sites, ranging from 19 to 61,415, for an individual sgRNA. The CIRCLE-Seq (Circularization for In vitro Reporting of CLeavage Effects by sequencing) screening strategy introduced by Tsai et al. \cite{tsai2017circle} was used to analyze the related data set that includes gRNA-DNA pairs for 10 gRNA sequences with the corresponding mismatch, insertion, and deletion information; 7,371 of these sequence pairs were identified as active off-targets. Cameron et al. \cite{cameron2017mapping} proposed the SITE-Seq biochemical method that uses Cas9 programmed with sgRNAs to recognize cut sites within genomic DNA. The related data set contains sgRNA-DNA sequence pairs for 9 guide sequences; 3,767 of these sequence pairs correspond to active off-targets. Wang et al. \cite{wang2019optimized} used the DeepHf (Deep learning for High-Fidelity Cas9) method to perform a genome-scale screen measuring gRNA activity of two highly specific SpCas9 variants (eSpCas9(1.1) and SpCas9-HF1), and a wild-type SpCas9 (WT-SpCas9) in human cells. The obtained data set contains indel rates for over 50,000 gRNAs for each nuclease, covering about 20,000 genes. It is the largest gRNA on-target activity data set reported to date for mammalian cells. 
+
+Furthermore, the DeepCRISPR data set generated by Chuai et al. \cite{chuai2018deepcrispr} includes approximately $0.68$ billion sgRNA sequences derived from 13 human cell lines, including HEK293, MCF-7, K562, HL60, NB4, BE2C, Caco-2, GM06990, Hela, HCT116, LNCap, HepG2, and GM12878. These large data set comprises epigenetic information for different cell types, providing a unified feature space which combines the data from various experiments and cell types. GenomeCRISPR is a well-formatted data repository, organized by Rauscher et al. \cite{rauscher2016genomecrispr}, which was designed for high-throughput CRISPR screening experiments. GenomeCRISPR contains over 550,000 sgRNAs derived from 84 different experiments. Finally, the CRISPRon deep learning model and the related interactive gRNA design webserver, developed by Xiang et al. \cite{xiang2021enhancing}, are freely available along with the related data set of 12,000 gRNA oligos, targeting 3,834 human protein-coding genes. 
+
+% \input{table1}
+
+\begin{longtable}{ccccc}
+\caption{A summary of the most popular CRISPR/Cas9 benchmark data sets and databases used for on- and off-target prediction. \label{tab1}} \\
+\midrule
+Source & Year & Data description & Target & Data link \\
+\midrule
+Wang et al. data \cite{wang2014genetic} & 2014 & A library containing $73,000$ sgRNAs & Off-targets & https://www.ncbi.nlm. \\
+\botrule
+\end{longtable}
+
+
+
+\section{sgRNA-DNA sequence encoding}
+Before building Artificial intelligence (AI) models for off-target predictions, the sgRNA-DNA sequence data must be pre-processed to be used as input. Data pre-processing, or data encoding, allows converting the sgRNA-DNA sequences of letters into sequences of numbers that AI models can read and interpret to build predictions. Data pre-processing is an important milestone when trying to boost the predictive performance of AI models. The two most popular encoding techniques used in CRISPR-Cas9 are: (a) One-hot encoding and (b) Word embedding. Figure \ref{fig:Encoding} highlights the differences between the two techniques. In one-hot encoding, each possible channel A, C, G or T is represented by a one-hot vector such as [1,0,0,0], [0,1,0,0], [0,0,1,0], and [0,0,0,1]. In embedding, a particular word, or string, is represented using a unique vector representation. A sgRNA-DNA sequence, which can be subdivided into substrings of length $k$, called $k$-mes, can be thus transformed into a vector representation thanks to word embedding. The most popular embedding technique is Word2Vec \cite{mikolov2013distributed}. This natural language processing technique relies on the use of neural networks. In this review, we first discuss some recent papers that use one-hot encoding schemes in CRISPR-Cas9, followed by a brief overview of papers dealing with word embedding.
+
+\begin{figure}[b]
+    \centering
+    % \includegraphics[width=15cm,height=8cm]{Sequence.pdf}
+    \vspace{-2.5em}
+    \includegraphics[scale=0.40]{sequence_new.pdf}
+    \caption{Two sequence encoding models used in CRISPR/Cas9: one-hot encoding and word embedding.}
+    \label{fig:Encoding}
+\end{figure}
+
+
+When applying a one-hot encoding, each sgRNA-DNA sequence pair of length $L$ is encoded in a one-hot matrix of four rows and $L$ columns. Each row corresponds to the nucleotide type, i.e. A, C, G, and T. Each base in the sgRNA and the target DNA is then encoded in the form of a one-hot vector according to one of various methods. 
+%[1,0,0,0], [0,1,0,0], [0,0,1,0], and [0,0,0,1].
+%There exist nonetheless different ways of applying one-hot encoding techniques for sequence pairs encoding. We briefly summarize the most recent studies and their encoding schemes hereinafter.
+
+Chuai et al. \cite{chuai2018deepcrispr} proposed the deepCRISPR model for sgRNA on- and off-target predictions. DeepCRISPR relies on a deep convolutionary denoising neural network and one-hot data pre-processing. The nucleotide sequence is a 20-bp sgRNA sequence with an NGG PAM across the human genome. It is represented by four channels, (A, C, G, and T), and each epigenetic feature is considered as one channel. Thus, the encoded matrix used by Chuai et al. is of size $(4 + n) \times 23 $, where 4 corresponds to the number of channels and $n$ to the number of epigenetic features.
+Lin et al. \cite{lin2018off} introduced a one-hot sequence encoding method that converts each sgRNA-DNA sequence pair into a matrix to be used as a convolutional input. In their method the four channels are used to represent both sgRNA and target DNA. Thus, each character in the sgRNA and target DNA sequences is encoded as a single one-hot vector. Consequently, every sgRNA-DNA sequence pair is encoded in a matrix of size $4 \times 23$, where $23$ corresponds to the 3-bp PAM adjacent to the 20 bases. The use of such $4 \times 23$ input matrices allowed the authors to apply for the first time deep FNNs and deep CNNs for off-target prediction in CRISPR-Cas9 gene editing.
+Charlier et al. \cite{charlier2021accurate} described a different novel one-hot encoding method. Their main idea was to build a data encoding procedure that relies on a bijective mapping for sgRNA-DNA sequence pairs. It allows for encoding, and decoding, of the sgRNA-DNA sequence pairs without any information loss that can occur in the encoding scheme adopted by \cite{lin2018off}. Specifically, Charlier et al. combined a $4 \times 23$ matrix used for sgRNA encoding and a $4 \times 23$ matrix used for DNA encoding, resulting in a $8 \times 23 $ matrix used as a convolutional input. The authors applied FNNs, CNNs, and RNNs to generate accurate off-target predictions. 
+Lin et al. \cite{lin2020crispr} have recently introduced an encoding technique capable of incorporating base mismatch, missing base (RNA bulge or insertion), and extra-base (DNA bulge or deletion) in off-target sites. Each sequence pair was considered as a fixed length vector with the following five-bit channel: (A, C, G, T, $\_$). Additionally, the authors considered a two-bit direction channel used to identify the indel and mismatch directions. Thus, a combined seven-bit channel, encoded as seven one-hot encoded vectors, allowed them to take into account not only sgRNA-DNA sequence mismatches, but insertions and deletions as well (see Fig. \ref{fig:Encoding_Lin}). Lin et al. \cite{lin2020crispr} used a $7\times 23$ matrix encoding scheme, where 23 is the length of the sgRNA-DNA sequence pairs. This innovative encoding scheme, used with different deep learning models for off-target predictions on CIRCLE-Seq and GUIDE-Seq data sets, demonstrated state-of-the-art prediction performance.
+
+\begin{figure}[b]
+    \centering
+    %\includegraphics[width=15cm,height=5cm]{Fig3.png}
+    \vspace{-1.5em}
+    \includegraphics[scale=0.316]{Figure_3_new.png}
+    \caption{A novel effective sgRNA-DNA one-hot sequence encoding scheme used by Lin et al. \cite{lin2020crispr}. A seven-bit encoding example is shown. Here,  ``\_`` symbol indicates the DNA or RNA bulge position. Each sgRNA-DNA sequence pair is encoded as a fixed-length seven-row matrix that includes a five-bit character channel (A, G, C, T, \_) and a two-bit direction channel. The five-bit channel is used to encode the on- and off-target site nucleotides, whereas the direction channel is used to indicate the mismatch and indel locations.}
+    \label{fig:Encoding_Lin}
+\end{figure}
+
+Zhang et al. \cite{zhang2022effective} proposed another encoding scheme with a similar objective to incorporate mismatch, DNA and RNA bulge information into different off-target prediction models. The authors first considered a four-bit channel (A, C, G, T) and a one-hot vector encoding scheme. Furthermore, they used a two-bit channel to indicate a base deletion on RNA and DNA, and another one-bit function channel to indicate if the location is part of the guide sequence (0) or the PAM sequence (1). The encoded matrix was thus of size $7\times 23$. Finally, an "OR" operation was carried out to indicate when two bases in a base pair were identical. Zhang et al. tested their encoding scheme with different FNN, CNN, and RNN models. They demonstrated performance on par with state-of-the-art.
+Zhang et al. \cite{zhang2020dl} investigated an encoding scheme consisting of a matrix of size $20\times L$, with $L$ being the sequence length. In the encoding process, the authors used a four-bit channel (A, C, G, T) for sgRNA encoding, a four-bit channel (A, C, G, T) for DNA encoding, and a twelve-bit channel to one-hot encode all possible mismatches. They then regrouped the three corresponding matrices, resulting in a final matrix of size $20\times L$. This extended matrix was then used for data augmentation to reduce the class imbalance between off-targets and on-targets, while a CNN model was used for on-target activity prediction.
+
+%Another popular sequence encoding technique is based on the k-mer embedding, inspired by the word2vec technique \cite{mikolov2013distributed}. %In this encoding approach, The input sequence is split into overlapped $k$-mers of length $k$ using a $s$-stride sliding window. Each $k$-mer is then mapped into a $d$-dimensional vector using word2vec method. Word2vec is an unsupervised learning algorithm that maps k-mers from the vocabulary to vectors of real numbers in a low-dimensional space. 
+% jch: can we put the original paper of word2vec? It is a well-known technique in NLP.
+%/*jch: we are discussing here about word embeding which is outside of the context here in my opinion, thus I propose to comment it. */
+
+%Liu et al. \cite{liu2018identifying} investigated an unsupervised representation learning to find the vector representation of 3-mer, instead of a one-hot encoder. The three nucleotides from position i to i+2 on sgRNA 20 nucleotides are represented by a vector, learned with 3mer2vec. The authors showed that using 3-mer nucleotides embedding improved %gained superiority in model predictive performance, when compared to one-hot encoding. %/*jch: I would comment this article as it is not so well referenced, I think it is better we insist on the others.*/
+
+Several authors have proposed using the Natural Language Processing (NLP) word embedding technique instead of one-hot encoding. The idea of applying word embedding for sgRNAs is that off-targets are encoded closer to each other in the vector space than are on-targets. Zhang et al. \cite{zhang2021prediction} thus proposed to label-encode and word-embed sgRNA sequences. Each sgRNA sequence was transformed into a numerical vector using the Tokenizer module from the Keras library \citep{chollet2015keras}. Encoded sequences were then passed to pooling and convolutional layers, and to three convolutional layers to obtain sgRNA cleavage efficiency predictions. Liu et al. \cite{liu2019prediction} combined the word embedding with a transformer to convey sgRNA sequences to a deep neural network model consisting of CNNs and FNNs. The authors demonstrated that the word embedding approach had similar predictive performance as the latest one-hot encoding-based deep learning models. In their following work, Liu et al. \cite{liu2020deep} proposed to use a trained unsupervised learning algorithm, GloVe \citep{pennington2014glove}, designed to aggregate word-word occurrence statistics outputting linear substructures of the word vector space. The authors applied GloVe to convert sgRNA sequences into substructures of the word vector space. They forwarded the sgRNA word vectors to a bidirectional LSTM and a CNN with five convolutional layers to predict the sgRNA off-target propensity, and demonstrated state-of-the-art predictive performance of their models.
+
+% Chen et al. \cite{chen2020predicting} investigated the input embedding as the sum of the token embedding and the learnable position embedding.
+% /*jch: I don't have access to the pdf, only restricted access is allowed. I would suggest to comment it, as the description here is very short.*/
+
+
+\section{Traditional machine learning models and their application in CRISPR/Cas9}
+In this section, we present different conventional machine learning models for on- and off-target prediction found in the genome editing literature related to CRISPR/Cas9. We will discuss the application of deep neural networks in the next section. \\
+Wang et al. \cite{wang2014genetic} were among the first authors to use Support Vector Machines (SVMs) to predict sgRNA efficacy. The log2 fold change of sgRNAs targeting ribosomal protein genes was used as their efficacy indicator. The authors used the log2 fold change to build a binary classification, where ribosomal protein gene-targeting sgRNAs were designated either as weak or as strong. 
+Doench et al. \cite{doench2014rational} trained a logistic regression classifier to differentiate the highest activity quintile of sgRNAs from the lowest activity quintile of sgRNAs. The authors used sequence features from nine mouse and human genes with cross-validation to ensure the generalisation across genes.
+Xu et al. \cite{xu2015sequence} applied a regularized regression method that linearly combines the penalties of the Lasso and Ridge methods, and Elastic-Net, to predict sgRNA efficiency in CRISPR/Cas9 knockout experiments. The authors demonstrated that Elastic-Net outperforms existing models on different independent data sets.
+Fusi et al. \cite{fusi2015silico} investigated how to achieve the best optimal predicative performance in CRISPR/Cas9 gene editing. They relied on two different primary data sets composed of mouse and human genes. The authors built and trained five traditional machine learning classifiers to predict the knockout efficacy, and observed that the gradient-boosted regression trees yielded the best performance overall.
+Abadi et al. \cite{abadi2017machine} proposed the CRISPR Target Assessment (CRISTA) algorithm that relies on a random forest ensemble machine learning framework to determine the propensity of a genomic site to be cleaved by a given sgRNA. The authors determined that the system attributes that account for the spatial structure and rigidity of the entire genomic site as well as those related to the PAM region have the main impact on the prediction capabilities.
+
+Shen et al. \cite{shen2018predictable} described a novel inDelphi model, capable to predict genotypes and frequencies of 1- to 60-bp deletions and 1-bp insertions in five human and mouse cell lines. Leenay et al. \cite{leenay2019large} proposed an effective CRISPR Repair OUTcome (SPROUT) model to predict the length, the probability, and the sequence of possible nucleotide insertions and deletions. The Favoured Outcomes of Repair Events at Cas9 Targets (FORECast) model has been recently developed by Allen et al. \cite{allen2019predicting}. The authors showed that a basic logistic regression model can identify strong sequence dependent biases in Cas9-generated alleles, which are reproducible and predictable for dominant categories of mutations. 
+
+Peng et al. \cite{peng2018recognition} were among the first authors to capitalize on the recent advances in CRISPR/Cas9 data availability. They experimented with two positive sample sets, both containing on- and off-targets. The first of them contains 215 unique and reliable sequence pairs related to 29 sgRNA's on-target editing sites and their off-target editing sites. The second one is associated with 527 unique and reliable sequence pairs obtained by using high-throughput sequencing techniques - Digenome-seq \cite{kim2015digenome}, GUIDE-seq \cite{tsai2015guide},  HTGTS \cite{frock2015genome}, CIRCLE-seq \cite{tsai2017circle}, and multiplex Digenome-seq \cite{kim2016genome}. Peng et al. randomly under-sampled the data to compensate for the class imbalance between on- and off-targets. They then trained an ensemble SVM classifier to detect the off-target sites. The authors demonstrated that their ability to outperform state-of-the-art predictive models by aggregating larger numbers of sequence pairs. The work of Peng et al. opened new directions for data aggregation in the field of genome editing. Lazzarotto et al. \cite{lazzarotto2020change} proposed an approach targeting the fast pace of changes in genome editing with a scalable, automatable tagmentation-based method for estimating the genome-wide activity of Cas9 in vitro. Their CHANGE-Seq method was designed to better understand the specificity of genome editors. In their experiments, Lazzarotto et al. used the encoded one-dimensional vectors to train a gradient tree boosting model to predict off-target activities. The authors highlighted the importance of the protospacer and the PAM position for accurate off-target prediction. Moreover, they showed that CHANGE-Seq generally outperforms both GUIDE-seq \cite{tsai2015guide} and CIRCLE-seq \cite{tsai2017circle} methods.
+
+Zhang et al. \cite{zhang2019synergizing} explored the ensemble learning potential for on- and off-target prediction by synergizing multiple tools. The input of their ensemble learning model contained five scores calculated by the following scoring methods - CCTop \cite{stemmer2015cctop}, MIT Website \cite{hsu2013dna}, CFD \cite{doench2014rational}, MIT \cite{haeussler2016evaluation}, and Cropit \cite{singh2015cas9}, evolutionary conservation data, as well as Chromatin state segmentation data. They used an imbalanced data set containing 25,332 putative off-target DNA sequences with 152 verified positive off-targets, and the other being negative. Zhang et al. used five different machine learning algorithms - AdaBoost \cite{freund1996experiments}, a random forest \cite{breiman2001random}, a multi-layer perceptron \cite{bishop1995neural}, an SVM \cite{burges1998tutorial}, and a decision tree \cite{quinlan1987simplifying}. In their experiments, the authors demonstrated that the ensemble-based AdaBoost algorithm was able to outperform the other predictive algorithms in terms of the area under the precision recall curve (AUPRC) and the area under the receiver operating characteristic curve (AUROC) metrics.
+
+Rahman et al. \cite{rahman2017crisprpred} introduced the CRISPRpred model aiming at providing accurate in silico predictions of sgRNA on-target activity. CRISPRpred is capable to extract relevant features in order to use them in an SVM-based machine learning framework providing accurate predictions. The work of Rahman et al. emphasizes the importance of feature engineering to boost the predictive performance of sgRNA on- and off-target predictions. Furthermore, Rafid et al. \cite{muhammad2020crisprpred} demonstrated the importance of feature engineering and data preprocessing to ensure effective sgRNA activity predictions. The authors proposed a novel SVM-based machine learning tool, named CRISPRpred(SEQ), for on-target activity predictions, which is capable to challenge the effective DeepCRISPR model. They demonstrated that thanks to designing better explanatory features, CRISPRpred(SEQ), that used a simpler model architecture, was able to outperform DeepCRISPR in 3 out 4 cell lines. 
+
+Wang et al. \cite{wang2020gnl} proposed a methodology targeting cross-species generalization of on- and off-target activities. The authors developed the GNL-Scorer software computing two cross-species generalization scores, GNL and GNL-Human. GNL-Scorer also combines different data sets, features and models for sgRNA activity prediction, agnostic to the species. The authors claimed that GNL-Scorer facilitates the current in silico design of sgRNAs. Liu et al. \cite{liu2020seqcor} also proposed an open-source software, called SeqCor, which relies on the application of a random forest algorithm to extract sequence features that influence sgRNA knockout efficiency. The aim of their work was to facilitate the extraction of the sequence features and to minimize possible bias effects that may be present in a library used for CRISPR/Cas9-based screening.
+
+Table \ref{tab2} reports the main traditional machine learning classifiers and regressors used for on- and off-target prediction in CRISPR/Cas9.
+
+% \input{table2}
+
+\begin{longtable}{ccccc}
+\caption{A summary of studies applying traditional machine learning methods for on and off-target prediction in CRISPR/Cas9. \label{tab2}}\\
+\midrule
+Source & Year & Data description & Target & Data link \\
+\midrule
+Wang et al. data \cite{wang2014genetic} & 2014 & A library containing $73,000$ sgRNAs & Off-targets & https://www.ncbi.nlm. \\
+\botrule
+\end{longtable}
+
+
+
+
+%\begin{figure*}
+%\centering
+%\includegraphics[width=17cm,height=10cm]{Network1.pdf}
+%\caption{Representation of standard architectures for FNNs, CNNs, and RNNs. }
+%\label{fig:2}
+%\end{figure*}
+
+\section{Deep learning models and their applications in CRISPR/Cas9}
+\subsection{\textbf{A brief review of deep neural networks}}
+Deep learning applications across all research fields have recently gained popularity due to easier access to data, boosted computing power, and recent progress in supervised machine learning methodology. Deep neural networks are at the core of deep learning. They are capable of learning complex patterns from the data using multiple layers of interconnected neurons. Training and optimizing deep neural networks is still complex and fast evolving field. Here, we review the most popular deep neural network models used for on- and off-target prediction in CRISPR/Cas9. Figure \ref{fig:2} illustrates the most popular deep learning network architectures used in CRISPR/Cas9, which are Feedforward Neural Networks (FNNs), Convolutional Neural Networks (CNNs), and Recurrent Neural Networks (RNNs).
+
+\begin{figure}
+  \centering
+  \includegraphics[width=15.5cm,height=8.3cm]{FNN.pdf}\vspace{-6em}\\
+  \centering
+  \includegraphics[width=15.5cm,height=8.3cm]{CNN.pdf}\vspace{-7em}\\
+  \centering
+  \includegraphics[width=15.5cm,height=8.3cm]{RNN.pdf}\vspace{-4em}
+  \caption{Some standard architectures of Feedforward Neural Networks (FNNs), Convolutional Neural Networks (CNNs), and Recurrent Neural Networks (RNNs) used to on- and off-targets in in CRISPR/Cas9. For each network, the encoded matrix containing the sgRNA-DNA sequence pair information is used as input (for more details, see Charlier et al. \citep{charlier2021accurate}).}
+  \label{fig:2}
+\end{figure}
+
+We first present briefly the FNNs, one of the most popular deep neural network architectures \cite{heaton2018ian}. In a standard FNN architecture, the information always moves forward between different layers of interconnected neurons. The two main categories of FNN are as follows: a single-layer FNN and a multi-layers FNN. In a single layer FNN, the input layer, i.e. the first layer of neurons receiving the data as input, is directly fully connected to the output layer. The output layer is the last layer outputting the predictions. In the multi-layer FNN, the input layer and the output layer are fully connected to hidden layers. Thus, a multi-layer FNN has at least 3 layers of neurons. Figure \ref{fig:2} presents a typical multi-layer FNN architecture used for off-target predictions in CRISPR/Cas9 (for more details, see \citep{charlier2021accurate}). 
+
+The CNNs introduced by Lecun et al. \cite{lecun1998gradient} rely, as FNNs, on fully connected layers, but also include convolutional layers and pooling layers. A convolutional layer consists of a collection of convolutional filters used to extract spatial features from the input image. Within the convolutional layer, different filters, or kernels, can be applied to process the data and generate feature maps. These feature maps help the neural network to better regress or classify the input data. Following the convolutional layers, hidden fully connected layers are often used to further improve the predictive performance of a CNN. An example of a CNN architecture used for off-target predictions in CRISPR/Cas9 is presented in \ref{fig:2} (for more details, see \citep{charlier2021accurate}).
+
+The RNNs is another type of neural networks that has found applications for on- and off-target predictions in CRISPR/Cas9. Contrary to the FNNs and CNNs, the information in RNNs does not always move forward; it can also move backward. The aim of RNNs is to replicate a memory process through a recurrent learning mechanism. The RNNs aggregate information of the past inputs and that of the current input in order to produce the current output. An example of an RNN architecture used for off-target predictions in CRISPR/Cas9 is presented in \ref{fig:2} (see also \citep{charlier2021accurate}). Two popular types of RNNs are the Long Short-Term Memory (LSTM) models, which are designed to learn order dependence in sequence prediction problems \cite{hochreiter1997long, gers2000learning} and the Gated Recurrent Unit (GRU) models, which use a similar to LSTMs prediction mechanism, but require less memory and are usually faster than LSTMs as they have no an output gate \cite{chung2014empirical}. Both the LSTM and GRU model architectures have the ability to forget the information by using a forget gate. One of the advantages of the LSTMs is that they are able to overcome the vanishing gradient problem that occurs while training networks with backpropagation and gradient-based learning methods, preventing undesirable weight updates in the RNN. For the input sequence $<x_1, x_2, …, x_T>$, the key mathematical equations of the forward pass of an LSTM unit are as follows \cite{heaton2018ian}:
+\begin{align}
+f_t &= \sigma_g (W_f x_t + U_f h_{t-1}+b_f),\\\nonumber
+i_t &= \sigma_g (W_i x_t + U_i h_{t-1}+b_i),\\\nonumber
+o_t &= \sigma_g (W_o x_t + U_o h_{t-1}+b_o),\\\nonumber
+c_t &= f_t  \circ c_{t-1} + i_t  \circ \sigma_c (W_c x_t + U_c h_{t-1}+b_c),\\\nonumber
+h_t &= o_t \circ \sigma_h (c_t),
+\end{align}
+where $\circ$ denotes the Hadamard product, $x_t$ is the unit's input at time $t$, $h_t$ is the corresponding unit's output, $c_t$ is the hidden unit's memory, and $i_t$, $f_t$, and $o_t$ are, respectively, the activation vectors of the input gate, of the forget gate, and of the output gate. The variables $W$, $U$, and $b$ are, respectively, the weight matrices and the bias parameter, and $\sigma_g$ denotes a sigmoid function. Finally, both $\sigma_c$ and $\sigma_h$ denote hyperbolic tangent functions.\\
+
+\begin{table}[b]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        Name of the function & Formula \\
+        \midrule
+        ReLU & $\sigma(x) = \max(0, x)$ \\
+        Leaky ReLU & $\sigma(x) = \max(\alpha x, x)$ \\
+        Randomized leaky ReLU (RReLU) & $\sigma(x) = \max(0, x) + \alpha \times \min(0, x)$ \\
+        Parametric leaky ReLU (PReLU) & $\sigma(x) = \max(0, x) - \alpha \times \max(0, -x) $ \\
+        Scaled exponential Linear Units (SeLU) & $\sigma(x)= \lambda 
+        \begin{cases}
+            x, \ & x > 0\\
+            \alpha \ e^x - \alpha,  & x\leq 0
+        \end{cases} $ \\
+        Logistic (Sigmoid) & $\sigma(x) = \dfrac{1}{1+e^{-x}}$ \\
+        Hyperbolic Tangent (Tanh) & $\sigma(x) = \dfrac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$ \\
+        Softmax & $\sigma(x) = \dfrac{e^{x_i}}{\sum _{j=1} ^K e^{x_j}}, \quad \text{where $K$ the number of classes}$ \\
+        \toprule
+    \end{tabular}
+    \caption{Activation function commonly used in artificial neural networks.}
+    \label{tab::activation:_function}
+\end{table}
+
+For all deep learning network architectures presented, the neurons rely on an activation function that is used to determine whether a given neuron should be activated or not. Thus, the activation function being used determines whether the neuron's contribution to the network is important or not in the prediction process. An activation function allows the model to transform the weighted sum of the neuron's input signals to an output signal. Table \ref{tab::activation:_function} summarises the most common activation functions used in artificial neural networks with their respective formulas. One of the most commonly used activation functions is the Rectified Linear Unit (ReLU) \cite{heaton2018ian}. The function sets all negative input values to zero. The ReLU activation function may suffer from the problem of dying ReLU when the function outputs zero values only, which leads to the stagnation of weights. Leaky ReLU is an activation function with the aim to overcome the challenges of the dying ReLU \cite{heaton2018ian}. The slope $\alpha$ allows for negative values thus avoiding the dying ReLU phenomenon. The Randomized leaky ReLU (RReLU) and Parametric leaky ReLU (PReLU) are the activation functions that randomly choose the value of $\alpha$ or modify it during backpropagation \cite{xu2015empirical}. Finally, the Scaled exponential Linear Units (SeLU) activation function \cite{heaton2018ian} induces self-normalizing properties and often outperforms the other activation functions in terms of the gradient stability in the optimization process \cite{heaton2018ian}.
+
+Deep neural networks, by their nature, have a large number of parameters to fine-tune during their training. Special attention must given to the problem of overfitting in the model's training. Overfitting occurs when the model learns patterns only present in the training set and cannot generalize its predictive performance on the test set. Different techniques exist to limit the overfitting while training deep neural networks. The most important of them are early-stopping, network-reduction, regularization, and dropout \cite{heaton2018ian,ying2019overview}. We invite the reader to consult the aforementioned literature for more details.
+
+\subsection{\textbf{Application of deep learning models in CRISPR/Cas9}}
+Recently, deep learning models have been extensively used for automated analysis of CRISPR/Cas9 data, including the prediction of on- and off-targets. Chuai et al. \cite{chuai2018deepcrispr} implemented a deep learning framework, DeepCRISPR, predicting simultaneously the sgRNA on-target knockout efficacy and the off-target cleavage. The authors introduced an unsupervised representation learning strategy to train a Deep Convolutionary Denosing Neural Network (DCDNN) auto-encoder to learn the underlying representation of sgRNAs. The unsupervised deep representation learning was then used to transfer the encoded data to a hybrid deep neural network for sgRNA on-target knockout efficacy prediction. The proposed network included a softmax activation function and an identity function for the classification and regression models, respectively. DeepCRISPR provided good prediction results in terms of both AUPRC and AUCROC compared to the CFD prediction method \cite{doench2014rational}. 
+
+Lin et al.\cite{lin2018off} proposed a novel sequence encoding method designed for off-target predictions with deep neural networks. They investigated different network architectures, including CNNs and FNNs. In their experiments, the authors used publicly available CRISPOR (18,236 samples) and GUIDE-Seq (430 samples) data sets. The transfer learning strategy was applied to obtain the off-target predictions for a much smaller GUIDE-Seq data set as the model trained on the CRISPOR data set was used to predict the GUIDE-Seq off-targets. Despite the fact that that the encoding strategy proposed by Lin et al. \cite{lin2018off} could lead to some information loss (it was then corrected in Lin et al. \cite{lin2020crispr}), very encouraging AUCROC results were obtained (i.e. an area under the curve values up to 0.972 were generated). The main conclusion of their work was that CNN and FNN deep learning networks steadily outperform state-of-the-art off-target scoring prediction methods (i.e. CFD, MIT, CROP-IT, and CCTOP) as well as traditional machine learning classifiers (i.e. random forest, gradient boosting trees, and logistic regression). Charlier et al. \citep{charlier2021accurate} proposed a novel sgRNA-DNA sequence encoding technique without any possible information loss, which was applied in a deep learning off-target prediction framework. The authors compared the prediction performance of different FNN, CNN, and RNN network architectures (see Fig. \ref{fig:2}) as well as of several machine learning classifiers (i.e. random forest, naive Bayes and logistic regression). The predictions were performed on two well-known gene editing data sets, CRISPOR and GUIDE-Seq, which were also considered by Lin et al. \cite{lin2018off}. The transfer learning approach was used as well to predict the off-targets on the much smaller GUIDE-Seq data set. The proposed prediction framework led to more accurate off-target prediction results, compared to those of Lin et al. \cite{lin2018off}, yielding an improvement of the AUCROC metric up to 35\%. 
+Moreover, Xue et al. \cite{xue2018prediction} introduced DeepCas9, an effective deep-learning framework based on CNNs. They proposed a network architecture to automatically learn the sequence determinants, conducting their experiments with 10 CRISPR/Cas9 data sets of different sizes. Xue et al. demonstrated that DeepCas9 was capable of outperforming some traditional machine learning methods such as random forest and logistic regression in terms of both on- and off-target predictions.
+
+Feature engineering has proven to be an important milestone when developing and optimizing predictive models \citep{heaton2018ian}. Other biological features than sequence information can be incorporated in CRISPR/Cas9 predictive models, including gene melting temperature, molecular weight, or microhomology features. Wang et al. \cite{wang2019optimized} investigated deep learning and machine learning models for gRNA activity prediction for generated data based on enhanced SpCas9 (eSpCas9(1.1)), Cas9-High Fidelity (SpCas9-HF1), and wild-type SpCas9 (WT-SpCas9). The authors built two RNN and one CNN deep learning models, and trained them along with a linear regression, a L2-regularized linear regression, an XGBoost, and a multilayer perceptron. In their experiments, Wang et al. demonstrated that the RNN that received as input the sequence data with added biological features was able to outperform all the other tested models. Their second best performing model was the RNN that received as input sequence data only. According to these authors, plausible biological information increases the predictive performance of the RNN models, leaving opportunities for future model enhancements. Wang et al. also applied the SHAP method with XGBoost and RNNs to provide the feature importance of the sequence input. Moreover, they developed a DeepHF website to ease the access to indel data for WT-SpCas9, eSpCas9(1.1), and SpCas9-HF1. 
+
+Liu et al. \cite{liu2020deep} introduced a deep learning architecture, CnnCrispr, to predict the off-target propensity of sgRNAs at specific DNA fragments. The approach proposed by these researchers relies on the GloVe embedding model \cite{pennington2014glove} to extract the global statistical information from genes. The constructed word vector matrix was then embedded into the considered deep learning model including a bidirectional LSTM and a CNN. The authors demonstrated that the proposed approach could outperform state-of-the-art classification and regression algorithms. Stortz et al. \cite{stortz2021picrispr} introduced the piCRISPR deep learning model intended for off-target prediction using physically informed features. They designed four different feature encoding schemes to incorporate the physically informed features: the target-guide encoding, the target-mismatch encoding, the target-mismatch-type encoding, and the target-OR-guide encoding. In their experiments conducted with the crisprSQL data set, the authors demonstrated the importance of both the sequence context and the chromatin accessibility for effective cleavage prediction. Niu et. al. \cite{niu2021r} proposed the R-CRISPR deep learning model that encodes sgRNA target sequences into a binary matrix and then used a CNN model as a feature extractor. Precisely, they applied a Rep-VGG inference time body composed of a stack of 3×3 convolutions and ReLUs \citep{ding2021repvgg} in the convolutional layers to extract relevant features. The CNN output was then passed to a bi-directional recurrent layers using an LSTM to get accurate off-target predictions. 
+
+Lin et al. \cite{lin2020crispr} proposed an effective CRISPR-Net model, where a Long-term Recurrent Convolutional neural Network (LRCN) was playing the role of a feature extractor. The convolutional kernels within the LRCN were replaced by an inception module. Then, a bidirectional LSTM was used for scoring the off-target activity of each potential sgRNA-target. The proposed encoding strategy took into account mismatches and indels (see Fig. \ref{fig:Encoding_Lin}). CRISPR-Net was applied for off-target prediction on both sequence content and epigenetic features. Shrawgi et al. \cite{shrawgi2019convolution} introduced DeepSgRNA, a deep learning architecture relying on CNN, to identify and predict RNA guides. The aim of their approach was to eliminate the need in feature construction, which improved the scalability of the approach. DeepSgRNA relies on hierarchical feature generation abilities of CNNs. In their experiments with the GenomeCRISPR data, the authors proved that DeepSgRNA was able to achieve state-of-the-art sgRNA prediction efficiency.
+
+Training deep learning models with real-world CRISPR-Cas9 data is a tricky task because of a large natural imbalance existing between positive and negative samples. This leads to an imbalanced data classification problem with a much larger majority class and a much smaller minority class. Thus, the predictive models observe and learn more from the samples of the majority class and, as a consequence, can fail to predict accurately samples from the minority class. This can negatively impact their overall predictive performance. Zhang et al. \cite{zhang2020dl} proposed DL-CRISPR, a deep learning model for off-target activity prediction in CRISPR/Cas9, with data augmentation as a solution for the class imbalance problem. The authors first gathered data from two source types (i.e. from in vitro and cell-based experiments) to increase the size of the positive class samples (i.e. off-targets in this case), and thus the model's competency. Precisely, Zhang et al. proposed to increase synthetically the number of positive samples by rotating the sgRNA-DNA encoded images by 90 degrees, 180 degrees, and 270 degrees, respectively. Hence, the number of positive samples in the data set was quadrupled. The data was then passed to a four-layer CNN to perform the off-target predictions. The main finding of their work was that data augmentation was a critical step for improving the predictive performance of DL-CRISPR.
+
+Recent progress in deep learning models with attention mechanism \cite{vaswani2017attention} is currently gaining interest by demonstrating promising results in sgRNA off-target specificity prediction and on-target efficiency prediction. Liu et al. \cite{liu2019prediction} analyzed two transformer-based neural networks, AttnToMismatch\_CNN and AttnToCrispr\_CNN, using cell-specific information of genes. Both models are similar, except that AttnToCrispr\_CNN employs a linear regression at the final layer. AttnToMismatch\_CNN and AttnToCrispr\_CNN demonstrated competitive performance for both off-target sgRNA specificity prediction and on-target efficiency prediction. Furthermore, Liu et al. introduced a third model, called seqCrispr, which harbors an LSTM component and a CNN component in parallel to provide accurate on-target efficiency predictions. Zhang et al. \cite{zhang2021prediction} proposed two novel interpretable attention-based CNN models, called CRISPR-ONT and CRISPR-OFFT, designed for predicting sgRNA on- and off-target activities, respectively. Their methodology emphasizes the importance of the feature explainability for obtaining precise on- and off-target predictions. Interpretable attention-based CNNs were used to highlight how RNA-guide Cas9 nucleases could be used to investigate mammalian genomes. Moreover, Xiao et al. \cite{xiao2021attcrispr} designed AttCRISPR, a deep learning framework based on the attention mechanism for predicting on-target activity. The proposed approach relies on the two attention modules, one spatial and one temporal, facilitating the model's interpretability. AttCRISPR relies on an ensemble learning strategy stacking encoding-based methods and embedding-based methods to improve its predictive performance. Recently, Zhang et al. \cite{zhang2022effective} implemented the CRISPR-IP model, which is based on a CNN, a BLSTM, and an attention layer learning the sequence pair features. CRISPR-IP combines the four following types of network layers: (i) the convolutional layer to learn local features, (ii) the recurrent layer to learn the context features of the sequence, (iii) the attention layer to learn global features from the attention score, and (iv) the dense layer to map the features to the sample label space. Zhang et al. also used a new type of encoding scheme to overcome the problem of information loss in the sequence encoding.
+
+Table \ref{tab3} summarizes the most important recent deep learning models used for on- and off-target target prediction in CRISPR/Cas9. 
+
+%\input{table3}
+
+\begin{longtable}{ccccc}
+\caption{A summary of studies applying deep learning models for on and off-target prediction in CRISPR/Cas9. \label{tab3}}\\
+\midrule
+Source & Year & Data description & Target & Data link \\
+\midrule
+Wang et al. data \cite{wang2014genetic} & 2014 & A library containing $73,000$ sgRNAs & Off-targets & https://www.ncbi.nlm. \\
+\botrule
+\end{longtable}
+
+
+
+
+
+\section{Conclusions and outlook}
+Artificial intelligence methods have emerged as state-of-the-art approach in the field of genome editing. We reviewed recent applications of traditional machine learning and deep learning algorithms for prediction of on- and off-target activity in CRISPR/Cas9. We believe that our review paper can serve as a guideline for CRISPR/Cas9 practitioners willing to apply artificial intelligence methods in genome editing.
+
+\subsection{\textbf{Main Conclusions}}
+The main conclusions of our study are as follows:
+\begin{itemize}
+
+\item First, we highlighted the importance of sequence encoding for sgRNA-DNA on- and off-target predictions. Initial models implied straightforward one-hot sequence encoding of the sgRNA-DNA sequence pairs \cite{lin2018off}. Subsequent sequence encoding schemes were introduced \cite{charlier2021accurate} demonstrating higher predictive performance. The latest efforts have been focusing on the supplementary information embedding with different channels reflecting insertions, deletions and mismatches \citep{lin2020crispr}. 
+
+\item Second, some recent work has demonstrated that the ensemble machine learning methods have generally outperformed non-ensemble methods \cite{zhang2019synergizing, abadi2017machine}. For instance, AdaBoost \cite{zhang2019synergizing}
+and Random Forest \cite{abadi2017machine} led to superior predictive performance than a standard logistic regression or an SVM \cite{fusi2015silico}. %The superior performance of the ensemble methods is mainly due to the different learning methodology from the non-ensemble methods.
+
+\item Third, recent studies have highlighted the importance of feature selection for accurate activity predictions in the field of CRISPR/Cas9. New methodologies have been introduced to incorporate sequence information such as gene melting temperature, molecular weight, or microhomology features \cite{wang2019optimized}. Some works emphasize the need of automated feature learning and automated feature engineering to boost the performance of deep learning models \cite{zhang2022effective}.
+
+\item Fourth, we observed that publicly available data sets usually have incomparable numbers of positive and negative samples, thus leading to a class imbalance problem having a negative impact on the models predictive performances \cite{heaton2018ian}. Recent papers propose to use data augmentation to increase the number of samples of the minority class \cite{zhang2020dl} or to apply some standard re-sampling techniques, such as under-sampling \cite{liu2020deep}, to mitigate the imbalance impact.
+
+\item Fifth, deep neural networks have demonstrated their superior predictive performance in the latest  publications in comparison to traditional machine learning algorithms such as SVM or Random Forest \citep{lin2018off, charlier2021accurate}. Furthermore, the latest deep learning models that rely on attention-based mechanism and recurrent neural networks have demonstrated very promising prediction results \cite{liu2019prediction, xiao2021attcrispr}.
+
+\item Sixth, transfer learning have been effectively employed in the field by means of training deep learning models on larger data sets to predict the off-target sgRNA-DNA sequences in smaller data sets \cite{lin2018off, charlier2021accurate}. Further experiments should show how the most appropriate larger data sets used for training could be selected. Moreover, it would be interesting to see whether some pretrained deep learning models could be effectively used for transfer learning in CRISPR/Cas9. \end{itemize}
+
+%We briefly discuss hereinafter different research gaps and open issues hindering further developments of on- and off-target activity prediction techniques in CRISPR/Cas9. \\
+
+\subsection{\textbf{Research Gaps and Future Research Directions}}
+Research gaps and future research directions related to the application of artificial intelligence methods in genome editing include:
+
+\begin{itemize}
+\item Attention-based deep learning models have recently shown some promising prediction performances \cite{zhang2021prediction, xiao2021attcrispr, vaswani2017attention}. Nonetheless, these prospective models have not been widely used in the filed. The attention mechanisms have been shown to increase the efficacy of the deep learning process \cite{chen2022gcsanet, shen2022attention, de2022attention, basiri2021abcdm}.
+
+\item Deep neural networks usually stack several layers of different types, each of which often containing dozens of neurons. Thus, designing efficient deep learning network architectures and finding optimal sets of optimization hyperparameters are extremely important and challenging tasks \cite{cho2020basic, wu2020practical}. Various hyperparameter tuning techniques which should be extensively tested with CRISPR/Cas9 data include: evolutionary strategies, random grid search, exhaustive grid search, and Bayesian optimization \cite{heaton2018ian}.
+
+\item Explainability and interpretability of deep neural networks has been a topic of interest for the past few years \citep{heaton2018ian,ribeiro2016should}. Recent methodologies have been introduced to further address the lack of human-level explainability and interpretability \cite{miller2019explanation, chou2022counterfactuals, vilone2021notions}. Future research in genome editing could fill the gap in understanding the nature of on- and off-target activities, an important milestone for clinical applications.
+
+\item As we pointed out, some recent works in the field have focused on the use of features engineering to boost the predictive performance of machine learning models \cite{wang2019optimized, shrawgi2019convolution}. Informative features such as epigenetic features, microhomology properties, or RNA fold score, can be further exploited to increase accuracy.
+
+\item Uncertainty quantification is a key technique to improve the trustworthiness of predictions made by a trained network. This technique has become popular for evaluating uncertainty in various research fields \cite{abdar2021review, abdar2021uncertainty, abdar2023uncertaintyfusenet, hoffmann2021uncertainty, mazoure2022dunescan}. There are two types of uncertainty: the aleatoric uncertainty that is an inherent property of the data distribution, and the epistemic uncertainty that refers to the model's uncertainty. This technique could be effectively applied in genome editing to improve the trustworthiness of on- and off-target predictions.
+
+\item Active learning is a semi-supervised technique in which a learning algorithm is used to label unlabeled data. An active learning algorithm uses an initial subset of labeled data for training. The algorithm then predicts the most appropriate labels for unlabeled data. This technique is of particular interest in biology because obtaining labeled data is often costly and time consuming \cite{gordon2018meta, lee2019learning, nguyen2020uncertainty}. Active learning can be employed in genome editing in situations when unlabeled data are abundant, while accurate automatic or manual labeling is impossible.
+\end{itemize}
+
+
+\section{Acknowledgments}
+We thank Dr Robert Nadon (McGill University) for his helpful comments and suggestions. This work was supported by Le Fonds Québécois de la Recherche sur la Nature et les Technologies [173878], and Natural Sciences and Engineering Research Council of Canada [249644].
+
+\section{Key Points}
+
+\begin{itemize}
+  \item We reviewed current knowledge regarding the use of supervised machine learning methods for on- and off-target prediction in CRISPR/Cas9.
+  \item We highlighted the importance of the data pre-processing step including encoding of the sgRNA-DNA sequence pairs without any information loss, embedding supplementary data with different channels reflecting insertions, deletions and mismatches, and considering some additional sequence information such as gene melting temperature, molecular weight, or microhomology features.
+  \item Most of CRISPR/Cas9 data sets have incomparable numbers of positive and negative samples, thus leading to a class imbalance situation that should be mitigated using either data augmentation or data re-sampling techniques.
+  \item Deep neural networks have demonstrated their superior predictive performance in comparison to traditional machine learning algorithms such as SVM or Random Forest.
+  \item We emphasized the importance of feature selection for accurate on- and off-target prediction in CRISPR/Cas9. Thus, the automated feature learning and automated feature engineering techniques should be used to boost the performance of deep learning models.
+\end{itemize}
+
+
+
+% ======================
+% ======================
+% ==== BIBLIOGRAPHY ====
+% ======================
+% ======================
+% !!! (jch) important : work in progress to resolve the compilation error of the natbib package which blocks us to put the article in arxiv !!! 
+\bibliographystyle{unsrt}
+\bibliography{0_document}
+
+% original bibliography that produces natbib package error
+% \input{bibitems.tex}
+
+\end{document}

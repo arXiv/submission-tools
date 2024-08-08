@@ -1,0 +1,104 @@
+\begin{thebibliography}{23}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+
+\bibitem[{Baaz(1999)}]{Baaz99THEC}
+Baaz, M., 1999. Note on generalization of calculations. Theoret. Comput. Sci.
+  224, 3--11.
+
+\bibitem[{Baaz et~al.(1994)Baaz, Ferm\"uller, and Leitsch}]{BFL94LICS}
+Baaz, M., Ferm\"uller, C.~G., Leitsch, A., 1994. A non-elementary speed-up in
+  proof length by structural clause form transformation. In: Proc. of LICS'94.
+  IEEE Computer Science Press, pp. 213--219.
+
+\bibitem[{Baaz and Leitsch(1992)}]{BaazLeitsch92APAL}
+Baaz, M., Leitsch, A., 1992. Complexity of resolution proofs and function
+  introduction. Annals of Pure and Applied Logic 57, 181--215.
+
+\bibitem[{Fernandes(2001)}]{drgeo}
+Fernandes, H., 2001. Dr genius.
+  \texttt{http://ofset.sourceforge.net/drgenius/}.
+
+\bibitem[{Hasse(1923)}]{Hasse23JRAM}
+Hasse, 1923. Quadratische {F}ormen. Journal f\"ur reine und angewandte
+  {M}athematik 152, 129--148.
+
+\bibitem[{Hilbert(1899)}]{hilbert-geometrie}
+Hilbert, D., 1899. Grundlagen der Geometrie. B.~G. Teubner.
+
+\bibitem[{Needham(1959)}]{needham}
+Needham, J., 1959. Science and Civilization in China. Vol.~3. Cambridge
+  University Press.
+
+\bibitem[{Ogilvy(1990)}]{ogilvy}
+Ogilvy, C.~S., 1990. Excursions in Geometry. New York: Dover.
+
+\bibitem[{Orevkov(1979)}]{Orevkov79}
+Orevkov, V.~P., 1979. Lower bounds for increasing complexity of derivations
+  after cut elimination. Zapiski Nauchnykh Seminarov Leningradskogo Otdeleniya
+  Matematicheskogo Instituta 88, 137--161.
+
+\bibitem[{Polya(1954{\natexlab{a}})}]{polya1}
+Polya, G., 1954{\natexlab{a}}. Mathematics and plausible reasoning, Volume I:
+  Induction and Analogy in Mathematics. Princeton University Press, Princeton,
+  New Jersey.
+
+\bibitem[{Polya(1954{\natexlab{b}})}]{polya2}
+Polya, G., 1954{\natexlab{b}}. Mathematics and plausible reasoning, Volume II:
+  Patterns of Plausible Inference. Princeton University Press, Princeton, New
+  Jersey.
+
+\bibitem[{Preining(1996)}]{Prei96MT}
+Preining, N., 1996. Sketch-as-proof, a proof-theoretic analysis of axiomatic
+  projective geometry. Master's thesis, University of Technology, Vienna,
+  Austria.
+
+\bibitem[{Preining(1997)}]{Prei97KGC}
+Preining, N., 1997. Sketch-as-proof. In: Gottlob, G., Leitsch, A., Mundici, D.
+  (Eds.), Computational Logic and Proof Theory, Proc. 5\/$^{\mathit{th}}$ Kurt
+  G\"odel Colloquium KGC'97. Lecture Notes in Computer Science 1289. Springer,
+  Vienna, Austria, pp. 264--277.
+
+\bibitem[{Robinson(1949)}]{Robinson49JSL}
+Robinson, J., 1949. Undecidability in the arithmetic of integers and rationals
+  and in the theory of fields. Journal of Symbolic Logic 14, 77.
+
+\bibitem[{Robinson(1965)}]{unifi1}
+Robinson, J.~A., 1965. A machine-oriented logic based on the resolution
+  principle. J. of the ACM 12~(1), 23--41.
+
+\bibitem[{Robinson(1971)}]{unifi2}
+Robinson, J.~A., 1971. Computational logic: The unification computation.
+  Mach.Intell. 6, 63--72.
+
+\bibitem[{Sch{\"u}tte and van~der Waerden(1953)}]{SchuetteWaerden:MA-125-325}
+Sch{\"u}tte, K., van~der Waerden, B.~L., 1953. Das {P}roblem der dreizehn
+  {K}ugeln. Math. Annalen 125, 325--334.
+
+\bibitem[{Seidenberg(1978)}]{seidenberg}
+Seidenberg, A., 1978. The origin of mathematics. Archive for History of Exact
+  Sciences 18.
+
+\bibitem[{Shoenfield(1967)}]{shoenfield}
+Shoenfield, J.~R., 1967. Mathematical Logic. Addison-Wesley.
+
+\bibitem[{Statman(1979)}]{Statman79PAMS}
+Statman, R., 1979. Lower bounds on {H}erbrand's theorem. Proc. of the Amer.
+  Math. Soc. 75, 104--107.
+
+\bibitem[{Steketee(1998)}]{sketchpad}
+Steketee, S., April 1998. Euclidean and non-euclidean geometry with the
+  geometer's sketchpad. {I}nternationale {K}onferenz {\"u}ber {S}chulmathematik
+  {M}athematikunterricht zwischen {A}bakus und {M}ultimedia, vienna, Austria:
+  Technische Universit{\"a}t Wien.
+
+\bibitem[{van~der Waerden(1983)}]{waerden-ancient}
+van~der Waerden, B.~L., 1983. Geometry and Algebra in Ancient Civilizations.
+  Springer.
+
+\bibitem[{Wolfram(1991)}]{mathematica}
+Wolfram, S., 1991. Mathematica. Addison Wesley.
+
+\end{thebibliography}

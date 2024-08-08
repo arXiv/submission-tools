@@ -1,0 +1,181 @@
+\section{Preliminaries}\label{sec:preliminaries}  % nothing new here
+
+\subsection{Output-Feedback System Level Synthesis (SLS)}
+
+System level synthesis (SLS) allows us to design a system's closed-loop response by solving a convex optimization problem \cite{wang2019system,anderson2019system}. For an output-feedback system evolving according to the following dynamics
+%The output feedback linear system is given by \eqn{output_feedback}.
+% no need to label if we only refer to it once
+\begin{align*}
+x[t+1] =&\ A x[t] + B u[t] + d_x[t] \\
+y[t] =&\ C x[t] + D u[t] + d_y[t]
+%    \begin{gathered}
+%        x_{t+1} = Ax_t + Bu_t \\
+%        y_t = C x_t \\
+%        u_t = K_t y_t
+%    \end{gathered}
+% always put the label at the end so tha LaTeX can find the right number
+%\label{eqn:output_feedback}
+\end{align*}
+where $x[t]$ is the state, $u[t]$ the control, $y[t]$ the output (measurement), and $d_x[t]/d_y[t]$ the disturbances at time $t$, the closed-loop system is parameterized by
+\begin{align*}
+    \begin{bmatrix}
+        \xbf \\ \ubf
+    \end{bmatrix} = 
+    \begin{bmatrix}
+        \Pbfxx & \Pbfxy \\ \Pbfux & \Pbfuy
+    \end{bmatrix} 
+    \begin{bmatrix}
+        \dbf_x \\ \dbf_y
+    \end{bmatrix}.
+\end{align*}
+
+SLS synthesizes an internally stabilizing controller $\Kbf$ in the frequency domain by solving the convex optimization
+\OptMin[SLS_output_feedback]{ % the subequation label is eqn:SLS_output_feedback
+g(\Pbfxx,\Pbfxy,\Pbfux,\Pbfuy)
+}{
+\OptCons{
+\mat{zI-A & -B}
+\mat{
+\Pbfxx & \Pbfxy \\
+\Pbfux & \Pbfuy
+}
+=
+\mat{I & 0},
+}{}{}\\
+\OptCons{
+\mat{
+\Pbfxx & \Pbfxy \\
+\Pbfux & \Pbfuy
+}
+\mat{zI-A \\ -C}
+=
+\mat{I \\ 0},
+}{}{}\\
+\OptCons{
+\Pbfxx,\Pbfxy,\Pbfux \in z^{-1}\RHinf, \Pbfuy \in \RHinf
+}{}{stability-constraint}\\
+\OptCons{
+\mat{
+\Pbfxx & \Pbfxy \\
+\Pbfux & \Pbfuy
+} \in \Scal,
+}{}{}
+}
+where $g$ is the objective and $\Scal$ the set of system level constraints.
+We call $\OFqple$ the system response, and a solution to \eqn{SLS_output_feedback} leads to the desired controller \cite[Corollary 5]{tseng2021realization}
+\begin{align*}
+\Kbf = \Kbf_0 \left( I + D\Kbf_0 \right)^{-1}
+\end{align*}
+where $\Kbf_0 = \Pbfuy - \Pbfux \Pbfxx^{-1} \Pbfxy$.
+The control then follows from $\ubf = \Kbf \ybf$ where $\ubf$ and $\ybf$ are the frequency domain signals of the control $u$ and output $y$.
+
+In this paper, we consider finite impulse response (FIR) solutions with horizon $T$, i.e.,
+\begin{align*}
+\Pbfxx = \sum\limits_{\tau = 1}^T z^{-\tau} \Pxx[\tau], \quad
+\Pbfxy = \sum\limits_{\tau = 1}^T z^{-\tau} \Pxy[\tau], \\
+\Pbfux = \sum\limits_{\tau = 1}^T z^{-\tau} \Pux[\tau], \quad
+\Pbfuy = \sum\limits_{\tau = 0}^T z^{-\tau} \Puy[\tau],
+\end{align*}
+where $\Phi_{\bullet}[\tau]$ are the corresponding spectral components.
+Notice that the summation limit is different for $\Pbfuy$ due to \eqn{stability-constraint}. Further, we assume that the objective $g$ is a finite sum of per-step costs:
+\begin{align*}
+&\ g(\Pbfxx,\Pbfxy,\Pbfux,\Pbfuy)\\
+=&\ \sum\limits_{\tau = 0}^{T} g_{\tau}(\Pxx[\tau],\Pxy[\tau],\Pux[\tau],\Puy[\tau]).
+\end{align*}
+
+
+\iffalse
+Written in the frequency domain, the output feedback system with a stable controller
+satisfies the constraints in \eqn{SLS_output_feedback}, as shown in \cite{anderson2019system}.
+\begin{align}\label{eqn:SLS_output_feedback}
+    \begin{gathered}
+        \min g(\xx,\xy,\ux,\uy) \\
+        \text{s.t. } \begin{bmatrix}
+            zI-A & -B
+        \end{bmatrix}
+        \begin{bmatrix}
+            \xx & \xy \\
+            \ux & \uy
+        \end{bmatrix} = 
+        \begin{bmatrix}
+            I & 0
+        \end{bmatrix} \\
+        \begin{bmatrix}
+            \xx & \xy \\
+            \ux & \uy
+        \end{bmatrix}
+        \begin{bmatrix}
+            zI-A \\
+            -C
+        \end{bmatrix} = 
+        \begin{bmatrix}
+            I \\ 0
+        \end{bmatrix} \\
+        \xx,\xy,\ux \in \frac{1}{z}\mathcal{RH}_{\infty},\ \uy \in \mathcal{RH}_{\infty}.
+    \end{gathered}
+\end{align}
+\fi
+
+\subsection{Dynamic Programming (DP)}\label{sec:preliminaries-DP}
+
+Dynamic programming (DP) breaks down a cost-optimization problem into a series of subproblems recursively correlated to each other. The optimal solution to the original problem can then be obtained by iteratively solving the subproblems. Such a breakdown is possible especially when the overall cost $h$ is the sum of per-step costs $h_\tau$, e.g.,
+\begin{align*}
+h(\xbf,\ubf) = \sum\limits_{\tau=0}^T h_\tau(x[\tau],u[\tau]).
+\end{align*}
+Letting $x[\tau + 1] = f(x[\tau], u[\tau])$, DP then derives the cost-to-go functions $V_\tau(x[\tau])$ from the Bellman equation:
+\begin{align*}
+V_\tau(x[\tau]) = \min\limits_{\hat{u} \in \Acal_u[\tau]} h_\tau(x[\tau],\hat{u}) + V_{\tau + 1}(f(x[\tau],\hat{u}))
+\end{align*}
+where $\Acal_u[\tau]$ is the set of admissible $u[\tau]$ and $V_{T+1}(x[\tau]) = 0$. As such, given the initial condition $x[0]$, the optimal cost of the original problem is $V_0(x[0])$, and the optimal $u[\tau]$ is the one achieving the minimum of the cost-to-go function $V_\tau(x[\tau])$, i.e.,
+\begin{align}
+u[\tau] =&\ \argmin\limits_{\hat{u} \in \Acal_u[\tau]} h_\tau(x[\tau],\hat{u}) + V_{\tau + 1}(f(x[\tau],\hat{u})) \nonumber \\
+=&\ K_\tau(x[\tau]).
+\label{eqn:DP-U}
+\end{align}
+Meanwhile, we can also use the above $u[\tau]$ to express $V_\tau(x[\tau])$ as
+\begin{align}
+V_\tau(x[\tau]) = h_\tau(x[\tau],u[\tau]) + V_{\tau + 1}(f(x[\tau],u[\tau])).
+\label{eqn:DP-cost-to-go}
+\end{align}
+
+
+
+
+% output feedback SLS
+% We will show that these constraints can be reformulated into a dynamic program. A dynamic program is a techique used to solve convex programs, in which a cost function can be written in terms of 
+%the cost of the current state plus the cost of the future states according to Bellman's equation (\eqn{cost_to_go}).
+%The function $g(x_t,u_t)$ gives the cost at the current time step, and $V(x_t)$ gives the total cost-to-go at time $t$.
+
+%\begin{equation}\label{eqn:cost_to_go}
+%    V(x_t) = \min_{u_t} g(x_t,u_t) + V(x_{t+1})
+%\end{equation}
+% what is DP, bellman equation, technique to solving opt problem
+%To solve for the set of inputs $u_t$ that minimize the total cost at time $t=0$, given by $V(t_0)$, we iterate starting from 
+%the final time step to the initial time step, solving for the best control input $u_t$ as a function of the state $x_t$. Then, given an
+%initial condition $x_0$, we can compute the control inputs $u_t$ for all time. 
+
+
+\subsection{Useful Lemmas}
+Below are some useful lemmas that we will use in our derivations later. We omit the proofs as they are all trivial.
+
+\begin{lemma}[Lemma 1 in \cite{tseng2020system}]\label{lem:null-space-is-subspace}
+Given a matrix $\Psi$, $\nul{\Psi}$ is a subspace and there exists some matrix $\Xi = \basis{\nul{\Psi}}$.
+\end{lemma}
+
+\begin{lemma}[Lemma 2 in \cite{tseng2020system}]\label{lem:union-of-null-space}
+The intersection of $\nul{\Psi_a}$ and $\nul{\Psi_b}$ is $\nul{\mat{\Psi_a\\ \Psi_b}}$.
+\end{lemma}
+
+\begin{lemma}\label{lem:pinv-equal-regression}
+Given matrices $\Gamma$ and $Z$, we have
+\begin{align*}
+\Gamma^+ Z = \argmin\limits_{M} \norm{\Gamma M - Z}.
+\end{align*}
+\end{lemma}
+
+\begin{lemma}\label{lem:normalization}
+Letting $\Psi$ be a matrix with at least one non-zero row, we have
+$\nul{\Psi} = \nul{\normalize{\Psi}}$.
+\end{lemma}
+
+

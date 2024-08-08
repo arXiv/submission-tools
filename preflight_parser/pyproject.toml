@@ -1,0 +1,51 @@
+[project]
+name = "TeX and LaTeX parser"
+version = "0.0.1"
+license = "BSD-3 License"
+authors = [
+    { name = "Norbert Preining", email = "norbert@arxiv.org" },
+]
+requires-python = ">=3.11"
+dependencies = [ "chardet ~= 5.0" ]
+
+[project.optional-dependencies]
+dev = [
+  "ruff",
+]
+
+[tool.ruff]
+line-length = 120
+
+lint.select = [
+    "F", # Pyflakes
+    "D", # pydocstyle
+    "E", # pycodestyle errors
+    # "W", # pycodestyle warnings
+    # "C90", # McCabe
+    "I",   # isort
+    "UP",  # pyupgrade
+    "PLC",
+    "PLE",
+    "PLW", # Pylint
+    # "PLR", # Pylint refactoring
+    "PD",  # pandas checks
+    "NPY", # numpy checks
+    "RUF", # ruff internal check
+]
+lint.ignore = [
+    "D105", # no docstring in magic method like __str__
+    "D203", # one blank line before class
+    "D213", # multi-line summary second line
+]
+
+output-format = "grouped"
+
+# Assume Python 3.11
+# Note: helps prevent breaking autofixes from, e.g., pyupgrade
+target-version = "py311"
+
+[tool.black]
+line-length = 120
+
+[tool.pylint]
+max-line-length = 120

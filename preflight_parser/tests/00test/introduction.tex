@@ -1,0 +1,235 @@
+%
+% introduction.tex
+%
+
+\section{Introduction}
+\label{sec:introduction}
+
+What is our way of proving? Which ways of demonstrating the truth of a
+statement are accepted as proof? What is the connection between
+informal descriptions and formal proofs, is there any at all? 
+
+Over the time various proof methods have emerged and fallen back into
+oblivion. A lot of these lost methods were used to guide
+mathematicians into new areas of knowledge, assure them of the truth
+of their conjectures. 
+To cite from \cite{polya1}:
+% How do we set up new conjectures? How do we prove? This are questions
+% which are relevant for any serious mathematician. The final outlook of
+% a theorem, the final proof does rarely resemble the way how the idea
+% for this theorem was found and how the proof was established. To cite
+%from \cite{polya1}:
+\begin{quotation}
+  We secure our mathematical knowledge by \emph{demonstrative
+  reasoning}, but we support our conjectures by \emph{plausible
+  reasoning}. A mathematical proof is demonstrative reasoning, but the
+  inductive evidence of the physicist, the circumstantial evidence of
+  the lawyer, the documentary evidence of the historian, and the
+  statistical evidence of the economist belong to plausible reasoning.
+
+  The difference between the two kinds of reasoning is great and
+  manifold. Demonstrative reasoning is safe, beyond controversy, and
+  final. Plausible reasoning is hazardous, controversial, and
+  provisional. Demonstrative reasoning penetrates the sciences just as
+  far as mathematics does, but it is in itself (as mathematics is in
+  itself) incapable of yielding essentially new knowledge about the
+  world around us. Anything new that we learn about the world involves
+  plausible reasoning [\ldots]
+\end{quotation}
+
+Accompanying the introduction of formal methods within mathematics and
+logic less and less methods of proving where founded on a formal base
+and therefore accepted as valid. One particular interesting example, and
+at the same time one of the last ones, since it is from~1953, is
+the use of physical notions in a proof of
+Schütte~\citep{SchuetteWaerden:MA-125-325}, which would be impossible 
+today. Nevertheless it is of fundamental proof theoretic interest to 
+understand the relation between formal proofs and informal
+descriptions. If we improve our understanding of these connections we
+could on the one hand better understand old proofs using these methods
+and on the other hand really use this methods in new proofs.
+
+The use of sketches in geometry resembles exactly the description
+given above. They were used for plausible reasoning \citep{polya1,polya2}.
+Ever since ancient civilizations like the Chinese, Arian or Greek
+cultures started to prove geometrical theorems there 
+where different forms of proving, different ways of assuring the
+truth of statements. All these different forms where accepted as
+complete proving tools. The distinction between plausible and
+demonstrative reasoning has not been made.
+With the beginning of strict formalization of
+mathematics and the use of formal methods within mathematics, some of
+these proving techniques have vanished or have changed the way they
+are used,
+because they couldn't stand the
+requirements of current science for a valid proving method. Some of
+these methods still exist but have lost there importance because they
+where not considered ``timely'' or formal enough to be used.
+
+One of these methods is the use of sketches to prove facts of various
+geometries. This method can look back to a long history as we will
+point out below. We will undertake a small excursion in the history of
+sketches and try to investigate this very old method of proving. In
+this paper we
+will analyze sketches within the framework of proof theory to
+understand the connection between sketches and formal proofs.
+
+
+Sketches are known as very useful to illustrate the facts of a proof
+and to make the idea of a proof transparent. But sketches need not
+only be just a hint, they can, in certain cases, be regarded as a
+proof by themselves. \Pgq\footnote{We will understand under ``\pg'' the
+\emph{plane} \pg and will loose the ``plane'' for simplicity.}
+ is best for analyzing this relation between
+sketches and proofs.
+
+In newer times sketches have never been accepted as a proving tool.
+The purpose of this paper is to show that sketches can be regarded as
+proofs, i.e.\ that we can translate sketches into proofs and vice
+versa. Additionally we will show interesting results concerning the
+length of sketches compared to the length of proofs using standard
+techniques like cut elimination. For this purpose we will use Herbrand
+disjunctions, which will be analyzed in detail in sec.~\ref{sec:herbrand}.
+
+% The purpose of this paper is to bring an idea of what a sketch can do
+% and to explain the relations between sketches and proofs. Therefore
+% we extend Gentzen's \lk to \pelk and use the properties of \pelk
+% to formalize the concept of a sketch. We will then present a result on
+% the equivalence of sketches and proofs and a result on the length of
+% proofs with sketches and with proofs in \lk.
+
+% In the proof of the equivalence of sketches and proofs we will use
+% \HD. The reason for using this complicated and not well known concept
+% of mathematical logic is the fact, that in this way proofs of speedup
+% results are independent from any calculus.
+
+\subsection{Historic Examples}
+\label{sec:introduction:history}
+
+Proofs of geometric propositions are found in the earliest known
+mathematical texts in India and China as well as in Greece. Let us
+give some examples (taken from \cite{waerden-ancient}):
+
+In the \=Apastamba \'Sulvas\=sutra, an altar is described in the form
+of an isosceles trapezium with its eastern base 24~units, its
+western~30, its width~36. The text says that the area is 972~square
+units. This is proved as follows (c.f.~fig.~\ref{fig:trapezium}):
+
+\begin{figure}[hbt!]
+  \[\epsfbox{diagonal.1}\]
+  \caption{Area of a trapezium}
+  \label{fig:trapezium}
+\end{figure}
+
+\begin{quotation}
+{\small One draws (a line) from the southern \emph{amsa} ($D$ in Fig.)
+toward the southern sr\=oni ($C$), (namely) to (the point~$E$ which
+is) 12 (\emph{padas} from the point~$L$ of the
+\emph{prsthya}). Thereupon one turns the piece cut off (i.e.\ the
+triangle~$DEC$) around and carries it to the other side (i.e.\ the
+north). Thus the \emph{vedi} obtains the form of a rectangle. In this
+form ($FBED$) one computes its area.}
+\end{quotation}
+
+The translation is taken from \cite{seidenberg}, p.~332, where there
+is also an interesting comment:
+
+\begin{quotation}
+        The striking thing is that here we have a proof.
+\end{quotation}
+
+As another example let us present a passage from the earliest Chinese
+text on astronomy and mathematics, the \emph{Chou Pei Suan Ching},
+which may be translated to ``Arithmetical Classic of the Gnomon and
+the Circular Paths of Heaven''. In this classical text from the
+Han-period a proof of the ``Theorem of Pythagoras'' is presented. The
+proof is only worked out for the $(3,4,5)$ triangle, but the idea of
+the proof is perfectly general.  Figure~\ref{fig:chou} and the
+translation are taken from \cite{needham}:
+
+\begin{figure}[ht]
+  \[\epsfxsize=6cm
+  \epsfbox{chinabild.eps}
+  \]
+  \caption{The proof of the Pythagorean Theorem in the Chou Pei Suan
+  Ching. From J.~Needham: Science and Civilization in China, Vol.~3}
+  \label{fig:chou}
+\end{figure}
+
+{\small
+\begin{quotation}
+  Thus, let us cut a rectangle (diagonally), and make the width
+  3~(units) wide, and the length 4~(units) long. The diagonal between
+  the (two) corners will then be 5~(units) long. Now after drawing a
+  square on this diagonal, circumscribe it by half-rectangles like
+  that, which has been left outside, so as to form a (square)
+  plate. Thus the (four) outer half-rectangles of width~3, length~4,
+  and diagonal~5, together make two rectangles (of area~24); then
+  (when this is subtracted from the square plate of area~49) the
+  remainder is of area~25. This (process) is called ``piling up the
+  rectangles''. 
+\end{quotation}
+}
+
+These examples are of course not the only ones. All the proofs in
+Euclid's ``Elements'' can be viewed as sketches. But sketches as
+proving tools are not limited to ancient times, there are a lot
+theorems in geometry which are obvious from a sketch, take for example
+Dandelin's theorem \citep{ogilvy} on the intersections of a plane with
+a cone or Robert's theorem. 
+
+\subsection{Present state}
+\label{sec:introduction:present}
+
+Today sketches lost most of their importance \emph{as proving tools by
+themselves}
+and are more or less only
+used to explain the ideas of a proof and to help understanding, but
+all the proofs have to be formalized in a strict sense. On the other
+hand there are some approaches to these area which try to reintroduce
+sketches as proofs: For example Grünbaum introduced a
+notion of provability in elementary geometry which is based on
+sketches made with \textsc{Mathematica} \citep{mathematica}. Other
+approaches of proving with the help of sketches can be found in
+programs like \emph{Geometer's Sketchpad} \citep{sketchpad} or
+\emph{DrGeo} \citep{drgeo}.
+
+\subsection{Why Projective Geometry}
+\label{sec:introduction:whypg}
+
+We choose projective geometry out of various reasons: The main one is
+the fact, that projective geometry is the most simple one, since the
+only concept is incidence, i.e.\ ``point lying on a line'', while
+other geometries, like affine or even higher geometries introduce more
+and more concepts like parallel, distance, measurement. But although
+projective geometry lacks concepts like distance and angle, it has great
+expressive power (see~sec.~\ref{sec:orevkov}).
+
+One step of sketching is to assume points or lines in a ``general''
+position. This means that this new point should not be placed in some
+special relation to the other ones. If you analyzed how many
+``special'' points there are in a triangle, it is obvious that it is
+difficult to put a new point into it which is ``for sure'' not one of
+these special points. In projective geometry the assumption of general
+position is easier, just because of this lack of higher concepts.
+
+Finally we want to mention that projective geometry is also easily
+axiomatized, it is in fact defined by only three axioms.  
+
+\subsection{Layout of the article}
+\label{sec:introduction:layout}
+
+Section~\ref{sec:herbrand} presents an analysis of Herbrand disjunction.\\
+Section~\ref{sec:sketch} gives an introduction to projective geometry,
+defines sketches and gives a simple example of a sketch.\\
+Section~\ref{sec:herbrandsketch} gives a proof that sketches and
+Herbrand disjunctions are equivalent by giving a translation from one
+to the other.\\
+Section~\ref{sec:orevkov} analyzes special cases where  sketches are much
+worse to be used as proving tool than formal proofs due to the fact
+that there can be a high speedup using cut elimination. 
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End: 

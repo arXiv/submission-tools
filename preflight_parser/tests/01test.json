@@ -1,0 +1,121 @@
+{
+   "detected_toplevel_files" : [
+      {
+         "filename" : "main.tex",
+         "issues" : [
+            {
+               "filename" : "body.tex",
+               "info" : "11",
+               "key" : "issue_in_subfile"
+            },
+            {
+               "filename" : "bio.tex",
+               "info" : "1",
+               "key" : "issue_in_subfile"
+            }
+         ],
+         "process" : {
+            "bibliography" : {
+               "pre_generated" : false
+            },
+            "compiler" : "pdflatex"
+         }
+      }
+   ],
+   "status" : {
+      "key" : "success"
+   },
+   "tex_files" : [
+      {
+         "filename" : "abstract.tex",
+         "language" : "latex"
+      },
+      {
+         "filename" : "app.tex",
+         "language" : "latex"
+      },
+      {
+         "filename" : "bio.tex",
+         "issues" : [
+            {
+               "info" : "figs/author1.png",
+               "key" : "file_not_found"
+            }
+         ],
+         "language" : "latex",
+         "output_type" : "pdf"
+      },
+      {
+         "filename" : "body.tex",
+         "issues" : [
+            {
+               "info" : "figs/The cantilever concentrates the force.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Displacement change and energy change curve - concentration force.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Displacement change and energy change curve - distribution force.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Simple beam - straight steel beam.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Simply supported beam - bent steel beam.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/beam of two span.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Continuous beam - steel beam.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Continuous rigid frame bridge stress diagram.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Simplified cable-stayed bridge.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Schematic diagram of arch bridge structure.jpg",
+               "key" : "file_not_found"
+            },
+            {
+               "info" : "figs/Displacement diagram of arch bridge.jpg",
+               "key" : "file_not_found"
+            }
+         ],
+         "language" : "latex",
+         "output_type" : "pdf"
+      },
+      {
+         "filename" : "coding.tex"
+      },
+      {
+         "filename" : "configs.tex",
+         "language" : "latex"
+      },
+      {
+         "filename" : "main.tex",
+         "used_bib_files" : [
+            "refs.bib"
+         ],
+         "used_tex_files" : [
+            "configs.tex",
+            "coding.tex",
+            "abstract.tex",
+            "body.tex",
+            "bio.tex",
+            "app.tex"
+         ]
+      }
+   ]
+}

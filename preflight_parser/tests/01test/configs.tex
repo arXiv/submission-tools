@@ -1,0 +1,190 @@
+\documentclass[12pt]{article}
+
+
+\usepackage{times}                                     
+\usepackage{amsfonts,amsmath,amssymb, amsthm} 
+
+
+\usepackage{latexsym}
+\usepackage[a4paper]{geometry}    
+
+
+
+\usepackage{fancyhdr}
+\usepackage{placeins}                           
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc} % Character encoding
+\usepackage{graphicx}%
+\usepackage{tabularx}
+\usepackage{array}
+\newcolumntype{x}[1]{%
+>{\raggedleft\hspace{0pt}}p{#1}}%
+
+
+
+% Book Tables
+\usepackage{booktabs}
+
+
+
+\usepackage{comment}
+
+% USE THIS TO CHANGE THE SPACING BETWEEN TABLES AND CAPTIONS!!!
+\usepackage[labelfont=bf,labelsep=period, skip=5pt]{caption}
+ 
+
+% TiKz
+\usepackage{pgf,tikz}
+\usepackage{mathrsfs}
+\usetikzlibrary{arrows}
+
+% PDF Plots
+\usepackage{pgfplots}
+\pgfplotsset{width=7cm,compat=1.10}
+
+% For side-by-side figures
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+
+% Editing: highlight and strikethru
+% \usepackage{soul}
+% \usepackage{todonotes}  % editing (make comments \todo{X}
+%\usepackage{lipsum}
+
+
+% OUTLINES
+\usepackage{outlines}
+\usepackage{enumitem}
+\setenumerate[1]{label=\arabic*.}
+\setenumerate[2]{label=(\alph*).}
+\setenumerate[3]{label=\roman*.}
+\setenumerate[4]{label=\alph*.}
+
+% Citations and References
+% https://merkel.texture.rocks/Latex/natbib.php
+\usepackage[authoryear, round]{natbib}
+
+
+\makeatletter
+\renewcommand\@biblabel[1]{}
+\renewenvironment{thebibliography}[1]
+     {\section*{\refname}%
+      \@mkboth{\MakeUppercase\refname}{\MakeUppercase\refname}%
+      \list{}%
+           {\leftmargin0pt
+            \@openbib@code
+            \usecounter{enumiv}}%
+      \sloppy
+      \clubpenalty4000
+      \@clubpenalty \clubpenalty
+      \widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebibliography' environment}}%
+      \endlist}
+\makeatother
+
+
+
+
+\RequirePackage{color}
+\definecolor{cej@color}{rgb}{0.5,0.37109375,0.59765625}
+\definecolor{abs}{rgb}{0.251,0.541,0.72.9}
+\definecolor{ffqqqq}{rgb}{1,0,0}
+\definecolor{qqqqff}{rgb}{0,0,1}
+\definecolor{cqcqcq}{rgb}{0.75,0.75,0.75}
+\definecolor{ttqqqq}{rgb}{0.2,0,0}
+\definecolor{ffxfqq}{rgb}{1,0.5,0}
+\definecolor{uuuuuu}{rgb}{0.27,0.27,0.27}
+\definecolor{ffqqff}{rgb}{1,0,1}
+\definecolor{xfqqff}{rgb}{0.5,0,1}
+\definecolor{xdxdff}{rgb}{0.49,0.49,1}
+\definecolor{red}{rgb}{1,0,0}
+\definecolor{blue}{rgb}{0,0,1}
+\definecolor{ccqqqq}{rgb}{0.8,0,0}
+\definecolor{fftttt}{rgb}{1,0.2,0.2}
+\definecolor{qqwuqq}{rgb}{0,0.39,0}
+\definecolor{qqqqff}{rgb}{0,0,1}
+\definecolor{wrwrwr}{rgb}{0.3803921568627451,0.3803921568627451,0.3803921568627451}
+\definecolor{sexdts}{rgb}{0.1803921568627451,0.49019607843137253,0.19607843137254902}
+\definecolor{rvwvcq}{rgb}{0.08235294117647059,0.396078431372549,0.7529411764705882}
+\definecolor{ccqqqq}{rgb}{0.8,0,0}
+\definecolor{qqqqff}{rgb}{0,0,1}
+\definecolor{wwwwww}{rgb}{0.4,0.4,0.4}
+\definecolor{qqwuqq}{rgb}{0,0.39215686274509803,0}
+\definecolor{uuuuuu}{rgb}{0.266,0.266,0.266}
+
+% Allows customization of titles
+\usepackage{titlesec}
+\titleformat{\section}[block]{\normalsize\scshape\bfseries{\arabic{section}.}}{}{1em}{}
+\titleformat{\section}[block]{\normalsize\scshape\bfseries}{\thesection}{1em}{}
+\titleformat*{\subsection}{\normalsize\scshape\itshape\bfseries}
+\titleformat*{\subsubsection}{\smallsize\scshape\itshape}
+\usepackage{framed}
+% \usepackage[hyphens]{url}
+%\usepackage[hyphens,spaces,obeyspaces]{url}
+% \usepackage[colorlinks,allcolors=blue]{hyperref}
+\usepackage[colorlinks,allcolors=black]{hyperref}
+\newtheorem{theorem}{Theorem}%[section]      
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}  
+\newtheorem{axiom}[theorem]{Axiom} 
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}     %
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary} 
+\newtheorem{criterion}[theorem]{Criterion} 
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{questions}{Question}
+\newtheorem{questionsa}{Question}
+\newtheorem{questionsb}{Question}                   %
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+%\newcounter{page}
+\setcounter{page}{1}
+\newcounter{ggbFirstpage}
+\setcounter{ggbFirstpage}{1}
+\pagestyle{empty}
+\setlength{\headheight}{14pt}
+\geometry{left=2cm,right=2cm,top=3cm,bottom=3cm}
+\pagestyle{fancyplain}                              
+
+\fancyhf{}
+%\fancyhead[c]{\small \emph{XX Journal}%
+%\, Volume \vol, Number \issue, ISSN XXXx-XXXX}     %
+\fancyhead[c]{\small \emph{XX Journal}}%
+
+\cfoot{%                                            
+  \ifnum\value{ggbFirstpage}=\pagenum%              
+    {\vtop to\hsize{\hrule\vskip .2cm {\thepage}}}%   = the starting page number         %
+  \else\setcounter{ggbFirstpage}{\pagenum}\fi%      
+}                                                   
+
+\newcommand*{\TitleFont}{%
+      \usefont{\encodingdefault}{\rmdefault}{}{n}%
+      \fontsize{16}{18}%
+      \selectfont}
+
+\def\authorfont{\normalfont\fontsize{12}{14}\selectfont\centering}
+\def\subauthorfont{\normalfont\fontsize{10}{12}\selectfont\centering}
+\definecolor{wrwrwr}{rgb}{0.3803921568627451,0.3803921568627451,0.3803921568627451}
+\definecolor{sexdts}{rgb}{0.1803921568627451,0.49019607843137253,0.19607843137254902}
+\definecolor{rvwvcq}{rgb}{0.08235294117647059,0.396078431372549,0.7529411764705882}
+\bibpunct[, ]{(}{)}{;}{a}{,}{,}
+\usepackage{mfirstuc}
+%https://www.titlecase.com
+
+
+ 

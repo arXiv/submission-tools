@@ -1,0 +1,794 @@
+\begin{thebibliography}{100}
+
+\bibitem{esvelt2013genome}
+Kevin~M Esvelt and Harris~H Wang.
+\newblock Genome-scale engineering for systems and synthetic biology.
+\newblock {\em Molecular systems biology}, 9(1):641, 2013.
+
+\bibitem{puchta2013gene}
+Holger Puchta and Friedrich Fauser.
+\newblock Gene targeting in plants: 25 years later.
+\newblock {\em International Journal of Developmental Biology},
+  57(6-7-8):629--637, 2013.
+
+\bibitem{barrangou2016applications}
+Rodolphe Barrangou and Jennifer~A Doudna.
+\newblock Applications of crispr technologies in research and beyond.
+\newblock {\em Nature biotechnology}, 34(9):933--941, 2016.
+
+\bibitem{manghwar2019crispr}
+Hakim Manghwar, Keith Lindsey, Xianlong Zhang, and Shuangxia Jin.
+\newblock Crispr/cas system: recent advances and future prospects for genome
+  editing.
+\newblock {\em Trends in plant science}, 24(12):1102--1125, 2019.
+
+\bibitem{bogdanove2018engineering}
+Adam~J Bogdanove, Andrew Bohm, Jeffrey~C Miller, Richard~D Morgan, and Barry~L
+  Stoddard.
+\newblock Engineering altered protein--dna recognition specificity.
+\newblock {\em Nucleic Acids Research}, 46(10):4845--4871, 2018.
+
+\bibitem{jinek2012programmable}
+Martin Jinek, Krzysztof Chylinski, Ines Fonfara, Michael Hauer, Jennifer~A
+  Doudna, and Emmanuelle Charpentier.
+\newblock A programmable dual-rna--guided dna endonuclease in adaptive
+  bacterial immunity.
+\newblock {\em science}, 337(6096):816--821, 2012.
+
+\bibitem{cho2013targeted}
+Seung~Woo Cho, Sojung Kim, Jong~Min Kim, and Jin-Soo Kim.
+\newblock Targeted genome engineering in human cells with the cas9 rna-guided
+  endonuclease.
+\newblock {\em Nature biotechnology}, 31(3):230--232, 2013.
+
+\bibitem{cong2013multiplex}
+Le~Cong, F~Ann Ran, David Cox, Shuailiang Lin, Robert Barretto, Naomi Habib,
+  Patrick~D Hsu, Xuebing Wu, Wenyan Jiang, Luciano~A Marraffini, et~al.
+\newblock Multiplex genome engineering using crispr/cas systems.
+\newblock {\em Science}, 339(6121):819--823, 2013.
+
+\bibitem{mali2013cas9}
+Prashant Mali, John Aach, P~Benjamin Stranges, Kevin~M Esvelt, Mark Moosburner,
+  Sriram Kosuri, Luhan Yang, and George~M Church.
+\newblock Cas9 transcriptional activators for target specificity screening and
+  paired nickases for cooperative genome engineering.
+\newblock {\em Nature biotechnology}, 31(9):833--838, 2013.
+
+\bibitem{chang2013genome}
+Nannan Chang, Changhong Sun, Lu~Gao, Dan Zhu, Xiufei Xu, Xiaojun Zhu, Jing-Wei
+  Xiong, and Jianzhong~Jeff Xi.
+\newblock Genome editing with rna-guided cas9 nuclease in zebrafish embryos.
+\newblock {\em Cell research}, 23(4):465--472, 2013.
+
+\bibitem{hsu2014development}
+Patrick~D Hsu, Eric~S Lander, and Feng Zhang.
+\newblock Development and applications of crispr-cas9 for genome engineering.
+\newblock {\em Cell}, 157(6):1262--1278, 2014.
+
+\bibitem{kang2017addressing}
+Xiang~Jin Kang, Chiong Isabella~Noelle Caparas, Boon~Seng Soh, and Yong Fan.
+\newblock Addressing challenges in the clinical applications associated with
+  crispr/cas9 technology and ethical questions to prevent its misuse.
+\newblock {\em Protein \& cell}, 8(11):791--795, 2017.
+
+\bibitem{liang2015crispr}
+Puping Liang, Yanwen Xu, Xiya Zhang, Chenhui Ding, Rui Huang, Zhen Zhang, Jie
+  Lv, Xiaowei Xie, Yuxi Chen, Yujing Li, et~al.
+\newblock Crispr/cas9-mediated gene editing in human tripronuclear zygotes.
+\newblock {\em Protein \& cell}, 6(5):363--372, 2015.
+
+\bibitem{ma2017correction}
+Hong Ma, Nuria Marti-Gutierrez, Sang-Wook Park, Jun Wu, Yeonmi Lee, Keiichiro
+  Suzuki, Amy Koski, Dongmei Ji, Tomonari Hayama, Riffat Ahmed, et~al.
+\newblock Correction of a pathogenic gene mutation in human embryos.
+\newblock {\em Nature}, 548(7668):413--419, 2017.
+
+\bibitem{liu2017crispr}
+Hao Liu, Yuduan Ding, Yanqing Zhou, Wenqi Jin, Kabin Xie, and Ling-Ling Chen.
+\newblock Crispr-p 2.0: an improved crispr-cas9 tool for genome editing in
+  plants.
+\newblock {\em Molecular plant}, 10(3):530--532, 2017.
+
+\bibitem{tang2016single}
+Xu~Tang, Xuelian Zheng, Yiping Qi, Dengwei Zhang, Yan Cheng, Aiting Tang,
+  Daniel~F Voytas, and Yong Zhang.
+\newblock A single transcript crispr-cas9 system for efficient genome editing
+  in plants.
+\newblock {\em Molecular plant}, 9(7):1088--1091, 2016.
+
+\bibitem{raitskin2016multi}
+Oleg Raitskin and Nicola~J Patron.
+\newblock Multi-gene engineering in plants with rna-guided cas9 nuclease.
+\newblock {\em Current Opinion in Biotechnology}, 37:69--75, 2016.
+
+\bibitem{zarei2019creating}
+Ali Zarei, Vahid Razban, Seyed~Ebrahim Hosseini, and Seyed Mohammad~Bagher
+  Tabei.
+\newblock Creating cell and animal models of human disease by genome editing
+  using crispr/cas9.
+\newblock {\em The journal of gene medicine}, 21(4):e3082, 2019.
+
+\bibitem{wang2013eradication}
+Dong Wang, Jingbin Huang, Xinxia Wang, Yuan Yu, He~Zhang, Yan Chen, Junjie Liu,
+  Zhiguo Sun, Hao Zou, Duxin Sun, et~al.
+\newblock The eradication of breast cancer cells and stem cells by
+  8-hydroxyquinoline-loaded hyaluronan modified mesoporous silica
+  nanoparticle-supported lipid bilayers containing docetaxel.
+\newblock {\em Biomaterials}, 34(31):7662--7673, 2013.
+
+\bibitem{barrangou2007crispr}
+Rodolphe Barrangou, Christophe Fremaux, H{\'e}l{\`e}ne Deveau, Melissa
+  Richards, Patrick Boyaval, Sylvain Moineau, Dennis~A Romero, and Philippe
+  Horvath.
+\newblock Crispr provides acquired resistance against viruses in prokaryotes.
+\newblock {\em Science}, 315(5819):1709--1712, 2007.
+
+\bibitem{bak2018gene}
+Rasmus~O Bak, Natalia Gomez-Ospina, and Matthew~H Porteus.
+\newblock Gene editing on center stage.
+\newblock {\em Trends in Genetics}, 34(8):600--611, 2018.
+
+\bibitem{shah2013protospacer}
+Shiraz~A Shah, Susanne Erdmann, Francisco~JM Mojica, and Roger~A Garrett.
+\newblock Protospacer recognition motifs: mixed identities and functional
+  diversity.
+\newblock {\em RNA biology}, 10(5):891--899, 2013.
+
+\bibitem{zhang2015off}
+Xiao-Hui Zhang, Louis~Y Tee, Xiao-Gang Wang, Qun-Shan Huang, and Shi-Hua Yang.
+\newblock Off-target effects in crispr/cas9-mediated genome engineering.
+\newblock {\em Molecular Therapy-Nucleic Acids}, 4:e264, 2015.
+
+\bibitem{chen2017enhanced}
+Janice~S Chen, Yavuz~S Dagdas, Benjamin~P Kleinstiver, Moira~M Welch,
+  Alexander~A Sousa, Lucas~B Harrington, Samuel~H Sternberg, J~Keith Joung,
+  Ahmet Yildiz, and Jennifer~A Doudna.
+\newblock Enhanced proofreading governs crispr--cas9 targeting accuracy.
+\newblock {\em Nature}, 550(7676):407--410, 2017.
+
+\bibitem{kim2015digenome}
+Daesik Kim, Sangsu Bae, Jeongbin Park, Eunji Kim, Seokjoong Kim, Hye~Ryeong Yu,
+  Jinha Hwang, Jong-Il Kim, and Jin-Soo Kim.
+\newblock Digenome-seq: genome-wide profiling of crispr-cas9 off-target effects
+  in human cells.
+\newblock {\em Nature methods}, 12(3):237--243, 2015.
+
+\bibitem{ran2013genome}
+FAFA Ran, Patrick~D Hsu, Jason Wright, Vineeta Agarwala, David~A Scott, and
+  Feng Zhang.
+\newblock Genome engineering using the crispr-cas9 system.
+\newblock {\em Nature protocols}, 8(11):2281--2308, 2013.
+
+\bibitem{stemmer2015cctop}
+Manuel Stemmer, Thomas Thumberger, Maria del Sol~Keyer, Joachim Wittbrodt, and
+  Juan~L Mateo.
+\newblock Cctop: an intuitive, flexible and reliable crispr/cas9 target
+  prediction tool.
+\newblock {\em PloS one}, 10(4):e0124633, 2015.
+
+\bibitem{hsu2013dna}
+Patrick~D Hsu, David~A Scott, Joshua~A Weinstein, F~Ran, Silvana Konermann,
+  Vineeta Agarwala, Yinqing Li, Eli~J Fine, Xuebing Wu, Ophir Shalem, et~al.
+\newblock Dna targeting specificity of rna-guided cas9 nucleases.
+\newblock {\em Nature biotechnology}, 31(9):827--832, 2013.
+
+\bibitem{heigwer2014crisp}
+Florian Heigwer, Grainne Kerr, and Michael Boutros.
+\newblock E-crisp: fast crispr target site identification.
+\newblock {\em Nature methods}, 11(2):122--123, 2014.
+
+\bibitem{montague2014chopchop}
+Tessa~G Montague, Jos{\'e}~M Cruz, James~A Gagnon, George~M Church, and Eivind
+  Valen.
+\newblock Chopchop: a crispr/cas9 and talen web tool for genome editing.
+\newblock {\em Nucleic acids research}, 42(W1):W401--W407, 2014.
+
+\bibitem{naeem2020latest}
+Muhammad Naeem, Saman Majeed, Mubasher~Zahir Hoque, and Irshad Ahmad.
+\newblock Latest developed strategies to minimize the off-target effects in
+  crispr-cas-mediated genome editing.
+\newblock {\em Cells}, 9(7):1608, 2020.
+
+\bibitem{almutiri2022survey}
+Talal Almutiri, Faisal Saeed, and Manar Alassaf.
+\newblock A survey of machine learning and deep learning applications in genome
+  editing.
+\newblock In {\em Advances on Smart and Soft Computing}, pages 145--162.
+  Springer, 2022.
+
+\bibitem{wilson2018current}
+Laurence~OW Wilson, Aidan~R O’Brien, and Denis~C Bauer.
+\newblock The current state and future of crispr-cas9 grna design tools.
+\newblock {\em Frontiers in pharmacology}, 9:749, 2018.
+
+\bibitem{wang2020overview}
+Jun Wang, Xiuqing Zhang, Lixin Cheng, and Yonglun Luo.
+\newblock An overview and metanalysis of machine and deep learning-based crispr
+  grna design tools.
+\newblock {\em RNA biology}, 17(1):13--22, 2020.
+
+\bibitem{newman2020cas9}
+Anthony Newman, Lora Starrs, and Gaetan Burgio.
+\newblock Cas9 cuts and consequences; detecting, predicting, and mitigating
+  crispr/cas9 on-and off-target damage: Techniques for detecting, predicting,
+  and mitigating the on-and off-target effects of cas9 editing.
+\newblock {\em BioEssays}, 42(9):2000047, 2020.
+
+\bibitem{wang2014genetic}
+Tim Wang, Jenny~J Wei, David~M Sabatini, and Eric~S Lander.
+\newblock Genetic screens in human cells using the crispr-cas9 system.
+\newblock {\em Science}, 343(6166):80--84, 2014.
+
+\bibitem{koike2014genome}
+Hiroko Koike-Yusa, Yilong Li, E-Pien Tan, Martin Del~Castillo Velasco-Herrera,
+  Kosuke Yusa, et~al.
+\newblock Genome-wide recessive genetic screening in mammalian cells with a
+  lentiviral crispr-guide rna library.
+\newblock {\em Nature biotechnology}, 32(3):267--273, 2014.
+
+\bibitem{doench2014rational}
+John~G Doench, Ella Hartenian, Daniel~B Graham, Zuzana Tothova, Mudra Hegde,
+  Ian Smith, Meagan Sullender, Benjamin~L Ebert, Ramnik~J Xavier, and David~E
+  Root.
+\newblock Rational design of highly active sgrnas for crispr-cas9--mediated
+  gene inactivation.
+\newblock {\em Nature biotechnology}, 32(12):1262--1267, 2014.
+
+\bibitem{doench2016optimized}
+John~G Doench, Nicolo Fusi, Meagan Sullender, Mudra Hegde, Emma~W Vaimberg,
+  Katherine~F Donovan, Ian Smith, Zuzana Tothova, Craig Wilen, Robert Orchard,
+  et~al.
+\newblock Optimized sgrna design to maximize activity and minimize off-target
+  effects of crispr-cas9.
+\newblock {\em Nature biotechnology}, 34(2):184--191, 2016.
+
+\bibitem{tsai2015guide}
+Shengdar~Q Tsai, Zongli Zheng, Nhu~T Nguyen, Matthew Liebers, Ved~V Topkar,
+  Vishal Thapar, Nicolas Wyvekens, Cyd Khayter, A~John Iafrate, Long~P Le,
+  et~al.
+\newblock Guide-seq enables genome-wide profiling of off-target cleavage by
+  crispr-cas nucleases.
+\newblock {\em Nature biotechnology}, 33(2):187--197, 2015.
+
+\bibitem{abadi2017machine}
+Shiran Abadi, Winston~X Yan, David Amar, and Itay Mayrose.
+\newblock A machine learning approach for predicting crispr-cas9 cleavage
+  efficiencies and patterns underlying its mechanism of action.
+\newblock {\em PLoS computational biology}, 13(10):e1005807, 2017.
+
+\bibitem{kleinstiver2016high}
+Benjamin~P Kleinstiver, Vikram Pattanayak, Michelle~S Prew, Shengdar~Q Tsai,
+  Nhu~T Nguyen, Zongli Zheng, and J~Keith Joung.
+\newblock High-fidelity crispr--cas9 nucleases with no detectable genome-wide
+  off-target effects.
+\newblock {\em Nature}, 529(7587):490--495, 2016.
+
+\bibitem{frock2015genome}
+Richard~L Frock, Jiazhi Hu, Robin~M Meyers, Yu-Jui Ho, Erina Kii, and
+  Frederick~W Alt.
+\newblock Genome-wide detection of dna double-stranded breaks induced by
+  engineered nucleases.
+\newblock {\em Nature biotechnology}, 33(2):179--186, 2015.
+
+\bibitem{ran2015vivo}
+FACL Ran, Le~Cong, Winston~X Yan, David~A Scott, Jonathan~S Gootenberg,
+  Andrea~J Kriz, Bernd Zetsche, Ophir Shalem, Xuebing Wu, Kira~S Makarova,
+  et~al.
+\newblock In vivo genome editing using staphylococcus aureus cas9.
+\newblock {\em Nature}, 520(7546):186--191, 2015.
+
+\bibitem{slaymaker2016rationally}
+Ian~M Slaymaker, Linyi Gao, Bernd Zetsche, David~A Scott, Winston~X Yan, and
+  Feng Zhang.
+\newblock Rationally engineered cas9 nucleases with improved specificity.
+\newblock {\em Science}, 351(6268):84--88, 2016.
+
+\bibitem{haeussler2016evaluation}
+Maximilian Haeussler, Kai Sch{\"o}nig, H{\'e}l{\`e}ne Eckert, Alexis
+  Eschstruth, Joffrey Miann{\'e}, Jean-Baptiste Renaud, Sylvie
+  Schneider-Maunoury, Alena Shkumatava, Lydia Teboul, Jim Kent, et~al.
+\newblock Evaluation of off-target and on-target scoring algorithms and
+  integration into the guide rna selection tool crispor.
+\newblock {\em Genome biology}, 17(1):1--12, 2016.
+
+\bibitem{xu2015sequence}
+Han Xu, Tengfei Xiao, Chen-Hao Chen, Wei Li, Clifford~A Meyer, Qiu Wu, Di~Wu,
+  Le~Cong, Feng Zhang, Jun~S Liu, et~al.
+\newblock Sequence determinants of improved crispr sgrna design.
+\newblock {\em Genome research}, 25(8):1147--1157, 2015.
+
+\bibitem{hart2015high}
+Traver Hart, Megha Chandrashekhar, Michael Aregger, Zachary Steinhart, Kevin~R
+  Brown, Graham MacLeod, Monika Mis, Michal Zimmermann, Amelie Fradet-Turcotte,
+  Song Sun, et~al.
+\newblock High-resolution crispr screens reveal fitness genes and
+  genotype-specific cancer liabilities.
+\newblock {\em Cell}, 163(6):1515--1526, 2015.
+
+\bibitem{moreno2015crisprscan}
+Miguel~A Moreno-Mateos, Charles~E Vejnar, Jean-Denis Beaudoin, Juan~P
+  Fernandez, Emily~K Mis, Mustafa~K Khokha, and Antonio~J Giraldez.
+\newblock Crisprscan: designing highly efficient sgrnas for crispr-cas9
+  targeting in vivo.
+\newblock {\em Nature methods}, 12(10):982--988, 2015.
+
+\bibitem{varshney2015high}
+Gaurav~K Varshney, Wuhong Pei, Matthew~C LaFave, Jennifer Idol, Lisha Xu,
+  Viviana Gallardo, Blake Carrington, Kevin Bishop, MaryPat Jones, Mingyu Li,
+  et~al.
+\newblock High-throughput gene targeting and phenotyping in zebrafish using
+  crispr/cas9.
+\newblock {\em Genome research}, 25(7):1030--1042, 2015.
+
+\bibitem{gagnon2014efficient}
+James~A Gagnon, Eivind Valen, Summer~B Thyme, Peng Huang, Laila Ahkmetova,
+  Andrea Pauli, Tessa~G Montague, Steven Zimmerman, Constance Richter, and
+  Alexander~F Schier.
+\newblock Efficient mutagenesis by cas9 protein-mediated oligonucleotide
+  insertion and large-scale assessment of single-guide rnas.
+\newblock {\em PloS one}, 9(5):e98186, 2014.
+
+\bibitem{ren2014enhanced}
+Xingjie Ren, Zhihao Yang, Jiang Xu, Jin Sun, Decai Mao, Yanhui Hu, Su-Juan
+  Yang, Huan-Huan Qiao, Xia Wang, Qun Hu, et~al.
+\newblock Enhanced specificity and efficiency of the crispr/cas9 system with
+  optimized sgrna parameters in drosophila.
+\newblock {\em Cell reports}, 9(3):1151--1162, 2014.
+
+\bibitem{chari2015unraveling}
+Raj Chari, Prashant Mali, Mark Moosburner, and George~M Church.
+\newblock Unraveling crispr-cas9 genome engineering parameters via a
+  library-on-library approach.
+\newblock {\em Nature methods}, 12(9):823--826, 2015.
+
+\bibitem{gandhi2016rational}
+Shashank Gandhi, Lionel Christiaen, and Alberto Stolfi.
+\newblock Rational design and whole-genome predictions of single guide rnas for
+  efficient crispr/cas9-mediated genome editing in ciona.
+\newblock 2016.
+
+\bibitem{farboud2015dramatic}
+Behnom Farboud and Barbara~J Meyer.
+\newblock Dramatic enhancement of genome editing by crispr/cas9 through
+  improved guide rna design.
+\newblock {\em Genetics}, 199(4):959--971, 2015.
+
+\bibitem{munoz2016crispr}
+Diana~M Munoz, Pamela~J Cassiani, Li~Li, Eric Billy, Joshua~M Korn, Michael~D
+  Jones, Javad Golji, David~A Ruddy, Kristine Yu, Gregory McAllister, et~al.
+\newblock Crispr screens provide a comprehensive assessment of cancer
+  vulnerabilities but generate false-positive hits for highly amplified genomic
+  regionscrispr screens for the discovery of cancer vulnerabilities.
+\newblock {\em Cancer discovery}, 6(8):900--913, 2016.
+
+\bibitem{chen1optimizing}
+Shi-an~Anderson Chen and Elizabeth Tran.
+\newblock Optimizing precision genome editing through machine learning.
+\newblock {\em Forest (C= 0.01, l2)}, 85(15.78):1--39.
+
+\bibitem{lazzarotto2020change}
+Cicera~R Lazzarotto, Nikolay~L Malinin, Yichao Li, Ruochi Zhang, Yang Yang,
+  GaHyun Lee, Eleanor Cowley, Yanghua He, Xin Lan, Kasey Jividen, et~al.
+\newblock Change-seq reveals genetic and epigenetic effects on crispr--cas9
+  genome-wide activity.
+\newblock {\em Nature biotechnology}, 38(11):1317--1327, 2020.
+
+\bibitem{tsai2017circle}
+Shengdar~Q Tsai, Nhu~T Nguyen, Jose Malagon-Lopez, Ved~V Topkar, Martin~J
+  Aryee, and J~Keith Joung.
+\newblock Circle-seq: a highly sensitive in vitro screen for genome-wide
+  crispr--cas9 nuclease off-targets.
+\newblock {\em Nature methods}, 14(6):607--614, 2017.
+
+\bibitem{cameron2017mapping}
+Peter Cameron, Chris~K Fuller, Paul~D Donohoue, Brittnee~N Jones, Matthew~S
+  Thompson, Matthew~M Carter, Scott Gradia, Bastien Vidal, Elizabeth Garner,
+  Euan~M Slorach, et~al.
+\newblock Mapping the genomic landscape of crispr--cas9 cleavage.
+\newblock {\em Nature methods}, 14(6):600--606, 2017.
+
+\bibitem{wang2019optimized}
+Daqi Wang, Chengdong Zhang, Bei Wang, Bin Li, Qiang Wang, Dong Liu, Hongyan
+  Wang, Yan Zhou, Leming Shi, Feng Lan, et~al.
+\newblock Optimized crispr guide rna design for two high-fidelity cas9 variants
+  by deep learning.
+\newblock {\em Nature communications}, 10(1):1--14, 2019.
+
+\bibitem{chuai2018deepcrispr}
+Guohui Chuai, Hanhui Ma, Jifang Yan, Ming Chen, Nanfang Hong, Dongyu Xue, Chi
+  Zhou, Chenyu Zhu, Ke~Chen, Bin Duan, et~al.
+\newblock Deepcrispr: optimized crispr guide rna design by deep learning.
+\newblock {\em Genome biology}, 19(1):1--18, 2018.
+
+\bibitem{rauscher2016genomecrispr}
+Benedikt Rauscher, Florian Heigwer, Marco Breinig, Jan Winter, and Michael
+  Boutros.
+\newblock Genomecrispr-a database for high-throughput crispr/cas9 screens.
+\newblock {\em Nucleic acids research}, page gkw997, 2016.
+
+\bibitem{xiang2021enhancing}
+Xi~Xiang, Giulia~I Corsi, Christian Anthon, Kunli Qu, Xiaoguang Pan, Xue Liang,
+  Peng Han, Zhanying Dong, Lijun Liu, Jiayan Zhong, et~al.
+\newblock Enhancing crispr-cas9 grna efficiency prediction by data integration
+  and deep learning.
+\newblock {\em Nature communications}, 12(1):1--9, 2021.
+
+\bibitem{mikolov2013distributed}
+Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg~S Corrado, and Jeff Dean.
+\newblock Distributed representations of words and phrases and their
+  compositionality.
+\newblock {\em Advances in neural information processing systems}, 26, 2013.
+
+\bibitem{lin2018off}
+Jiecong Lin and Ka-Chun Wong.
+\newblock Off-target predictions in crispr-cas9 gene editing using deep
+  learning.
+\newblock {\em Bioinformatics}, 34(17):i656--i663, 2018.
+
+\bibitem{charlier2021accurate}
+Jeremy Charlier, Robert Nadon, and Vladimir Makarenkov.
+\newblock Accurate deep learning off-target prediction with novel sgrna-dna
+  sequence encoding in crispr-cas9 gene editing.
+\newblock {\em Bioinformatics}, 37(16):2299--2307, 2021.
+
+\bibitem{lin2020crispr}
+Jiecong Lin, Zhaolei Zhang, Shixiong Zhang, Junyi Chen, and Ka-Chun Wong.
+\newblock Crispr-net: A recurrent convolutional network quantifies crispr
+  off-target activities with mismatches and indels.
+\newblock {\em Advanced Science}, 7(13):1903562, 2020.
+
+\bibitem{zhang2022effective}
+Zhong-Rui Zhang and Zhen-Ran Jiang.
+\newblock Effective use of sequence information to predict crispr-cas9
+  off-target.
+\newblock {\em Computational and structural biotechnology journal},
+  20:650--661, 2022.
+
+\bibitem{zhang2020dl}
+Yu~Zhang, Yahui Long, Rui Yin, and Chee~Keong Kwoh.
+\newblock Dl-crispr: a deep learning method for off-target activity prediction
+  in crispr/cas9 with data augmentation.
+\newblock {\em IEEE Access}, 8:76610--76617, 2020.
+
+\bibitem{zhang2021prediction}
+Guishan Zhang, Tian Zeng, Zhiming Dai, and Xianhua Dai.
+\newblock Prediction of crispr/cas9 single guide rna cleavage efficiency and
+  specificity by attention-based convolutional neural networks.
+\newblock {\em Computational and structural biotechnology journal},
+  19:1445--1457, 2021.
+
+\bibitem{chollet2015keras}
+Francois Chollet et~al.
+\newblock Keras, 2015.
+
+\bibitem{liu2019prediction}
+Qiao Liu, Di~He, and Lei Xie.
+\newblock Prediction of off-target specificity and cell-specific fitness of
+  crispr-cas system using attention boosted deep learning and network-based
+  gene feature.
+\newblock {\em PLoS computational biology}, 15(10):e1007480, 2019.
+
+\bibitem{liu2020deep}
+Qiaoyue Liu, Xiang Cheng, Gan Liu, Bohao Li, and Xiuqin Liu.
+\newblock Deep learning improves the ability of sgrna off-target propensity
+  prediction.
+\newblock {\em BMC bioinformatics}, 21(1):1--15, 2020.
+
+\bibitem{pennington2014glove}
+Jeffrey Pennington, Richard Socher, and Christopher~D Manning.
+\newblock Glove: Global vectors for word representation.
+\newblock In {\em Proceedings of the 2014 conference on empirical methods in
+  natural language processing (EMNLP)}, pages 1532--1543, 2014.
+
+\bibitem{fusi2015silico}
+Nicolo Fusi, Ian Smith, John Doench, and Jennifer Listgarten.
+\newblock In silico predictive modeling of crispr/cas9 guide efficiency.
+\newblock {\em BioRxiv}, page 021568, 2015.
+
+\bibitem{shen2018predictable}
+Max~W Shen, Mandana Arbab, Jonathan~Y Hsu, Daniel Worstell, Sannie~J
+  Culbertson, Olga Krabbe, Christopher~A Cassa, David~R Liu, David~K Gifford,
+  and Richard~I Sherwood.
+\newblock Predictable and precise template-free crispr editing of pathogenic
+  variants.
+\newblock {\em Nature}, 563(7733):646--651, 2018.
+
+\bibitem{leenay2019large}
+Ryan~T Leenay, Amirali Aghazadeh, Joseph Hiatt, David Tse, Theodore~L Roth,
+  Ryan Apathy, Eric Shifrut, Judd~F Hultquist, Nevan Krogan, Zhenqin Wu, et~al.
+\newblock Large dataset enables prediction of repair after crispr--cas9 editing
+  in primary t cells.
+\newblock {\em Nature biotechnology}, 37(9):1034--1037, 2019.
+
+\bibitem{allen2019predicting}
+Felicity Allen, Luca Crepaldi, Clara Alsinet, Alexander~J Strong, Vitalii
+  Kleshchevnikov, Pietro De~Angeli, Petra P{\'a}len{\'\i}kov{\'a}, Anton
+  Khodak, Vladimir Kiselev, Michael Kosicki, et~al.
+\newblock Predicting the mutations generated by repair of cas9-induced
+  double-strand breaks.
+\newblock {\em Nature biotechnology}, 37(1):64--72, 2019.
+
+\bibitem{peng2018recognition}
+Hui Peng, Yi~Zheng, Zhixun Zhao, Tao Liu, and Jinyan Li.
+\newblock Recognition of crispr/cas9 off-target sites through ensemble learning
+  of uneven mismatch distributions.
+\newblock {\em Bioinformatics}, 34(17):i757--i765, 2018.
+
+\bibitem{kim2016genome}
+Daesik Kim, Sojung Kim, Sunghyun Kim, Jeongbin Park, and Jin-Soo Kim.
+\newblock Genome-wide target specificities of crispr-cas9 nucleases revealed by
+  multiplex digenome-seq.
+\newblock {\em Genome research}, 26(3):406--415, 2016.
+
+\bibitem{zhang2019synergizing}
+Shixiong Zhang, Xiangtao Li, Qiuzhen Lin, and Ka-Chun Wong.
+\newblock Synergizing crispr/cas9 off-target predictions for ensemble insights
+  and practical applications.
+\newblock {\em Bioinformatics}, 35(7):1108--1115, 2019.
+
+\bibitem{singh2015cas9}
+Ritambhara Singh, Cem Kuscu, Aaron Quinlan, Yanjun Qi, and Mazhar Adli.
+\newblock Cas9-chromatin binding information enables more accurate crispr
+  off-target prediction.
+\newblock {\em Nucleic acids research}, 43(18):e118--e118, 2015.
+
+\bibitem{freund1996experiments}
+Yoav Freund, Robert~E Schapire, et~al.
+\newblock Experiments with a new boosting algorithm.
+\newblock In {\em icml}, volume~96, pages 148--156. Citeseer, 1996.
+
+\bibitem{breiman2001random}
+Leo Breiman.
+\newblock Random forests.
+\newblock {\em Machine learning}, 45(1):5--32, 2001.
+
+\bibitem{bishop1995neural}
+Christopher~M Bishop et~al.
+\newblock {\em Neural networks for pattern recognition}.
+\newblock Oxford university press, 1995.
+
+\bibitem{burges1998tutorial}
+Christopher~JC Burges.
+\newblock A tutorial on support vector machines for pattern recognition.
+\newblock {\em Data mining and knowledge discovery}, 2(2):121--167, 1998.
+
+\bibitem{quinlan1987simplifying}
+J.~Ross Quinlan.
+\newblock Simplifying decision trees.
+\newblock {\em International journal of man-machine studies}, 27(3):221--234,
+  1987.
+
+\bibitem{rahman2017crisprpred}
+Md~Khaledur Rahman and M~Sohel Rahman.
+\newblock Crisprpred: a flexible and efficient tool for sgrnas on-target
+  activity prediction in crispr/cas9 systems.
+\newblock {\em PloS one}, 12(8):e0181943, 2017.
+
+\bibitem{muhammad2020crisprpred}
+Ali~Haisam Muhammad~Rafid, Md~Toufikuzzaman, Mohammad~Saifur Rahman, and
+  M~Sohel Rahman.
+\newblock Crisprpred (seq): a sequence-based method for sgrna on target
+  activity prediction using traditional machine learning.
+\newblock {\em BMC bioinformatics}, 21(1):1--13, 2020.
+
+\bibitem{wang2020gnl}
+Jun Wang, Xi~Xiang, Lars Bolund, Xiuqing Zhang, Lixin Cheng, and Yonglun Luo.
+\newblock Gnl-scorer: a generalized model for predicting crispr on-target
+  activity by machine learning and featurization.
+\newblock {\em Journal of molecular cell biology}, 12(11):909--911, 2020.
+
+\bibitem{liu2020seqcor}
+Xiaojian Liu, Yuanyuan Yang, Yan Qiu, Qiurong Ding, Yi~Wang, et~al.
+\newblock Seqcor: correct the effect of guide rna sequences in clustered
+  regularly interspaced short palindromic repeats/cas9 screening by machine
+  learning algorithm.
+\newblock {\em Journal of Genetics and Genomics}, 47(11):672--680, 2020.
+
+\bibitem{heaton2018ian}
+Jeff Heaton.
+\newblock Ian goodfellow, yoshua bengio, and aaron courville: Deep learning,
+  2018.
+
+\bibitem{lecun1998gradient}
+Yann LeCun, L{\'e}on Bottou, Yoshua Bengio, and Patrick Haffner.
+\newblock Gradient-based learning applied to document recognition.
+\newblock {\em Proceedings of the IEEE}, 86(11):2278--2324, 1998.
+
+\bibitem{hochreiter1997long}
+Sepp Hochreiter and J{\"u}rgen Schmidhuber.
+\newblock Long short-term memory.
+\newblock {\em Neural computation}, 9(8):1735--1780, 1997.
+
+\bibitem{gers2000learning}
+Felix~A Gers, J{\"u}rgen Schmidhuber, and Fred Cummins.
+\newblock Learning to forget: Continual prediction with lstm.
+\newblock {\em Neural computation}, 12(10):2451--2471, 2000.
+
+\bibitem{chung2014empirical}
+Junyoung Chung, Caglar Gulcehre, KyungHyun Cho, and Yoshua Bengio.
+\newblock Empirical evaluation of gated recurrent neural networks on sequence
+  modeling.
+\newblock {\em arXiv preprint arXiv:1412.3555}, 2014.
+
+\bibitem{xu2015empirical}
+Bing Xu, Naiyan Wang, Tianqi Chen, and Mu~Li.
+\newblock Empirical evaluation of rectified activations in convolutional
+  network.
+\newblock {\em arXiv preprint arXiv:1505.00853}, 2015.
+
+\bibitem{ying2019overview}
+Xue Ying.
+\newblock An overview of overfitting and its solutions.
+\newblock In {\em Journal of physics: Conference series}, volume 1168, page
+  022022. IOP Publishing, 2019.
+
+\bibitem{xue2018prediction}
+Li~Xue, Bin Tang, Wei Chen, and Jiesi Luo.
+\newblock Prediction of crispr sgrna activity using a deep convolutional neural
+  network.
+\newblock {\em Journal of chemical information and modeling}, 59(1):615--624,
+  2018.
+
+\bibitem{stortz2021picrispr}
+Florian St{\"o}rtz, Jeffrey Mak, and Peter Minary.
+\newblock picrispr: Physically informed features improve deep learning models
+  for crispr/cas9 off-target cleavage prediction.
+\newblock {\em bioRxiv}, 2021.
+
+\bibitem{niu2021r}
+Rui Niu, Jiajie Peng, Zhipeng Zhang, and Xuequn Shang.
+\newblock R-crispr: A deep learning network to predict off-target activities
+  with mismatch, insertion and deletion in crispr-cas9 system.
+\newblock {\em Genes}, 12(12):1878, 2021.
+
+\bibitem{ding2021repvgg}
+Xiaohan Ding, Xiangyu Zhang, Ningning Ma, Jungong Han, Guiguang Ding, and Jian
+  Sun.
+\newblock Repvgg: Making vgg-style convnets great again.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition}, pages 13733--13742, 2021.
+
+\bibitem{shrawgi2019convolution}
+Hari Shrawgi and Dilip~Singh Sisodia.
+\newblock Convolution neural network model for predicting single guide rna
+  efficiency in crispr/cas9 system.
+\newblock {\em Chemometrics and Intelligent Laboratory Systems}, 189:149--154,
+  2019.
+
+\bibitem{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan~N Gomez, {\L}ukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock {\em Advances in neural information processing systems}, 30, 2017.
+
+\bibitem{xiao2021attcrispr}
+Li-Ming Xiao, Yun-Qi Wan, and Zhen-Ran Jiang.
+\newblock Attcrispr: a spacetime interpretable model for prediction of sgrna
+  on-target activity.
+\newblock {\em BMC bioinformatics}, 22(1):1--17, 2021.
+
+\bibitem{chen2022gcsanet}
+Weitao Chen, Shubing Ouyang, Wei Tong, Xianju Li, Xiongwei Zheng, and Lizhe
+  Wang.
+\newblock Gcsanet: A global context spatial attention deep learning network for
+  remote sensing scene classification.
+\newblock {\em IEEE Journal of Selected Topics in Applied Earth Observations
+  and Remote Sensing}, 15:1150--1162, 2022.
+
+\bibitem{shen2022attention}
+Liyue Shen, Jimmy Zheng, Edward~H Lee, Katie Shpanskaya, Emily~S McKenna,
+  Mahesh~G Atluri, Dinko Plasto, Courtney Mitchell, Lillian~M Lai, Carolina~V
+  Guimaraes, et~al.
+\newblock Attention-guided deep learning for gestational age prediction using
+  fetal brain mri.
+\newblock {\em Scientific reports}, 12(1):1--10, 2022.
+
+\bibitem{de2022attention}
+Alana de~Santana~Correia and Esther~Luna Colombini.
+\newblock Attention, please! a survey of neural attention models in deep
+  learning.
+\newblock {\em Artificial Intelligence Review}, pages 1--88, 2022.
+
+\bibitem{basiri2021abcdm}
+Mohammad~Ehsan Basiri, Shahla Nemati, Moloud Abdar, Erik Cambria, and
+  U~Rajendra Acharya.
+\newblock Abcdm: An attention-based bidirectional cnn-rnn deep model for
+  sentiment analysis.
+\newblock {\em Future Generation Computer Systems}, 115:279--294, 2021.
+
+\bibitem{cho2020basic}
+Hyunghun Cho, Yongjin Kim, Eunjung Lee, Daeyoung Choi, Yongjae Lee, and Wonjong
+  Rhee.
+\newblock Basic enhancement strategies when using bayesian optimization for
+  hyperparameter tuning of deep neural networks.
+\newblock {\em IEEE Access}, 8:52588--52608, 2020.
+
+\bibitem{wu2020practical}
+Jian Wu, Saul Toscano-Palmerin, Peter~I Frazier, and Andrew~Gordon Wilson.
+\newblock Practical multi-fidelity bayesian optimization for hyperparameter
+  tuning.
+\newblock In {\em Uncertainty in Artificial Intelligence}, pages 788--798.
+  PMLR, 2020.
+
+\bibitem{ribeiro2016should}
+Marco~Tulio Ribeiro, Sameer Singh, and Carlos Guestrin.
+\newblock " why should i trust you?" explaining the predictions of any
+  classifier.
+\newblock In {\em Proceedings of the 22nd ACM SIGKDD international conference
+  on knowledge discovery and data mining}, pages 1135--1144, 2016.
+
+\bibitem{miller2019explanation}
+Tim Miller.
+\newblock Explanation in artificial intelligence: Insights from the social
+  sciences.
+\newblock {\em Artificial intelligence}, 267:1--38, 2019.
+
+\bibitem{chou2022counterfactuals}
+Yu-Liang Chou, Catarina Moreira, Peter Bruza, Chun Ouyang, and Joaquim Jorge.
+\newblock Counterfactuals and causability in explainable artificial
+  intelligence: Theory, algorithms, and applications.
+\newblock {\em Information Fusion}, 81:59--83, 2022.
+
+\bibitem{vilone2021notions}
+Giulia Vilone and Luca Longo.
+\newblock Notions of explainability and evaluation approaches for explainable
+  artificial intelligence.
+\newblock {\em Information Fusion}, 76:89--106, 2021.
+
+\bibitem{abdar2021review}
+Moloud Abdar, Farhad Pourpanah, Sadiq Hussain, Dana Rezazadegan, Li~Liu,
+  Mohammad Ghavamzadeh, Paul Fieguth, Xiaochun Cao, Abbas Khosravi, U~Rajendra
+  Acharya, et~al.
+\newblock A review of uncertainty quantification in deep learning: Techniques,
+  applications and challenges.
+\newblock {\em Information Fusion}, 76:243--297, 2021.
+
+\bibitem{abdar2021uncertainty}
+Moloud Abdar, Maryam Samami, Sajjad~Dehghani Mahmoodabad, Thang Doan, Bogdan
+  Mazoure, Reza Hashemifesharaki, Li~Liu, Abbas Khosravi, U~Rajendra Acharya,
+  Vladimir Makarenkov, et~al.
+\newblock Uncertainty quantification in skin cancer classification using
+  three-way decision-based bayesian deep learning.
+\newblock {\em Computers in biology and medicine}, 135:104418, 2021.
+
+\bibitem{abdar2023uncertaintyfusenet}
+Moloud Abdar, Soorena Salari, Sina Qahremani, Hak-Keung Lam, Fakhri Karray,
+  Sadiq Hussain, Abbas Khosravi, U~Rajendra Acharya, Vladimir Makarenkov, and
+  Saeid Nahavandi.
+\newblock Uncertaintyfusenet: robust uncertainty-aware hierarchical feature
+  fusion model with ensemble monte carlo dropout for covid-19 detection.
+\newblock {\em Information Fusion}, 90:364--381, 2023.
+
+\bibitem{hoffmann2021uncertainty}
+Lara Hoffmann, Ines Fortmeier, and Clemens Elster.
+\newblock Uncertainty quantification by ensemble learning for computational
+  optical form measurements.
+\newblock {\em Machine Learning: Science and Technology}, 2(3):035030, 2021.
+
+\bibitem{mazoure2022dunescan}
+Bogdan Mazoure, Alexander Mazoure, Jocelyn B{\'e}dard, and Vladimir Makarenkov.
+\newblock Dunescan: a web server for uncertainty estimation in skin cancer
+  detection with deep neural networks.
+\newblock {\em Scientific Reports}, 12(1):1--10, 2022.
+
+\bibitem{gordon2018meta}
+Jonathan Gordon, John Bronskill, Matthias Bauer, Sebastian Nowozin, and
+  Richard~E Turner.
+\newblock Meta-learning probabilistic inference for prediction.
+\newblock {\em arXiv preprint arXiv:1805.09921}, 2018.
+
+\bibitem{lee2019learning}
+Hae~Beom Lee, Hayeon Lee, Donghyun Na, Saehoon Kim, Minseop Park, Eunho Yang,
+  and Sung~Ju Hwang.
+\newblock Learning to balance: Bayesian meta-learning for imbalanced and
+  out-of-distribution tasks.
+\newblock {\em arXiv preprint arXiv:1905.12917}, 2019.
+
+\bibitem{nguyen2020uncertainty}
+Cuong Nguyen, Thanh-Toan Do, and Gustavo Carneiro.
+\newblock Uncertainty in model-agnostic meta-learning using variational
+  inference.
+\newblock In {\em Proceedings of the IEEE/CVF Winter Conference on Applications
+  of Computer Vision}, pages 3090--3100, 2020.
+
+\end{thebibliography}

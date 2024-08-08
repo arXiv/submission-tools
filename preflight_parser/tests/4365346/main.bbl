@@ -1,0 +1,853 @@
+
+@ARTICLE{Arnold2011,
+       author = {{Arnold}, Jacob A. and {Romanowsky}, Aaron J. and {Brodie}, Jean P. and {Chomiuk}, Laura and {Spitler}, Lee R. and {Strader}, Jay and {Benson}, Andrew J. and {Forbes}, Duncan A.},
+        title = "{The Fossil Record of Two-phase Galaxy Assembly: Kinematics and Metallicities in the Nearest S0 Galaxy}",
+      journal = {\apjl},
+     keywords = {galaxies: bulges, galaxies: formation, galaxies: halos, galaxies: individual: NGC 3115, galaxies: kinematics and dynamics, globular clusters: general, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2011,
+        month = aug,
+       volume = {736},
+       number = {2},
+          eid = {L26},
+        pages = {L26},
+          doi = {10.1088/2041-8205/736/2/L26},
+archivePrefix = {arXiv},
+       eprint = {1106.0745},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2011ApJ...736L..26A},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Cantiello2015,
+       author = {{Cantiello}, Michele and {Capaccioli}, Massimo and {Napolitano}, Nicola and {Grado}, Aniello and {Limatola}, Luca and {Paolillo}, Maurizio and {Iodice}, Enrica and {Romanowsky}, Aaron J. and {Forbes}, Duncan A. and {Raimondo}, Gabriella and {Spavone}, Marilena and {La Barbera}, Francesco and {Puzia}, Thomas H. and {Schipani}, Pietro},
+        title = "{VEGAS-SSS. A VST early-type galaxy survey: analysis of small stellar systems. Testing the methodology on the globular cluster system in NGC 3115}",
+      journal = {\aap},
+     keywords = {galaxies: stellar content, galaxies: statistics, galaxies: individual: NGC 3115, galaxies: star clusters: general, surveys, catalogs, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2015,
+        month = mar,
+       volume = {576},
+          eid = {A14},
+        pages = {A14},
+          doi = {10.1051/0004-6361/201425165},
+archivePrefix = {arXiv},
+       eprint = {1412.0469},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2015AA...576A..14C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Cantiello2018,
+       author = {{Cantiello}, Michele and {D'Abrusco}, Raffaele and {Spavone}, Marilena and {Paolillo}, Maurizio and {Capaccioli}, Massimo and {Limatola}, Luca and {Grado}, Aniello and {Iodice}, Enrica and {Raimondo}, Gabriella and {Napolitano}, Nicola and {Blakeslee}, John P. and {Brocato}, Enzo and {Forbes}, Duncan A. and {Hilker}, Michael and {Mieske}, Steffen and {Peletier}, Reynier and {van de Ven}, Glenn and {Schipani}, Pietro},
+        title = "{VEGAS-SSS. II. Comparing the globular cluster systems in NGC 3115 and NGC 1399 using VEGAS and FDS survey data. The quest for a common genetic heritage of globular cluster systems}",
+      journal = {\aap},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: star clusters: general, galaxies: individual: NGC 1399, NGC 3115, galaxies: clusters: individual: Fornax, galaxies: evolution, galaxies: stellar content, Astrophysics - Astrophysics of Galaxies},
+         year = 2018,
+        month = apr,
+       volume = {611},
+          eid = {A93},
+        pages = {A93},
+          doi = {10.1051/0004-6361/201730649},
+archivePrefix = {arXiv},
+       eprint = {1711.00750},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2018AA...611A..93C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Cantiello2020,
+       author = {{Cantiello}, Michele and {Venhola}, Aku and {Grado}, Aniello and {Paolillo}, Maurizio and {D'Abrusco}, Raffaele and {Raimondo}, Gabriella and {Quintini}, Massimo and {Hilker}, Michael and {Mieske}, Steffen and {Tortora}, Crescenzo and {Spavone}, Marilena and {Capaccioli}, Massimo and {Iodice}, Enrica and {Peletier}, Reynier and {Barroso}, Jes{\'u}s Falc{\'o}n and {Limatola}, Luca and {Napolitano}, Nicola and {Schipani}, Pietro and {van de Ven}, Glenn and {Gentile}, Fabrizio and {Covone}, Giovanni},
+        title = "{The Fornax Deep Survey with VST. IX. Catalog of sources in the FDS area with an example study for globular clusters and background galaxies}",
+      journal = {\aap},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: individual: NGC 1399, galaxies: individual: NGC 1316, galaxies: clusters: individual: Fornax, galaxies: evolution, galaxies: stellar content, Astrophysics - Astrophysics of Galaxies},
+         year = 2020,
+        month = jul,
+       volume = {639},
+          eid = {A136},
+        pages = {A136},
+          doi = {10.1051/0004-6361/202038137},
+archivePrefix = {arXiv},
+       eprint = {2005.12085},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2020AA...639A.136C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{D'Abrusco2016,
+       author = {{D'Abrusco}, R. and {Cantiello}, M. and {Paolillo}, M. and {Pota}, V. and {Napolitano}, N.~R. and {Limatola}, L. and {Spavone}, M. and {Grado}, A. and {Iodice}, E. and {Capaccioli}, M. and {Peletier}, R. and {Longo}, G. and {Hilker}, M. and {Mieske}, S. and {Grebel}, E.~K. and {Lisker}, T. and {Wittmann}, C. and {van de Ven}, G. and {Schipani}, P. and {Fabbiano}, G.},
+        title = "{The Extended Spatial Distribution of Globular Clusters in the Core of the Fornax Cluster}",
+      journal = {\apjl},
+     keywords = {galaxies: clusters: individual: Fornax, galaxies: evolution, galaxies: individual: NGC 1399, Astrophysics - Astrophysics of Galaxies},
+         year = 2016,
+        month = mar,
+       volume = {819},
+       number = {2},
+          eid = {L31},
+        pages = {L31},
+          doi = {10.3847/2041-8205/819/2/L31},
+archivePrefix = {arXiv},
+       eprint = {1602.06076},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2016ApJ...819L..31D},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{D'Ago2014,
+       author = {{D'Ago}, G. and {Paolillo}, M. and {Fabbiano}, G. and {Puzia}, T.~H. and {Maccarone}, T.~J. and {Kundu}, A. and {Goudfrooij}, P. and {Zepf}, S.~E.},
+        title = "{Luminosity function of low-mass X-ray binaries in the globular cluster system of <ASTROBJ>NGC 1399</ASTROBJ>}",
+      journal = {\aap},
+     keywords = {X-rays: binaries, X-rays: galaxies, galaxies: elliptical and lenticular, cD, galaxies: individual: NGC 1399, Astrophysics - High Energy Astrophysical Phenomena},
+         year = 2014,
+        month = jul,
+       volume = {567},
+          eid = {A2},
+        pages = {A2},
+          doi = {10.1051/0004-6361/201322722},
+archivePrefix = {arXiv},
+       eprint = {1405.0618},
+ primaryClass = {astro-ph.HE},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2014AA...567A...2D},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Durrell2014,
+       author = {{Durrell}, Patrick R. and {C{\^o}t{\'e}}, Patrick and {Peng}, Eric W. and {Blakeslee}, John P. and {Ferrarese}, Laura and {Mihos}, J. Christopher and {Puzia}, Thomas H. and {Lan{\c{c}}on}, Ariane and {Liu}, Chengze and {Zhang}, Hongxin and {Cuillandre}, Jean-Charles and {McConnachie}, Alan and {Jord{\'a}n}, Andr{\'e}s and {Accetta}, Katharine and {Boissier}, Samuel and {Boselli}, Alessandro and {Courteau}, St{\'e}phane and {Duc}, Pierre-Alain and {Emsellem}, Eric and {Gwyn}, Stephen and {Mei}, Simona and {Taylor}, James E.},
+        title = "{The Next Generation Virgo Cluster Survey. VIII. The Spatial Distribution of Globular Clusters in the Virgo Cluster}",
+      journal = {\apj},
+     keywords = {galaxies: clusters: general, galaxies: clusters: individual: Virgo, galaxies: star clusters: general, Astrophysics - Astrophysics of Galaxies},
+         year = 2014,
+        month = oct,
+       volume = {794},
+       number = {2},
+          eid = {103},
+        pages = {103},
+          doi = {10.1088/0004-637X/794/2/103},
+archivePrefix = {arXiv},
+       eprint = {1408.2821},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2014ApJ...794..103D},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Fabbiano2006,
+       author = {{Fabbiano}, G.},
+        title = "{Populations of X-Ray Sources in Galaxies}",
+      journal = {\araa},
+     keywords = {Astrophysics},
+         year = 2006,
+        month = sep,
+       volume = {44},
+       number = {1},
+        pages = {323-366},
+          doi = {10.1146/annurev.astro.44.051905.092519},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0511481},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2006ARAA..44..323F},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Iodice2016,
+       author = {{Iodice}, E. and {Capaccioli}, M. and {Grado}, A. and {Limatola}, L. and {Spavone}, M. and {Napolitano}, N.~R. and {Paolillo}, M. and {Peletier}, R.~F. and {Cantiello}, M. and {Lisker}, T. and {Wittmann}, C. and {Venhola}, A. and {Hilker}, M. and {D'Abrusco}, R. and {Pota}, V. and {Schipani}, P.},
+        title = "{The Fornax Deep Survey with VST. I. The Extended and Diffuse Stellar Halo of NGC 1399 out to 192 kpc}",
+      journal = {\apj},
+     keywords = {galaxies: clusters: individual: Fornax, galaxies: elliptical and lenticular, cD, galaxies: halos, galaxies: photometry, Astrophysics - Astrophysics of Galaxies},
+         year = 2016,
+        month = mar,
+       volume = {820},
+       number = {1},
+          eid = {42},
+        pages = {42},
+          doi = {10.3847/0004-637X/820/1/42},
+archivePrefix = {arXiv},
+       eprint = {1602.02149},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2016ApJ...820...42I},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{2017ApJ...839...21I,
+       author = {{Iodice}, E. and {Spavone}, M. and {Capaccioli}, M. and {Peletier}, R.~F. and {Richtler}, T. and {Hilker}, M. and {Mieske}, S. and {Limatola}, L. and {Grado}, A. and {Napolitano}, N.~R. and {Cantiello}, M. and {D'Abrusco}, R. and {Paolillo}, M. and {Venhola}, A. and {Lisker}, T. and {Van de Ven}, G. and {Falcon-Barroso}, J. and {Schipani}, P.},
+        title = "{The Fornax Deep Survey with VST. II. Fornax A: A Two-phase Assembly Caught in the Act}",
+      journal = {\apj},
+     keywords = {galaxies: clusters: individual: NGC 1316, galaxies: elliptical and lenticular, cD, galaxies: formation, galaxies: halos, galaxies: photometry, Astrophysics - Astrophysics of Galaxies},
+         year = 2017,
+        month = apr,
+       volume = {839},
+       number = {1},
+          eid = {21},
+        pages = {21},
+          doi = {10.3847/1538-4357/aa6846},
+archivePrefix = {arXiv},
+       eprint = {1703.07989},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2017ApJ...839...21I},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@ARTICLE{Iodice2017,
+       author = {{Iodice}, E. and {Spavone}, M. and {Capaccioli}, M. and {Peletier}, R.~F. and {Richtler}, T. and {Hilker}, M. and {Mieske}, S. and {Limatola}, L. and {Grado}, A. and {Napolitano}, N.~R. and {Cantiello}, M. and {D'Abrusco}, R. and {Paolillo}, M. and {Venhola}, A. and {Lisker}, T. and {Van de Ven}, G. and {Falcon-Barroso}, J. and {Schipani}, P.},
+        title = "{The Fornax Deep Survey with VST. II. Fornax A: A Two-phase Assembly Caught in the Act}",
+      journal = {\apj},
+     keywords = {galaxies: clusters: individual: NGC 1316, galaxies: elliptical and lenticular, cD, galaxies: formation, galaxies: halos, galaxies: photometry, Astrophysics - Astrophysics of Galaxies},
+         year = 2017,
+        month = apr,
+       volume = {839},
+       number = {1},
+          eid = {21},
+        pages = {21},
+          doi = {10.3847/1538-4357/aa6846},
+archivePrefix = {arXiv},
+       eprint = {1703.07989},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2017ApJ...839...21I},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Jennings2014,
+       author = {{Jennings}, Zachary G. and {Strader}, Jay and {Romanowsky}, Aaron J. and {Brodie}, Jean P. and {Arnold}, Jacob A. and {Lin}, Dacheng and {Irwin}, Jimmy A. and {Sivakoff}, Gregory R. and {Wong}, Ka-Wah},
+        title = "{The SLUGGS Survey: HST/ACS Mosaic Imaging of the NGC 3115 Globular Cluster System}",
+      journal = {\aj},
+     keywords = {galaxies: individual: NGC 3115, galaxies: star clusters: general, globular clusters: general, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2014,
+        month = aug,
+       volume = {148},
+       number = {2},
+          eid = {32},
+        pages = {32},
+          doi = {10.1088/0004-6256/148/2/32},
+archivePrefix = {arXiv},
+       eprint = {1405.0008},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2014AJ....148...32J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Jin2019,
+       author = {{Jin}, Xiangyu and {Hou}, Meicun and {Zhu}, Zhenlin and {Li}, Zhiyuan},
+        title = "{Chandra Detection of Intracluster X-Ray Sources in Fornax}",
+      journal = {\apj},
+     keywords = {galaxies: clusters: individual: Fornax, X-rays: binaries, X-rays: galaxies: clusters, Astrophysics - Astrophysics of Galaxies},
+         year = 2019,
+        month = may,
+       volume = {876},
+       number = {1},
+          eid = {53},
+        pages = {53},
+          doi = {10.3847/1538-4357/ab064f},
+archivePrefix = {arXiv},
+       eprint = {1902.03733},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2019ApJ...876...53J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@ARTICLE{Jordan2015,
+       author = {{Jord{\'a}n}, Andr{\'e}s and {Peng}, Eric W. and {Blakeslee}, John P. and {C{\^o}t{\'e}}, Patrick and {Eyheramendy}, Susana and {Ferrarese}, Laura},
+        title = "{The ACS Fornax Cluster Survey. XI. Catalog of Globular Cluster Candidates}",
+      journal = {\apjs},
+     keywords = {catalogs, galaxies: elliptical and lenticular, cD, galaxies: star clusters: general},
+         year = 2015,
+        month = nov,
+       volume = {221},
+       number = {1},
+          eid = {13},
+        pages = {13},
+          doi = {10.1088/0067-0049/221/1/13},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2015ApJS..221...13J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Kim2004,
+       author = {{Kim}, Dong-Woo and {Fabbiano}, Giuseppina},
+        title = "{X-Ray Luminosity Function and Total Luminosity of Low-Mass X-Ray Binaries in Early-Type Galaxies}",
+      journal = {\apj},
+     keywords = {Galaxies: Elliptical and Lenticular, cD, X-Rays: Binaries, X-Rays: Galaxies, Astrophysics},
+         year = 2004,
+        month = aug,
+       volume = {611},
+       number = {2},
+        pages = {846-857},
+          doi = {10.1086/422210},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0312104},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2004ApJ...611..846K},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Kim2009,
+       author = {{Kim}, D. -W. and {Fabbiano}, G. and {Brassington}, N.~J. and {Fragos}, T. and {Kalogera}, V. and {Zezas}, A. and {Jord{\'a}n}, A. and {Sivakoff}, G.~R. and {Kundu}, A. and {Zepf}, S.~E. and {Angelini}, L. and {Davies}, R.~L. and {Gallagher}, J.~S. and {Juett}, A.~M. and {King}, A.~R. and {Pellegrini}, S. and {Sarazin}, C.~L. and {Trinchieri}, G.},
+        title = "{Comparing GC and Field LMXBs in Elliptical Galaxies with Deep Chandra and Hubble Data}",
+      journal = {\apj},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: individual: NGC 3379 NGC 4278 NGC 4697, X-rays: binaries, X-rays: galaxies, Astrophysics - Cosmology and Extragalactic Astrophysics, Astrophysics - High Energy Astrophysical Phenomena},
+         year = 2009,
+        month = sep,
+       volume = {703},
+       number = {1},
+        pages = {829-844},
+          doi = {10.1088/0004-637X/703/1/829},
+archivePrefix = {arXiv},
+       eprint = {0902.2343},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2009ApJ...703..829K},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Paolillo2011,
+       author = {{Paolillo}, Maurizio and {Puzia}, Thomas H. and {Goudfrooij}, Paul and {Zepf}, Stephen E. and {Maccarone}, Thomas J. and {Kundu}, Arunav and {Fabbiano}, Giuseppina and {Angelini}, Lorella},
+        title = "{Probing the GC-LMXB Connection in NGC 1399: A Wide-field Study with the Hubble Space Telescope and Chandra}",
+      journal = {\apj},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: individual: NGC 1399, galaxies: star clusters: general, X-rays: binaries, X-rays: galaxies, X-rays: individual: NGC 1399, Astrophysics - High Energy Astrophysical Phenomena, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2011,
+        month = aug,
+       volume = {736},
+       number = {2},
+          eid = {90},
+        pages = {90},
+          doi = {10.1088/0004-637X/736/2/90},
+archivePrefix = {arXiv},
+       eprint = {1105.2561},
+ primaryClass = {astro-ph.HE},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2011ApJ...736...90P},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Pota2018,
+       author = {{Pota}, V. and {Napolitano}, N.~R. and {Hilker}, M. and {Spavone}, M. and {Schulz}, C. and {Cantiello}, M. and {Tortora}, C. and {Iodice}, E. and {Paolillo}, M. and {D'Abrusco}, R. and {Capaccioli}, M. and {Puzia}, T. and {Peletier}, R.~F. and {Romanowsky}, A.~J. and {van de Ven}, G. and {Spiniello}, C. and {Norris}, M. and {Lisker}, T. and {Munoz}, R. and {Schipani}, P. and {Eigenthaler}, P. and {Taylor}, M.~A. and {S{\'a}nchez-Janssen}, R. and {Ordenes-Brice{\~n}o}, Y.},
+        title = "{The Fornax Cluster VLT Spectroscopic Survey - I. VIMOS spectroscopy of compact stellar systems in the Fornax core region}",
+      journal = {\mnras},
+     keywords = {galaxies:evolution, galaxies: kinematics and dynamics, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2018,
+        month = dec,
+       volume = {481},
+       number = {2},
+        pages = {1744-1756},
+          doi = {10.1093/mnras/sty2149},
+archivePrefix = {arXiv},
+       eprint = {1803.03275},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2018MNRAS.481.1744P},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Puzia2014,
+       author = {{Puzia}, Thomas H. and {Paolillo}, Maurizio and {Goudfrooij}, Paul and {Maccarone}, Thomas J. and {Fabbiano}, Giuseppina and {Angelini}, Lorella},
+        title = "{Wide-field Hubble Space Telescope Observations of the Globular Cluster System in NGC 1399}",
+      journal = {\apj},
+     keywords = {galaxies: evolution, galaxies: formation, galaxies: individual: NGC 1399, galaxies: star clusters: general, globular clusters: general, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2014,
+        month = may,
+       volume = {786},
+       number = {2},
+          eid = {78},
+        pages = {78},
+          doi = {10.1088/0004-637X/786/2/78},
+archivePrefix = {arXiv},
+       eprint = {1402.6714},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2014ApJ...786...78P},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Schuberth2010,
+       author = {{Schuberth}, Y. and {Richtler}, T. and {Hilker}, M. and {Dirsch}, B. and {Bassino}, L.~P. and {Romanowsky}, A.~J. and {Infante}, L.},
+        title = "{The globular cluster system of NGC 1399. V. dynamics of the cluster system out to 80 kpc}",
+      journal = {\aap},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: kinematics and dynamics, galaxies: individual: NGC 1399, Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Astrophysics of Galaxies},
+         year = 2010,
+        month = apr,
+       volume = {513},
+          eid = {A52},
+        pages = {A52},
+          doi = {10.1051/0004-6361/200912482},
+archivePrefix = {arXiv},
+       eprint = {0911.0420},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2010AA...513A..52S},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Venhola2019,
+       author = {{Venhola}, Aku and {Peletier}, Reynier and {Laurikainen}, Eija and {Salo}, Heikki and {Iodice}, Enrichetta and {Mieske}, Steffen and {Hilker}, Michael and {Wittmann}, Carolin and {Paolillo}, Maurizio and {Cantiello}, Michele and {Janz}, Joachim and {Spavone}, Marilena and {D'Abrusco}, Raffaele and {van de Ven}, Glenn and {Napolitano}, Nicola and {Verdoes Kleijn}, Gijs and {Capaccioli}, Massimo and {Grado}, Aniello and {Valentijn}, Edwin and {Falc{\'o}n-Barroso}, Jes{\'u}s and {Limatola}, Luca},
+        title = "{The Fornax Deep Survey (FDS) with VST. VI. Optical properties of the dwarf galaxies in the Fornax cluster}",
+      journal = {\aap},
+     keywords = {galaxies: clusters: individual: Fornax, galaxies: dwarf, galaxies: evolution, galaxies: interactions, galaxies: luminosity function, mass function, galaxies: photometry, Astrophysics - Astrophysics of Galaxies},
+         year = 2019,
+        month = may,
+       volume = {625},
+          eid = {A143},
+        pages = {A143},
+          doi = {10.1051/0004-6361/201935231},
+archivePrefix = {arXiv},
+       eprint = {1904.08660},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2019AA...625A.143V},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Jordan2004,
+       author = {{Jord{\'a}n}, Andr{\'e}s and {C{\^o}t{\'e}}, Patrick and {Ferrarese}, Laura and {Blakeslee}, John P. and {Mei}, Simona and {Merritt}, David and {Milosavljevi{\'c}}, Milo{\v{s}} and {Peng}, Eric W. and {Tonry}, John L. and {West}, Michael J.},
+        title = "{The ACS Virgo Cluster Survey. III. Chandra and Hubble Space Telescope Observations of Low-Mass X-Ray Binaries and Globular Clusters in M87}",
+      journal = {\apj},
+     keywords = {Galaxies: Elliptical and Lenticular, cD, Galaxies: Individual: Messier Number: M87, Galaxies: Star Clusters, Galaxy: Globular Clusters: General, X-Rays: Binaries, Astrophysics},
+         year = 2004,
+        month = sep,
+       volume = {613},
+       number = {1},
+        pages = {279-301},
+          doi = {10.1086/422545},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0405188},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2004ApJ...613..279J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Jedrzejewski1987,
+       author = {{Jedrzejewski}, Robert I. and {Davies}, Roger L. and {Illingworth}, Garth D.},
+        title = "{CCD Surface Photometry of the Bright Elliptical Galaxies NGC 720, NGC 1052, and NGC 4697}",
+      journal = {\aj},
+     keywords = {Astronomical Spectroscopy, Brightness Distribution, Charge Coupled Devices, Elliptical Galaxies, Radial Distribution, Disk Galaxies, Galactic Structure, Spectral Bands, Spectrum Analysis, Astronomy, GALAXIES: GENERAL},
+         year = 1987,
+        month = dec,
+       volume = {94},
+        pages = {1508},
+          doi = {10.1086/114584},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1987AJ.....94.1508J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Bertin,
+       author = {{Bertin}, E. and {Arnouts}, S.},
+        title = "{SExtractor: Software for source extraction.}",
+      journal = {\aaps},
+     keywords = {METHODS: DATA ANALYSIS, TECHNIQUES: IMAGE PROCESSING, GALAXIES: PHOTOMETRY},
+         year = 1996,
+        month = jun,
+       volume = {117},
+        pages = {393-404},
+          doi = {10.1051/aas:1996164},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1996AAS..117..393B},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+
+@ARTICLE{Muratov2010,
+       author = {{Muratov}, Alexander L. and {Gnedin}, Oleg Y.},
+        title = "{Modeling the Metallicity Distribution of Globular Clusters}",
+      journal = {\apj},
+     keywords = {galaxies: formation, galaxies: star clusters: general, globular clusters: general, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2010,
+        month = aug,
+       volume = {718},
+       number = {2},
+        pages = {1266-1288},
+          doi = {10.1088/0004-637X/718/2/1266},
+archivePrefix = {arXiv},
+       eprint = {1002.1325},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2010ApJ...718.1266M},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@ARTICLE{Kim2013,
+       author = {{Kim}, D. -W. and {Fabbiano}, G. and {Ivanova}, N. and {Fragos}, T. and {Jord{\'a}n}, A. and {Sivakoff}, G.~R. and {Voss}, R.},
+        title = "{Metallicity Effect on Low-mass X-Ray Binary Formation in Globular Clusters}",
+      journal = {\apj},
+     keywords = {binaries: close, galaxies: elliptical and lenticular, cD, globular clusters: general, X-rays: binaries, X-rays: galaxies, Astrophysics - High Energy Astrophysical Phenomena, Astrophysics - Astrophysics of Galaxies},
+         year = 2013,
+        month = feb,
+       volume = {764},
+       number = {1},
+          eid = {98},
+        pages = {98},
+          doi = {10.1088/0004-637X/764/1/98},
+archivePrefix = {arXiv},
+       eprint = {1208.5952},
+ primaryClass = {astro-ph.HE},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2013ApJ...764...98K},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Capaccioli2015,
+       author = {{Capaccioli}, Massimo and {Spavone}, Marilena and {Grado}, Aniello and {Iodice}, Enrichetta and {Limatola}, Luca and {Napolitano}, Nicola R. and {Cantiello}, Michele and {Paolillo}, Maurizio and {Romanowsky}, Aaron J. and {Forbes}, Duncan A. and {Puzia}, Thomas H. and {Raimondo}, Gabriella and {Schipani}, Pietro},
+        title = "{VEGAS: A VST Early-type GAlaxy Survey. I. Presentation, wide-field surface photometry, and substructures in NGC 4472}",
+      journal = {\aap},
+     keywords = {techniques: image processing, galaxies: elliptical and lenticular, cD, gravitation, galaxies: fundamental parameters, galaxies: formation, Astrophysics - Astrophysics of Galaxies},
+         year = 2015,
+        month = sep,
+       volume = {581},
+          eid = {A10},
+        pages = {A10},
+          doi = {10.1051/0004-6361/201526252},
+archivePrefix = {arXiv},
+       eprint = {1507.01336},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2015AA...581A..10C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Jordan2006,
+       author = {{Jord{\'a}n}, Andr{\'e}s and {McLaughlin}, Dean E. and {C{\^o}t{\'e}}, Patrick and {Ferrarese}, Laura and {Peng}, Eric W. and {Blakeslee}, John P. and {Mei}, Simona and {Villegas}, Daniela and {Merritt}, David and {Tonry}, John L. and {West}, Michael J.},
+        title = "{Trends in the Globular Cluster Luminosity Function of Early-Type Galaxies}",
+      journal = {\apjl},
+     keywords = {Galaxies: Elliptical and Lenticular, cD, Galaxies: Star Clusters, Galaxy: Globular Clusters: General, Astrophysics},
+         year = 2006,
+        month = nov,
+       volume = {651},
+       number = {1},
+        pages = {L25-L28},
+          doi = {10.1086/509119},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0609371},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2006ApJ...651L..25J},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@ARTICLE{Maccarone2004,
+       author = {{Maccarone}, Thomas J. and {Kundu}, Arunav and {Zepf}, Stephen E.},
+        title = "{An Explanation for Metallicity Effects on X-Ray Binary Properties}",
+      journal = {\apj},
+     keywords = {Stars: Binaries: Close, Galaxies: Star Clusters, Galaxy: Globular Clusters: General, Stars: Neutron, Stars: Winds, Outflows, X-Rays: Binaries, Astrophysics},
+         year = 2004,
+        month = may,
+       volume = {606},
+       number = {1},
+        pages = {430-435},
+          doi = {10.1086/382937},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0401333},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2004ApJ...606..430M},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@ARTICLE{Maccarone2003,
+       author = {{Maccarone}, Thomas J. and {Kundu}, Arunav and {Zepf}, Stephen E.},
+        title = "{The Low-Mass X-Ray Binary-Globular Cluster Connection. II. NGC 4472 X-Ray Source Properties and Source Catalogs}",
+      journal = {\apj},
+     keywords = {Galaxies: General, Galaxies: Individual: NGC Number: NGC 4472, Galaxies: Star Clusters, Galaxy: Globular Clusters: General, X-Rays: Binaries, X-Rays: Galaxies, Astrophysics},
+         year = 2003,
+        month = apr,
+       volume = {586},
+       number = {2},
+        pages = {814-825},
+          doi = {10.1086/367886},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0210143},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2003ApJ...586..814M},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Civano2016,
+       author = {{Civano}, F. and {Marchesi}, S. and {Comastri}, A. and {Urry}, M.~C. and {Elvis}, M. and {Cappelluti}, N. and {Puccetti}, S. and {Brusa}, M. and {Zamorani}, G. and {Hasinger}, G. and {Aldcroft}, T. and {Alexander}, D.~M. and {Allevato}, V. and {Brunner}, H. and {Capak}, P. and {Finoguenov}, A. and {Fiore}, F. and {Fruscione}, A. and {Gilli}, R. and {Glotfelty}, K. and {Griffiths}, R.~E. and {Hao}, H. and {Harrison}, F.~A. and {Jahnke}, K. and {Kartaltepe}, J. and {Karim}, A. and {LaMassa}, S.~M. and {Lanzuisi}, G. and {Miyaji}, T. and {Ranalli}, P. and {Salvato}, M. and {Sargent}, M. and {Scoville}, N.~J. and {Schawinski}, K. and {Schinnerer}, E. and {Silverman}, J. and {Smolcic}, V. and {Stern}, D. and {Toft}, S. and {Trakhtenbrot}, B. and {Treister}, E. and {Vignali}, C.},
+        title = "{The Chandra Cosmos Legacy Survey: Overview and Point Source Catalog}",
+      journal = {\apj},
+     keywords = {catalogs, cosmology: observations, galaxies: evolution, quasars: general, surveys, X-rays: general, Astrophysics - Astrophysics of Galaxies},
+         year = 2016,
+        month = mar,
+       volume = {819},
+       number = {1},
+          eid = {62},
+        pages = {62},
+          doi = {10.3847/0004-637X/819/1/62},
+archivePrefix = {arXiv},
+       eprint = {1601.00941},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2016ApJ...819...62C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Laigle2016,
+       author = {{Laigle}, C. and {McCracken}, H.~J. and {Ilbert}, O. and {Hsieh}, B.~C. and {Davidzon}, I. and {Capak}, P. and {Hasinger}, G. and {Silverman}, J.~D. and {Pichon}, C. and {Coupon}, J. and {Aussel}, H. and {Le Borgne}, D. and {Caputi}, K. and {Cassata}, P. and {Chang}, Y. -Y. and {Civano}, F. and {Dunlop}, J. and {Fynbo}, J. and {Kartaltepe}, J.~S. and {Koekemoer}, A. and {Le F{\`e}vre}, O. and {Le Floc'h}, E. and {Leauthaud}, A. and {Lilly}, S. and {Lin}, L. and {Marchesi}, S. and {Milvang-Jensen}, B. and {Salvato}, M. and {Sanders}, D.~B. and {Scoville}, N. and {Smolcic}, V. and {Stockmann}, M. and {Taniguchi}, Y. and {Tasca}, L. and {Toft}, S. and {Vaccari}, Mattia and {Zabl}, J.},
+        title = "{The COSMOS2015 Catalog: Exploring the 1 < z < 6 Universe with Half a Million Galaxies}",
+      journal = {\apjs},
+     keywords = {catalogs, galaxies: evolution, galaxies: high-redshift, galaxies: photometry, methods: observational, techniques: photometric, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2016,
+        month = jun,
+       volume = {224},
+       number = {2},
+          eid = {24},
+        pages = {24},
+          doi = {10.3847/0067-0049/224/2/24},
+archivePrefix = {arXiv},
+       eprint = {1604.02350},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2016ApJS..224...24L},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Kim2006,
+       author = {{Kim}, Eunhyeuk and {Kim}, Dong-Woo and {Fabbiano}, Giuseppina and {Lee}, Myung Gyoon and {Park}, Hong Soo and {Geisler}, Doug and {Dirsch}, Boris},
+        title = "{Low-Mass X-Ray Binaries in Six Elliptical Galaxies: Connection to Globular Clusters}",
+      journal = {\apj},
+     keywords = {Galaxies: Elliptical and Lenticular, cD, Galaxies: Star Clusters, X-Rays: Binaries, Astrophysics},
+         year = 2006,
+        month = aug,
+       volume = {647},
+       number = {1},
+        pages = {276-292},
+          doi = {10.1086/505261},
+archivePrefix = {arXiv},
+       eprint = {astro-ph/0510817},
+ primaryClass = {astro-ph},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2006ApJ...647..276K},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Blakeslee2009,
+       author = {{Blakeslee}, John P. and {Jord{\'a}n}, Andr{\'e}s and {Mei}, Simona and {C{\^o}t{\'e}}, Patrick and {Ferrarese}, Laura and {Infante}, Leopoldo and {Peng}, Eric W. and {Tonry}, John L. and {West}, Michael J.},
+        title = "{The ACS Fornax Cluster Survey. V. Measurement and Recalibration of Surface Brightness Fluctuations and a Precise Value of the Fornax-Virgo Relative Distance}",
+      journal = {\apj},
+     keywords = {galaxies: clusters: individual: Fornax Virgo, galaxies: distances and redshifts, galaxies: elliptical and lenticular, cD, large-scale structure of universe, Astrophysics - Cosmology and Extragalactic Astrophysics},
+         year = 2009,
+        month = mar,
+       volume = {694},
+       number = {1},
+        pages = {556-572},
+          doi = {10.1088/0004-637X/694/1/556},
+archivePrefix = {arXiv},
+       eprint = {0901.1138},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2009ApJ...694..556B},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Villegas2010,
+       author = {{Villegas}, Daniela and {Jord{\'a}n}, Andr{\'e}s and {Peng}, Eric W. and {Blakeslee}, John P. and {C{\^o}t{\'e}}, Patrick and {Ferrarese}, Laura and {Kissler-Patig}, Markus and {Mei}, Simona and {Infante}, Leopoldo and {Tonry}, John L. and {West}, Michael J.},
+        title = "{The ACS Fornax Cluster Survey. VIII. The Luminosity Function of Globular Clusters in Virgo and Fornax Early-type Galaxies and Its Use as a Distance Indicator}",
+      journal = {\apj},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: star clusters: general, globular clusters: general, Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Astrophysics of Galaxies},
+         year = 2010,
+        month = jul,
+       volume = {717},
+       number = {2},
+        pages = {603-616},
+          doi = {10.1088/0004-637X/717/2/603},
+archivePrefix = {arXiv},
+       eprint = {1004.2883},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2010ApJ...717..603V},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Kartha2014,
+       author = {{Kartha}, Sreeja S. and {Forbes}, Duncan A. and {Spitler}, Lee R. and {Romanowsky}, Aaron J. and {Arnold}, Jacob A. and {Brodie}, Jean P.},
+        title = "{The SLUGGS survey: the globular cluster systems of three early-type galaxies using wide-field imaging}",
+      journal = {\mnras},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: individual: NGC 720, galaxies: individual: NGC 1023, galaxies: individual: NGC 2768, galaxies: star clusters: general, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2014,
+        month = jan,
+       volume = {437},
+       number = {1},
+        pages = {273-292},
+          doi = {10.1093/mnras/stt1880},
+archivePrefix = {arXiv},
+       eprint = {1310.1979},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2014MNRAS.437..273K},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Forbes2017,
+       author = {{Forbes}, Duncan A.},
+        title = "{How large are the globular cluster systems of early-type galaxies and do they scale with galaxy halo properties?}",
+      journal = {\mnras},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: evolution, galaxies: star clusters: general, dark matter, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2017,
+        month = nov,
+       volume = {472},
+       number = {1},
+        pages = {L104-L108},
+          doi = {10.1093/mnrasl/slx148},
+archivePrefix = {arXiv},
+       eprint = {1710.01324},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2017MNRAS.472L.104F},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@ARTICLE{Caso2019,
+       author = {{Caso}, Juan P. and {De B{\'o}rtoli}, Bruno J. and {Ennis}, Ana I. and {Bassino}, Lilia P.},
+        title = "{Scaling relations for globular cluster systems in early-type galaxies}",
+      journal = {\mnras},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: evolution, galaxies: haloes, galaxies: star clusters: general, Astrophysics - Astrophysics of Galaxies},
+         year = 2019,
+        month = oct,
+       volume = {488},
+       number = {4},
+        pages = {4504-4519},
+          doi = {10.1093/mnras/stz2039},
+archivePrefix = {arXiv},
+       eprint = {1908.01807},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2019MNRAS.488.4504C},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+@ARTICLE{Ferguson1998,
+       author = {{Ferguson}, H.~C.},
+        title = "{VizieR Online Data Catalog: Galaxies in Fornax Cluster and five nearby groups (Ferguson+ 1990)}",
+      journal = {VizieR Online Data Catalog},
+     keywords = {Clusters: galaxy, Galaxy catalogs},
+         year = 1997,
+        month = jul,
+          eid = {VII/180},
+        pages = {VII/180},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1997yCat.7180....0F},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Stetson1984,
+       author = {{Stetson}, Peter B.},
+        title = "{DAOPHOT: A Computer Program for Crowded-Field Stellar Photometry}",
+      journal = {\pasp},
+     keywords = {Algorithms, Astronomical Photometry, Computer Programs, Charge Coupled Devices, Color-Magnitude Diagram, Magellanic Clouds, Point Spread Functions, Television Cameras, COMPUTER PROGRAMMING AND SOFTWARE, data-handling techniques, photometry (general)},
+         year = 1987,
+        month = mar,
+       volume = {99},
+        pages = {191},
+          doi = {10.1086/131977},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@article{Webb2016,
+abstract = {},
+archivePrefix = {arXiv},
+arxivId = {1605.03191},
+author = {Webb, Jeremy J. and Sills, Alison and Harris, William E. and G{\'{o}}mez, Mat{\'{i}}as and Paolillo, Maurizio and Woodley, Kristin A. and Puddu, Emanuella},
+doi = {10.1093/mnras/stw1115},
+eprint = {1605.03191},
+file = {},
+issn = {0035-8711},
+journal = {Monthly Notices of the Royal Astronomical Society},
+keywords = {clusters,galaxies,general,kinematics and dynamics globular},
+month = {aug},
+number = {2},
+pages = {2129--2142},
+title = {{Globular cluster scale sizes in giant galaxies: orbital anisotropy and tidally underfilling clusters in M87, NGC 1399 and NGC 5128}},
+url = {http://arxiv.org/abs/1605.03191 http://dx.doi.org/10.1093/mnras/stw1115 http://mnras.oxfordjournals.org/lookup/doi/10.1093/mnras/stw1115},
+volume = {460},
+year = {2016}
+}
+
+
+@ARTICLE{Prole2019,
+       author = {{Prole}, D.~J. and {Hilker}, M. and {van der Burg}, R.~F.~J. and {Cantiello}, M. and {Venhola}, A. and {Iodice}, E. and {van de Ven}, G. and {Wittmann}, C. and {Peletier}, R.~F. and {Mieske}, S. and {Capaccioli}, M. and {Napolitano}, N.~R. and {Paolillo}, M. and {Spavone}, M. and {Valentijn}, E.},
+        title = "{Halo mass estimates from the globular cluster populations of 175 low surface brightness galaxies in the Fornax cluster}",
+      journal = {\mnras},
+     keywords = {galaxies: clusters: individual: Fornax, galaxies: dwarf, Astrophysics - Astrophysics of Galaxies},
+         year = 2019,
+        month = apr,
+       volume = {484},
+       number = {4},
+        pages = {4865-4880},
+          doi = {10.1093/mnras/stz326},
+archivePrefix = {arXiv},
+       eprint = {1901.09648},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2019MNRAS.484.4865P},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@ARTICLE{Luan2018,
+       author = {{Luan}, Luan and {Jones}, Christine and {Forman}, William R. and {Bogd{\'a}n}, {\'A}kos and {Andrade-Santos}, Felipe and {Goulding}, Andy D. and {Hickox}, Ryan C. and {Hou}, Meicun and {Li}, Zhiyuan},
+        title = "{Deep Chandra Observations of X-Ray Point Sources in M87}",
+      journal = {\apj},
+     keywords = {galaxies: elliptical and lenticular, cD, galaxies: individual: M87, globular clusters: general, X-rays: binaries, Astrophysics - High Energy Astrophysical Phenomena},
+         year = 2018,
+        month = jul,
+       volume = {862},
+       number = {1},
+          eid = {73},
+        pages = {73},
+          doi = {10.3847/1538-4357/aaca94},
+archivePrefix = {arXiv},
+       eprint = {1805.10910},
+ primaryClass = {astro-ph.HE},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2018ApJ...862...73L},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@article{Iodice2019,
+abstract = {},
+archivePrefix = {arXiv},
+arxivId = {1812.01050},
+author = {Iodice, E. and Spavone, M. and Capaccioli, M. and Peletier, R. F. and van de Ven, G. and Napolitano, N. R. and Hilker, M. and Mieske, S. and Smith, R. and Pasquali, A. and Limatola, L. and Grado, A. and Venhola, Aku and Cantiello, M. and Paolillo, Maurizio and Falcon-Barroso, J. and D'Abrusco, R. and Schipani, P.},
+doi = {10.1051/0004-6361/201833741},
+eprint = {1812.01050},
+file = {},
+issn = {0004-6361},
+journal = {Astronomy Astrophysics},
+keywords = {Galaxies: clusters: individual: Fornax,Galaxies: elliptical and lenticular,Galaxies: photometry,Surveys,cD},
+month = {dec},
+pages = {A1},
+title = {{The Fornax Deep Survey with VST. V. Exploring the faintest regions of the bright early-type galaxies inside the virial radius}},
+url = {https://www.aanda.org/10.1051/0004-6361/201833741 http://arxiv.org/abs/1812.01050 http://dx.doi.org/10.1051/0004-6361/201833741},
+volume = {623},
+year = {2019}
+}
+
+@ARTICLE{Newman2005,
+       author = {{Newman}, M.~E.~J.},
+        title = "{Power laws, Pareto distributions and Zipf's law}",
+      journal = {Contemporary Physics},
+     keywords = {Condensed Matter - Statistical Mechanics, Physics - Data Analysis, Statistics and Probability, Physics - Physics and Society},
+         year = 2005,
+        month = sep,
+       volume = {46},
+       number = {5},
+        pages = {323-351},
+          doi = {10.1080/00107510500052444},
+archivePrefix = {arXiv},
+       eprint = {cond-mat/0412004},
+ primaryClass = {cond-mat.stat-mech},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2005ConPh..46..323N},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
