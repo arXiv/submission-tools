@@ -99,6 +99,8 @@ async def convert_pdf(incoming: UploadFile,
                                 description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
                       preflight: typing.Annotated[bool,
                           Query(title="Preflight", description="Preflight check")] = False,
+                      newpreflight: typing.Annotated[bool,
+                      Query(title="New Preflight", description="New Preflight check")] = False,
                       watermark_text: str | None = None,
                       watermark_link: str | None = None) -> Response:
     """
@@ -137,7 +139,8 @@ async def convert_pdf(incoming: UploadFile,
                                  max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
-                                 preflight=preflight
+                                 preflight=preflight,
+                                 newpreflight=newpreflight
                                  )
         try:
             _pdf_file = driver.generate_pdf()
@@ -154,6 +157,14 @@ async def convert_pdf(incoming: UploadFile,
             logger.error(f"Exception %s", str(exc), exc_info=True)
             return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
                                 content={"message": traceback.format_exc()})
+
+        if newpreflight:
+            if "newpreflight" in self.outcome:
+                return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                                    content=self.outcome["newpreflight"])
+            else:
+                return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                                    content={"message": "New preflight data found"})
 
         more_files: typing.List[str] = []
         # if pdf_file:
