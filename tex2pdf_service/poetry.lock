@@ -778,21 +778,18 @@ name = "preflight-parser"
 version = "0.0.1"
 description = "TeX and LaTeX parser"
 optional = false
-python-versions = ">=3.11"
+python-versions = "*"
 files = []
 develop = false
 
 [package.dependencies]
-chardet = ">=5.0,<6.0"
-
-[package.extras]
-dev = ["ruff"]
+chardet = "^5.0"
 
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "new-preflight"
-resolved_reference = "5722c487b461ba13078a0a175d2d3093cce99891"
+resolved_reference = "1ddec098c1860f4abb960aec041bcaa65971f337"
 subdirectory = "preflight_parser"
 
 [[package]]
