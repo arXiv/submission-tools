@@ -881,7 +881,7 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
     files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
     n = len(rundir) + 1
-    files = [f[n:] for f in files]
+    files = [f[n:] for f in files if os.path.isfile(f)]
     # files = os.listdir(rundir)
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
