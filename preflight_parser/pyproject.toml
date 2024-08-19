@@ -1,13 +1,18 @@
-[tool.poetry]
+# PEP621 conforming, should be supported by poetry already
+[project]
 name = "preflight-parser"
 description = "TeX and LaTeX parser"
-version = "0.0.1"
-authors = [ "Norbert Preining"  ]
+# pulls the version number from preflight_parser.__version__
+dynamic = ["version"]
+authors = [
+  { name = "Norbert Preining", email = "norbert@arxiv.org" },
+]
 requires-python = ">=3.11"
 include = ["kpse_search.lua"]
 
-[tool.poetry.dependencies]
-chardet = "^5.0"
+dependencies = [
+  "chardet~=5.0",
+]
 
 [project.optional-dependencies]
 dev = [

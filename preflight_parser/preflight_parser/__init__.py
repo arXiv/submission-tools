@@ -14,6 +14,8 @@ from pprint import pformat
 
 import chardet
 
+__version__ = "0.0.1"
+
 MODULE_PATH = os.path.dirname(__file__)
 
 #
