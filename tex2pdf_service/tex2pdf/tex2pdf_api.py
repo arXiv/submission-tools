@@ -165,7 +165,7 @@ async def convert_pdf(incoming: UploadFile,
                                 content=driver.outcome["newpreflight"])
             else:
                 return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                                    content={"message": "New preflight data found"})
+                                    content={"message": "New preflight data not found"})
 
         more_files: typing.List[str] = []
         # if pdf_file:
