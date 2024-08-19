@@ -633,7 +633,7 @@ IMAGE_EXTENSIONS = {
 }
 
 # only parse file with these extensions
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".cls", ".clo"]
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo"]
 
 single_argument_include_commands = [
     "include",
