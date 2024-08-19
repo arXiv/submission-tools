@@ -63,14 +63,13 @@ class ConverterDriver:
     max_appending_files: int
     artifact_order: dict
     today: str | None
-    preflight: bool
-    newpreflight: bool
+    preflight: str | None
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, watermark: Watermark | None = None,
                  max_time_budget: float | None = None,
                  max_tex_files: int = 1,  max_appending_files: int = 0,
-                 preflight: bool = False, newpreflight: bool = False,
+                 preflight: str | None = None
                  ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -92,7 +91,6 @@ class ConverterDriver:
         self.max_appending_files = max_appending_files
         self.today = None
         self.preflight = preflight
-        self.newpreflight = newpreflight
         pass
 
     @property
@@ -147,13 +145,16 @@ class ConverterDriver:
                                  "in_files": file_props_in_dir(self.in_dir)})
             return None
 
-        if self.newpreflight:
-            self.report_newpreflight()
+        if self.preflight is None:
+            pass
+        elif self.preflight == "v2":
+            self.report_preflight_v2()
             return None
-
-        if self.preflight:
+        elif self.preflight == "v1":
             self.report_preflight()
             return None
+        else:
+            logger.warn("Ignoring unsupported preflight value: %s", self.preflight)
 
         # Once no-hyperref is implemented, change here - future fixme
         if self.zzrm.nohyperref:
@@ -172,8 +173,8 @@ class ConverterDriver:
             pass
         return self.outcome.get("pdf_file")
 
-    def report_newpreflight(self) -> None:
-        self.outcome["newpreflight"] = generate_preflight_response(self.in_dir)
+    def report_preflight_v2(self) -> None:
+        self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir)
 
     def report_preflight(self) -> None:
         """Set the values to zzrm"""

@@ -97,10 +97,8 @@ async def convert_pdf(incoming: UploadFile,
                       max_appending_files: typing.Annotated[int | None,
                           Query(title="Max Extra File count",
                                 description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
-                      preflight: typing.Annotated[bool,
-                          Query(title="Preflight", description="Preflight check")] = False,
-                      newpreflight: typing.Annotated[bool,
-                      Query(title="New Preflight", description="New Preflight check")] = False,
+                      preflight: typing.Annotated[str | None,
+                          Query(title="Preflight", description="Do preflight check, pass in version number (v1, v2)")] = None,
                       watermark_text: str | None = None,
                       watermark_link: str | None = None) -> Response:
     """
@@ -139,8 +137,7 @@ async def convert_pdf(incoming: UploadFile,
                                  max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
-                                 preflight=preflight,
-                                 newpreflight=newpreflight
+                                 preflight=preflight
                                  )
         try:
             _pdf_file = driver.generate_pdf()
@@ -158,14 +155,14 @@ async def convert_pdf(incoming: UploadFile,
             return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
                                 content={"message": traceback.format_exc()})
 
-        if newpreflight:
-            if "newpreflight" in driver.outcome:
+        if preflight == "v2":
+            if "preflight_v2" in driver.outcome:
                 return Response(status_code=STATCODE.HTTP_200_OK,
                                 headers={"Content-Type": "application/json"},
-                                content=driver.outcome["newpreflight"])
+                                content=driver.outcome["preflight_v2"])
             else:
                 return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                                    content={"message": "New preflight data not found"})
+                                    content={"message": "Preflight v2 data not found"})
 
         more_files: typing.List[str] = []
         # if pdf_file:
