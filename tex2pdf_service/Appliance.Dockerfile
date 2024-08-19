@@ -27,6 +27,9 @@ USER worker
 WORKDIR $WORKER_HOME
 COPY tex2pdf/ ./tex2pdf/
 COPY poetry.lock pyproject.toml ./
+# poetry is BROKEN wrt to installing multiple packages from same git repo
+# see https://github.com/python-poetry/poetry/issues/6958
+RUN poetry config installer.parallel false
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN poetry install --without=dev
 

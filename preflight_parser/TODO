@@ -1,0 +1,44 @@
+2401.00660
+----------
+defaults to pdflatex, so .eps files are not found :-(
+
+
+4293772/
+-------
+
+Wow... that uses
+\makeatletter
+\def\input@path{{tex_files/}}
+\makeatother
+
+and then \input{x.tex} where x is in tex_files/ ...
+
+WARNING:root:Cannot find parsed node for used tex file tex_files/paper_setup.tex
+WARNING:root:Cannot find parsed node for used tex file tex_files/paper_content.tex
+
+but the files are there!!!
+
+
+Also:
+ERROR:root:kpse_found not containing %
+bib_files/Robust_Control,%
+bib_files/Robust_Optimization,%
+bib_files/System_Level_Synthesis,%
+bib_files/my_publications,%
+bib_files/Textbook_and_Theory,%
+bib_files/control_sequences,%
+bib_files/IEEEabrv%
+
+due to the parsing!
+
+4339379/
+-------
+Does search for mt11p from here:
+\def\@@IEEEcomsocenforcemathfont{\IfFileExists{mtpro2.sty}{\typeout{-- Found mtpro2, loading.}\RequirePackage{mtpro2}}{\@@@IEEEcomsocenforcemathfont}}
+\def\@@@IEEEcomsocenforcemathfont{\IfFileExists{mt11p.sty}{\typeout{-- Found mt11p, loading.}\RequirePackage{mt11p}}{\@@@@IEEEcomsocenforcemathfont}}
+\def\@@@@IEEEcomsocenforcemathfont{\IfFileExists{mathtime.sty}{\typeout{-- Found mathtime, loading.}\RequirePackage{mathtime}}{\@@@@@IEEEcomsocenforcemathfont}}
+
+... not good ...
+
+
+

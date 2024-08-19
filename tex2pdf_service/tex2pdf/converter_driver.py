@@ -22,6 +22,8 @@ from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, Watermark
 from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
                             SubmissionFileType)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
+from preflight_parser import generate_preflight_response
+
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
                   "the conflicting names. (eg, both main.tex and main.latex exist.) This should "
@@ -62,12 +64,13 @@ class ConverterDriver:
     artifact_order: dict
     today: str | None
     preflight: bool
+    newpreflight: bool
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, watermark: Watermark | None = None,
                  max_time_budget: float | None = None,
                  max_tex_files: int = 1,  max_appending_files: int = 0,
-                 preflight: bool = False,
+                 preflight: bool = False, newpreflight: bool = False,
                  ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -89,6 +92,7 @@ class ConverterDriver:
         self.max_appending_files = max_appending_files
         self.today = None
         self.preflight = preflight
+        self.newpreflight = newpreflight
         pass
 
     @property
@@ -143,6 +147,10 @@ class ConverterDriver:
                                  "in_files": file_props_in_dir(self.in_dir)})
             return None
 
+        if self.newpreflight:
+            self.report_newpreflight()
+            return None
+
         if self.preflight:
             self.report_preflight()
             return None
@@ -164,6 +172,8 @@ class ConverterDriver:
             pass
         return self.outcome.get("pdf_file")
 
+    def report_newpreflight(self) -> None:
+        self.outcome["newpreflight"] = generate_preflight_response(self.in_dir)
 
     def report_preflight(self) -> None:
         """Set the values to zzrm"""
