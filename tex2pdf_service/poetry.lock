@@ -788,8 +788,8 @@ chardet = "^5.0"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "new-preflight"
-resolved_reference = "1ddec098c1860f4abb960aec041bcaa65971f337"
+reference = "c18cb1100b43"
+resolved_reference = "c18cb1100b431930ef9cca7700fd2c28c3926504"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -1408,4 +1408,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d606d5b486d5ea8f0637284b51f30a8d59ce501d9af1ff1d2210435a4144d0d4"
+content-hash = "966246b2d8d08a1a7779bedf436a90c6bbb33dceb7df3cccfa7a117515d85020"
