@@ -15,7 +15,7 @@ from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
 from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
-from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker
+from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
 from tex2pdf.fastapi_util import closer
@@ -122,6 +122,19 @@ async def convert_pdf(incoming: UploadFile,
     if max_appending_files is None:
         max_appending_files = MAX_APPENDING_FILES
 
+    preflight_version: PreflightVersion
+    if preflight is None:
+        preflight_version = PreflightVersion.NONE
+    elif preflight == "v1" or preflight == "V1":
+        preflight_version = PreflightVersion.V1
+    elif preflight == "v2" or preflight == "V2":
+        preflight_version = PreflightVersion.V2
+    else:
+        logger.info("Invalid preflight version string %s.", preflight)
+        return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                            content={"message": f"Invalid preflight version string {preflight}."})
+    logger.debug("preflight string %s value %s", preflight, preflight_version)
+
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
         await save_stream(in_dir, incoming, filename, log_extra)
@@ -137,7 +150,7 @@ async def convert_pdf(incoming: UploadFile,
                                  max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
-                                 preflight=preflight
+                                 preflight=preflight_version
                                  )
         try:
             _pdf_file = driver.generate_pdf()
@@ -155,7 +168,7 @@ async def convert_pdf(incoming: UploadFile,
             return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
                                 content={"message": traceback.format_exc()})
 
-        if preflight == "v2":
+        if preflight_version == PreflightVersion.V2:
             if "preflight_v2" in driver.outcome:
                 return Response(status_code=STATCODE.HTTP_200_OK,
                                 headers={"Content-Type": "application/json"},
