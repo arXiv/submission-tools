@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES, TEXLIVE_RELEASE_YEAR
+from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
@@ -201,7 +201,9 @@ async def texlive_info() -> FileResponse:
     """
     texlive info
     """
-    tlmgr_info = f"texlive/{TEXLIVE_RELEASE_YEAR}/tlmgr-info.json"
+    # note that this is run in /home/worker and we don't have write permissions
+    # to /usr/local/texlive/... - thus, save the file simply in CWD.
+    tlmgr_info = "tlmgr-info.json"
     if not os.path.exists(tlmgr_info):
         with subprocess.Popen(["/usr/bin/tlmgr", "info", "--json"], encoding='utf-8',
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE) as tlmgr:
