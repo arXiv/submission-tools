@@ -156,7 +156,7 @@ class ConverterDriver:
         if self.preflight is not PreflightVersion.NONE:
             logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
             self.report_preflight()
-            return
+            return None
 
         # Once no-hyperref is implemented, change here - future fixme
         if self.zzrm.nohyperref:
