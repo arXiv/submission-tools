@@ -1,0 +1,38 @@
+[tool.ruff]
+line-length = 120
+
+
+lint.select = [
+    "F", # Pyflakes
+    "D", # pydocstyle
+    "E", # pycodestyle errors
+    # "W", # pycodestyle warnings
+    # "C90", # McCabe
+    "I",   # isort
+    "UP",  # pyupgrade
+    "PLC",
+    "PLE",
+    "PLW", # Pylint
+    # "PLR", # Pylint refactoring
+    "PD",  # pandas checks
+    "NPY", # numpy checks
+    "RUF", # ruff internal check
+]
+lint.ignore = [
+    "D105", # no docstring in magic method like __str__
+    "D203", # one blank line before class
+    "D213", # multi-line summary second line
+]
+
+output-format = "grouped"
+
+# Assume Python 3.11
+# Note: helps prevent breaking autofixes from, e.g., pyupgrade
+target-version = "py311"
+
+[tool.black]
+line-length = 120
+
+[tool.pylint]
+max-line-length = 120
+

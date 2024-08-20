@@ -9,41 +9,15 @@ include = ["kpse_search.lua"]
 [tool.poetry.dependencies]
 chardet = "^5.0"
 
-[project.optional-dependencies]
-dev = [
-  "ruff",
-]
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+pytest = "^7.4.3"
+mypy = "*"
+mypy-extensions = "*"
 
 [tool.ruff]
-line-length = 120
-
-lint.select = [
-    "F", # Pyflakes
-    "D", # pydocstyle
-    "E", # pycodestyle errors
-    # "W", # pycodestyle warnings
-    # "C90", # McCabe
-    "I",   # isort
-    "UP",  # pyupgrade
-    "PLC",
-    "PLE",
-    "PLW", # Pylint
-    # "PLR", # Pylint refactoring
-    "PD",  # pandas checks
-    "NPY", # numpy checks
-    "RUF", # ruff internal check
-]
-lint.ignore = [
-    "D105", # no docstring in magic method like __str__
-    "D203", # one blank line before class
-    "D213", # multi-line summary second line
-]
-
-output-format = "grouped"
-
-# Assume Python 3.11
-# Note: helps prevent breaking autofixes from, e.g., pyupgrade
-target-version = "py311"
+# Extend the `pyproject.toml` from the toplevel dir
+extend = "../pyproject.toml"
 
 [tool.black]
 line-length = 120
