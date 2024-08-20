@@ -401,7 +401,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             else:
                 raise exc
 
-        if self.water and (not self.zzrm.nostamp):
+        if self.water.text and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
             temp_name = outcome["pdf_file"] + ".watermarked.pdf"
             watered = self._watermark(pdf_file, os.path.join(self.out_dir, temp_name))
@@ -424,7 +424,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
     def _watermark(self, pdf_file: str, watered: str | None = None) -> str:
         """Watermark the PDF file. Watered is the result filename."""
         output = pdf_file
-        if self.water:
+        if self.water.text:
             logger = get_logger()
             if watered is None:
                 watered = os.path.join(os.path.dirname(pdf_file),
