@@ -201,7 +201,9 @@ async def texlive_info() -> FileResponse:
     """
     texlive info
     """
-    tlmgr_info = "texlive/2023/tlmgr-info.json"
+    # note that this is run in /home/worker and we don't have write permissions
+    # to /usr/local/texlive/... - thus, save the file simply in CWD.
+    tlmgr_info = "tlmgr-info.json"
     if not os.path.exists(tlmgr_info):
         with subprocess.Popen(["/usr/bin/tlmgr", "info", "--json"], encoding='utf-8',
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE) as tlmgr:

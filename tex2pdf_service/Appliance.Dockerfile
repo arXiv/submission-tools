@@ -1,7 +1,9 @@
 # defaults for these values are set in cicd/appliance.yaml
 # and need to be passed via --build-arg, see Makefile
-ARG TEXLIVE_BASE_RELEASE
-ARG TEXLIVE_BASE_IMAGE_DATE
+# Give default values to silence docker build warnings
+# https://docs.docker.com/reference/build-checks/invalid-default-arg-in-from/
+ARG TEXLIVE_BASE_RELEASE=2024
+ARG TEXLIVE_BASE_IMAGE_DATE=2024-07-21
 FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE
 
