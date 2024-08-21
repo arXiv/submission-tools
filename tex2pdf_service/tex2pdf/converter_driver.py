@@ -71,6 +71,7 @@ class ConverterDriver:
     max_appending_files: int
     artifact_order: dict
     today: str | None
+    water: Watermark
     preflight: PreflightVersion
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
@@ -85,7 +86,7 @@ class ConverterDriver:
         self.source = source
         self.converters = []
         self.converter = None
-        self.water = watermark
+        self.water = Watermark(None,None) if watermark is None else watermark
         self.outcome = {}
         self.log_extra = {ID_TAG: tag} if tag else {}
         self.note = ""
@@ -122,11 +123,12 @@ class ConverterDriver:
         self.outcome = {ID_TAG: self.tag, "status": None, "converters": [],
                         "start_time": str(self.t0),
                         "timeout": str(self.max_time_budget),
-                        "watermark": self.water,
                         "use_addon_tree": self.use_addon_tree,
                         "max_tex_files": self.max_tex_files,
                         "max_appending_files": self.max_appending_files
                         }
+        if self.water.text:
+            self.outcome["watermark"] = self.water
         # Find the starting point
         fix_tex_sources(self.in_dir)
         tex_files = find_primary_tex(self.in_dir, self.zzrm)
@@ -401,7 +403,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             else:
                 raise exc
 
-        if self.water and (not self.zzrm.nostamp):
+        if self.water.text and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
             temp_name = outcome["pdf_file"] + ".watermarked.pdf"
             watered = self._watermark(pdf_file, os.path.join(self.out_dir, temp_name))
@@ -424,7 +426,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
     def _watermark(self, pdf_file: str, watered: str | None = None) -> str:
         """Watermark the PDF file. Watered is the result filename."""
         output = pdf_file
-        if self.water:
+        if self.water.text:
             logger = get_logger()
             if watered is None:
                 watered = os.path.join(os.path.dirname(pdf_file),

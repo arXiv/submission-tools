@@ -18,6 +18,10 @@ def add_watermark_text_to_pdf(watermark: Watermark,
     fname = "Times-Roman"
     fsize = 20
 
+    if watermark.text is None:
+        # nothing to do, just return
+        return
+
     with pymupdf.open(in_pdf) as source:
         page = source[0]
         page_size = page.mediabox_size
