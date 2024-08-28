@@ -11,15 +11,15 @@ packages = [
 include = ["LICENSE", "README.md"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-"ruamel.yaml" = "^0.18"
+python = "^3.11"
+ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.1.1"
+pytest = "^8.3.2"
 mypy = "*"
 mypy-extensions = "*"
-pydantic = "1.10.*"
+pydantic = "2.8.*"
 types-toml = "^0.10.8.20240310"
 
 [build-system]

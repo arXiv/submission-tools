@@ -3,15 +3,15 @@ name = "preflight-parser"
 description = "TeX and LaTeX parser"
 version = "0.0.1"
 authors = [ "Norbert Preining"  ]
-requires-python = ">=3.11"
 include = ["kpse_search.lua"]
 
 [tool.poetry.dependencies]
+python = "^3.11"
 chardet = "^5.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
-pytest = "^7.4.3"
+pytest = "^8.3.2"
 mypy = "*"
 mypy-extensions = "*"
 
