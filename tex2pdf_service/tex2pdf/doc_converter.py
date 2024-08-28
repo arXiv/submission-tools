@@ -14,7 +14,7 @@ from tex2pdf.service_logger import get_logger
 
 def convert_image_to_pdf(image_path: str, pdf_path: str) -> str:
     """Convert an image to a PDF."""
-    image = Image.open(image_path)
+    image: Image.Image = Image.open(image_path)
     try:
         if image.mode != 'RGB':
             image = image.convert('RGB')

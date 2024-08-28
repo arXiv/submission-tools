@@ -5,21 +5,22 @@ description = "PDF profiler tool"
 authors = ["Naoyuki Tai <ntai@arxiv.org>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 pikepdf = "^8.7.1"
 reportlab = "^4.0.7"
 ruamel-yaml = "^0.18.5"
 pillow = "^10.2.0"
-pymupdf = "^1.23.25"
+pymupdf = "^1.24.9"
 pdf2image = "^1.17.0"
 click = "^8.1.7"
 dictdiffer = "^0.9.0"
 levenshtein = "^0.25.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-pylint = "^3.0.2"
-mypy = "^1.8.0"
+pytest = "^8.3.2"
+pylint = "^3.2.6"
+mypy = "*"
+mypy-extensions = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
