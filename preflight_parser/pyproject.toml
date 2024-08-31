@@ -18,6 +18,7 @@ mypy-extensions = "*"
 [tool.ruff]
 # Extend the `pyproject.toml` from the toplevel dir
 extend = "../pyproject.toml"
+extend-exclude = ["tests"]
 
 [tool.black]
 line-length = 120
