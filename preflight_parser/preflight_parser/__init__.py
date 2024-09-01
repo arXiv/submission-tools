@@ -248,6 +248,15 @@ class MainProcessSpec(BaseModel):
     index: IndexProcessSpec | None = None
     fontmaps: list[str] | None = None
 
+    def __init__(self, **kwargs):
+        """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
+        if "compiler" in kwargs:
+            compiler = kwargs["compiler"]
+            del kwargs["compiler"]
+            super().__init__(compiler=CompilerSpec(compiler=compiler), **kwargs)
+        else:
+            super().__init__(**kwargs)
+
 
 class IssueType(str, Enum):
     """Possible issues we detect."""
