@@ -250,7 +250,7 @@ class MainProcessSpec(BaseModel):
 
     def __init__(self, **kwargs):
         """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
-        if "compiler" in kwargs:
+        if "compiler" in kwargs and isinstance(kwargs["compiler"], str):
             compiler = kwargs["compiler"]
             del kwargs["compiler"]
             super().__init__(compiler=CompilerSpec(compiler=compiler), **kwargs)
