@@ -68,6 +68,7 @@ class LanguageType(str, Enum):
     unknown = "unknown"
     tex = "tex"
     latex = "latex"
+    pdf = "pdf"
 
 
 class EngineType(str, Enum):
@@ -125,20 +126,124 @@ class IndexProcessSpec(BaseModel):
     """Specification of the indexing process."""
 
     processor: IndexCompiler = IndexCompiler.unknown
-    pre_generated: bool = False
+    pre_generated: bool
 
 
 class BibProcessSpec(BaseModel):
     """Specification of the bibliography process."""
 
     processor: BibCompiler = BibCompiler.unknown
-    pre_generated: bool = False
+    pre_generated: bool
+
+
+class CompilerSpec(BaseModel):
+    """Specification of the compiler (engine+postprocess)."""
+
+    engine: EngineType
+    lang: LanguageType
+    output: OutputType
+    postp: PostProcessType | None
+
+    _COMPILER_SELECTION = {
+        LanguageType.tex: {
+            OutputType.dvi: {
+                EngineType.tex: "etex",
+                EngineType.luatex: "dviluatex",
+                # not eaasy to do: EngineType.XETEX: "xetex",
+                EngineType.ptex: "ptex",
+                EngineType.uptex: "uptex",
+            },
+            OutputType.pdf: {
+                EngineType.tex: "pdfetex",
+                EngineType.luatex: "luatex",
+                EngineType.xetex: "xetex",
+                # EngineType.PTEX: "ptex",
+                # EngineType.UPTEX: "uptex",
+            },
+        },
+        LanguageType.latex: {
+            OutputType.dvi: {
+                EngineType.tex: "latex",
+                EngineType.luatex: "dvilualatex",
+                # not eaasy to do: EngineType.XETEX: "xetex",
+                EngineType.ptex: "platex",
+                EngineType.uptex: "uplatex",
+            },
+            OutputType.pdf: {
+                EngineType.tex: "pdflatex",
+                EngineType.luatex: "lualatex",
+                EngineType.xetex: "xelatex",
+                # EngineType.PTEX: "ptex",
+                # EngineType.UPTEX: "uptex",
+            },
+        },
+    }
+
+    def __init__(self, **kwargs):
+        """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
+        if len(kwargs) == 1 and "compiler" in kwargs:
+            compiler = kwargs["compiler"]
+            super().__init__(
+                engine=EngineType.unknown,
+                lang=LanguageType.unknown,
+                output=OutputType.unknown,
+                postp=PostProcessType.unknown,
+            )
+            self.from_compiler_string(compiler)
+        else:
+            super().__init__(**kwargs)
+
+    @property
+    def compiler_string(self) -> str | None:
+        """Convert Language/Output/Engine/PostProcess to compiler string."""
+        # first deal with PDF only submissions:
+        if self.lang.value == "pdf":
+            return "pdf_submission"
+        if self.lang in self._COMPILER_SELECTION:
+            if self.output in self._COMPILER_SELECTION[self.lang]:
+                if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
+                    ret = self._COMPILER_SELECTION[self.lang][self.output][self.engine]
+                    if self.postp is not None and not self.postp == PostProcessType.none:
+                        # TODO should we check whether output == DVI ?
+                        # we might have other non-dvi2pdf related postprocessing later on?
+                        ret += f"+{self.postp.value}"
+                    return ret
+        # if we are still here, something was wrong ....
+        return None
+
+    def from_compiler_string(self, compiler: str):
+        """Convert compiler string to Language/Output/Engine/PostProcess types."""
+        if compiler == "pdf_submission":
+            self.lang = LanguageType.pdf
+            self.engine = EngineType.unknown
+            self.output = OutputType.unknown
+            self.postp = PostProcessType.none
+            return
+        parts = compiler.split("+", 1)
+        comp: str = ""
+        if len(parts) == 2:
+            comp, postp = parts
+            for pp in PostProcessType:
+                if pp.value == postp:
+                    self.postp = pp
+                    break
+        else:
+            comp = parts[0]
+            self.postp = PostProcessType.none
+        for lang in self._COMPILER_SELECTION:
+            for outp in self._COMPILER_SELECTION[lang]:
+                for eng in self._COMPILER_SELECTION[lang][outp]:
+                    if comp == self._COMPILER_SELECTION[lang][outp][eng]:
+                        self.lang = lang
+                        self.output = outp
+                        self.engine = eng
+                        break
 
 
 class MainProcessSpec(BaseModel):
     """Specification of the main process to compile a document."""
 
-    compiler: str = "unknown"
+    compiler: CompilerSpec
     bibliography: BibProcessSpec | None = None
     index: IndexProcessSpec | None = None
     fontmaps: list[str] | None = None
@@ -515,7 +620,7 @@ class ToplevelFile(BaseModel):
     """Toplevel file and how to compile it."""
 
     filename: str
-    process: MainProcessSpec = Field(default_factory=MainProcessSpec)
+    process: MainProcessSpec
     issues: list[TeXFileIssue] = []
 
 
@@ -702,42 +807,6 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
 """
 
 
-COMPILER_SELECTION = {
-    LanguageType.tex: {
-        OutputType.dvi: {
-            EngineType.tex: "etex",
-            EngineType.luatex: "dviluatex",
-            # not eaasy to do: EngineType.XETEX: "xetex",
-            EngineType.ptex: "ptex",
-            EngineType.uptex: "uptex",
-        },
-        OutputType.pdf: {
-            EngineType.tex: "pdfetex",
-            EngineType.luatex: "luatex",
-            EngineType.xetex: "xetex",
-            # EngineType.PTEX: "ptex",
-            # EngineType.UPTEX: "uptex",
-        },
-    },
-    LanguageType.latex: {
-        OutputType.dvi: {
-            EngineType.tex: "latex",
-            EngineType.luatex: "dvilualatex",
-            # not eaasy to do: EngineType.XETEX: "xetex",
-            EngineType.ptex: "platex",
-            EngineType.uptex: "uplatex",
-        },
-        OutputType.pdf: {
-            EngineType.tex: "pdflatex",
-            EngineType.luatex: "lualatex",
-            EngineType.xetex: "xelatex",
-            # EngineType.PTEX: "ptex",
-            # EngineType.UPTEX: "uptex",
-        },
-    },
-}
-
-
 SUPPORTED_PIPELINES: list[str] = ["etex+dvips_ps2pdf", "latex+dvips_ps2pdf", "pdflatex"]
 
 
@@ -751,54 +820,6 @@ def string_to_bool(value: str) -> bool:
     if value.lower() in ["false", "no", "off", "0"]:
         return False
     raise ParseSyntaxError(f"Cannot parse value to boolean: {value}")
-
-
-def types_to_compiler_string(
-    lang: LanguageType, outp: OutputType, eng: EngineType, postp: PostProcessType | None
-) -> str | None:
-    """Convert Language/Output/Engine/PostProcess to compiler string."""
-    if lang in COMPILER_SELECTION:
-        if outp in COMPILER_SELECTION[lang]:
-            if eng in COMPILER_SELECTION[lang][outp]:
-                ret = COMPILER_SELECTION[lang][outp][eng]
-                if postp is not None and not postp == PostProcessType.none:
-                    ret += f"+{postp!s}"
-                return ret
-    # if we are still here, something was wrong ....
-    return None
-
-
-def compiler_string_to_types(compiler: str) -> tuple[LanguageType, OutputType, EngineType, PostProcessType]:
-    """Convert compiler string to Language/Output/Engine/PostProcess types."""
-    ret_l: LanguageType = LanguageType.unknown
-    ret_o: OutputType = OutputType.unknown
-    ret_e: EngineType = EngineType.unknown
-    ret_p: PostProcessType = PostProcessType.unknown
-    parts = compiler.split("+", 1)
-    comp: str = ""
-    if len(parts) == 2:
-        comp, postp = parts
-        for pp in PostProcessType:
-            if str(pp) == postp:
-                ret_p = pp
-                break
-    else:
-        comp = parts[0]
-        ret_p = PostProcessType.none
-    for lang in COMPILER_SELECTION:
-        for outp in COMPILER_SELECTION[lang]:
-            for eng in COMPILER_SELECTION[lang][outp]:
-                if comp == COMPILER_SELECTION[lang][outp][eng]:
-                    ret_l = lang
-                    ret_o = outp
-                    ret_e = eng
-                    break
-    return ret_l, ret_o, ret_e, ret_p
-
-
-def prune_dir(a: dict) -> dict:
-    """Remove entries with value None from dict."""
-    return {k: v for k, v in a.items() if v is not None and v != [] and v != "unknown"}
 
 
 def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
@@ -858,7 +879,9 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
         # we didn't find any tex file, check for a single PDF file
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
-            return ToplevelFile(filename=files[0], process=MainProcessSpec(compiler="pdf_submission"))
+            return ToplevelFile(
+                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler="pdf_submission"))
+            )
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
     return nodes
@@ -965,24 +988,6 @@ def compute_document_graph(
     return roots, nodes
 
 
-def compute_compiler(engine: EngineType, output: OutputType, lang: LanguageType, postprocess: PostProcessType) -> str:
-    """Determine the actual compiler from engine/output/language."""
-    if lang in COMPILER_SELECTION:
-        if output in COMPILER_SELECTION[lang]:
-            if engine in COMPILER_SELECTION[lang][output]:
-                compiler = COMPILER_SELECTION[lang][output][engine]
-    if not compiler:
-        logging.warning("No compiler found for engine=%s, output=%s, lang=%s", engine, output, lang)
-        return ""
-    if postprocess == PostProcessType.none:
-        pass
-    elif postprocess == PostProcessType.unknown:
-        logging.warning("No postprocess type found")
-    else:
-        compiler += f"+{postprocess!s}"
-    return compiler
-
-
 def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, ParsedTeXFile]) -> dict[str, ToplevelFile]:
     """Determine the toplevel files."""
     toplevel_files = {}
@@ -991,7 +996,6 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         if f.endswith(".sty") or f.endswith(".cls") or f.endswith(".clo"):
             continue
         found_language, found_output, found_engine, found_postprocess, issues = n.find_entry_in_subgraph()
-        tl = ToplevelFile(filename=n.filename)
         engine: EngineType = EngineType.tex if found_engine == EngineType.unknown else found_engine
         lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
         output: OutputType
@@ -1008,10 +1012,15 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             )
         elif output == OutputType.pdf:
             postprocess = PostProcessType.none if found_postprocess == PostProcessType.unknown else found_postprocess
-        compiler: str = compute_compiler(engine, output, lang, postprocess)
-        if compiler not in SUPPORTED_PIPELINES:
+        tl = ToplevelFile(
+            filename=n.filename,
+            process=MainProcessSpec(compiler=CompilerSpec(engine=engine, output=output, lang=lang, postp=postprocess)),
+        )
+        compiler: str | None = tl.process.compiler.compiler_string
+        if compiler is None:
+            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
+        elif compiler not in SUPPORTED_PIPELINES:
             issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, f"compiler {compiler} not supported"))
-        tl.process = MainProcessSpec(compiler=compiler)
 
         # count issues in sub files
         tl_n = nodes[f]
@@ -1044,9 +1053,9 @@ def deal_with_bibliographies(
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
 
 
-def generate_preflight_response_json(rundir: str) -> str:
+def generate_preflight_response_json(rundir: str, **kwargs) -> str:
     """JSON representation of the preflight response."""
-    return generate_preflight_response(rundir).model_dump_json(exclude_none=True, exclude_defaults=True)
+    return generate_preflight_response(rundir).model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
 
 
 def generate_preflight_response(rundir: str) -> PreflightResponse:
