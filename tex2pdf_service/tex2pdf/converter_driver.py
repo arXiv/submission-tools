@@ -20,10 +20,12 @@ from tex2pdf.tarball import unpack_tarball, chmod_775
 from tex2pdf.tex_to_pdf_converters import BaseConverter
 from tex2pdf.tex_patching import fix_tex_sources
 from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, Watermark
-from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
+from tex_inspection import (maybe_bbl, find_unused_toplevel_files,
                             SubmissionFileType)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
-from preflight_parser import generate_preflight_response
+from preflight_parser import generate_preflight_response, PreflightResponse, \
+    PreflightStatusValues
+from zerozeroreadme import ZeroZeroReadMe, FileUsageType
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
@@ -131,7 +133,19 @@ class ConverterDriver:
             self.outcome["watermark"] = self.water
         # Find the starting point
         fix_tex_sources(self.in_dir)
-        tex_files = find_primary_tex(self.in_dir, self.zzrm)
+
+        # When ZZRM is defined, take it
+        if self.zzrm.version == 2:
+            tex_files = self.zzrm.toplevels
+        else:
+            # run preflight
+            preflight_response = generate_preflight_response(self.in_dir)
+            if preflight_response.status.key == PreflightStatusValues.success:
+                tex_files = [ t.filename for t in preflight_response.detected_toplevel_files ]
+            else:
+                # TODO what to do here?
+                raise Exception("Preflight didn't succeed!")
+
         # If 00README input exists, obey the designation
         max_tex_files = len(tex_files) if self.zzrm.readme or self.zzrm.version > 1 else self.max_tex_files
         self.tex_files = tex_files[:max_tex_files]  # Used tex files
@@ -140,9 +154,9 @@ class ConverterDriver:
         self.outcome["tex_files"] = self.tex_files
         self.outcome["unused_tex_files"] = unused_tex_files
         for tex_file in self.tex_files:
-            self.zzrm.find_metadata(tex_file).set_file_type(SubmissionFileType.toplevel)
+            self.zzrm.find_metadata(tex_file).usage = FileUsageType.toplevel
         for tex_file in unused_tex_files:
-            self.zzrm.find_metadata(tex_file).set_file_type(SubmissionFileType.ignored)
+            self.zzrm.find_metadata(tex_file).usage = FileUsageType.ignore
 
         if not self.tex_files:
             in_file: dict
@@ -178,17 +192,9 @@ class ConverterDriver:
         return self.outcome.get("pdf_file")
 
     def report_preflight(self) -> None:
-        """Set the values to zzrm"""
+        """Set the values to zzrm."""
         if self.preflight == PreflightVersion.V1:
-            converters, reasons = select_converter_classes(self.in_dir, zzrm=self.zzrm)
-            self.outcome["converters"] = [converter.tex_compiler_name() for converter in converters]
-            self.outcome["reasons"] = reasons
-            self.outcome["pdf_files"] = strip_to_basename(self.tex_files, extent=".pdf")
-            self.zzrm.register_primary_tex_files(self.tex_files)
-            if len(self.converters) == 1:
-                self.zzrm.set_tex_compiler(self.converters[0].tex_compiler_name())
-            # Generally, the assembling files are the compiled tex files and the unused graphics
-            self.zzrm.set_assembling_files(self.outcome["pdf_files"] + strip_to_basename(self.unused_pics()))
+            raise ValueError("Preflight v1 is not supported anymore")
         elif self.preflight == PreflightVersion.V2:
             self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
         else:
