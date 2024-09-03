@@ -291,7 +291,7 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    data: str = Field(exclude=True)
+    _data: str = ""
     output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
@@ -314,11 +314,11 @@ class ParsedTeXFile(BaseModel):
         language = LanguageType.unknown
         if self.filename.endswith(".sty"):
             language = LanguageType.latex
-        if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self.data, re.MULTILINE):
+        if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
             language = LanguageType.latex
-        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_\n]", self.data, re.MULTILINE):
+        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_\n]", self._data, re.MULTILINE):
             language = LanguageType.tex
-        if re.search(r"^[^%\n]*\\documentclass", self.data, re.MULTILINE):
+        if re.search(r"^[^%\n]*\\documentclass", self._data, re.MULTILINE):
             if language == LanguageType.tex:
                 self.issues.append(
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
@@ -389,10 +389,10 @@ class ParsedTeXFile(BaseModel):
         # in the dict due to insertion order.
         # Later one we want to do depth first search for documentclass etc
         # (contemplate whether this is strictly necessary!)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self.data):
+        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self._data):
             self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX, self.data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(ARGS_INCLUDE_REGEX, self._data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             self.collect_included_files(i)
         logging.debug("%s found included files: %s", self.filename, self.mentioned_files)
@@ -848,7 +848,8 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
             # try once more, this time with ascii
             data = str(rawdata.decode("ascii"))
         except UnicodeDecodeError:
-            n = ParsedTeXFile(filename=filename, data="")
+            n = ParsedTeXFile(filename=filename)
+            n._data = ""
             n.issues.append(
                 TeXFileIssue(IssueType.contents_decode_error, f"cannot decode file, tried {encoding} and ascii")
             )
@@ -856,7 +857,8 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     # standardize line endings
     line_ending_re = re.compile(r"\r\n|\r|\n")
     data = re.sub(line_ending_re, "\n", data)
-    n = ParsedTeXFile(filename=filename, data=data)
+    n = ParsedTeXFile(filename=filename)
+    n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
     n.detect_included_files()
     logging.debug("parse_file: starting detect_language")

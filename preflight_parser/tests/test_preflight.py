@@ -1,7 +1,8 @@
+import json
 import os
 import unittest
 
-from preflight_parser import PreflightResponse, generate_preflight_response
+from preflight_parser import PreflightResponse, generate_preflight_response, generate_preflight_response_json
 
 
 class TestPreflight(unittest.TestCase):
@@ -81,3 +82,13 @@ class TestPreflight(unittest.TestCase):
                 self.assertEqual(tf.issues[0].info, "fake-package.sty")
                 self.assertEqual(tf.issues[0].key.value, "file_not_found")
             self.assertEqual(tf.language.value, "latex")
+
+    def test_preflight_roundtrip(self):
+        """Test roundtrip behavior from json response via PreFlightResponse to json."""
+        dir_path = os.path.join(self.fixture_dir, "2311.03267")
+        pf_json: str = generate_preflight_response_json(dir_path)
+        pf_dict: dict = json.loads(pf_json)
+        pf: PreflightResponse = PreflightResponse(**pf_dict)
+        pf_json_roundtrip = pf.model_dump_json(exclude_none=True, exclude_defaults=True)
+        self.assertEqual(pf_json, pf_json_roundtrip)
+
