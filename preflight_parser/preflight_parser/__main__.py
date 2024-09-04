@@ -21,4 +21,4 @@ args = parser.parse_args()
 if args.log:
     loglevel = getattr(logging, args.log.upper(), None)
     logging.basicConfig(level=loglevel)
-print(generate_preflight_response(args.subdir))
+print(generate_preflight_response(args.subdir, json=True))

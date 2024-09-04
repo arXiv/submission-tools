@@ -190,7 +190,7 @@ class ConverterDriver:
             # Generally, the assembling files are the compiled tex files and the unused graphics
             self.zzrm.set_assembling_files(self.outcome["pdf_files"] + strip_to_basename(self.unused_pics()))
         elif self.preflight == PreflightVersion.V2:
-            self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir)
+            self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
         else:
             # Should not happen, we check this already on entrance of API call
             raise ValueError(f"Invalid PreflightVersion: {self.preflight}")

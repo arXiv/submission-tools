@@ -1,18 +1,18 @@
 """GenPDF preflight parser."""
 
 import glob
-import json
 import logging
 import os
 import re
 import subprocess
+import typing
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from enum import Enum
 from itertools import zip_longest
 from pprint import pformat
 
 import chardet
+from pydantic import BaseModel, Field
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -22,44 +22,30 @@ MODULE_PATH = os.path.dirname(__file__)
 # This section contains the class definitions and compound types
 
 
-class PreflightStatusValues(Enum):
+class PreflightStatusValues(str, Enum):
     """Possible values of preflight's execution status."""
 
-    SUCCESS = 1
-    ERROR = 2
-    SUSPICIOUS = 3
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    success = "success"
+    error = "error"
+    suspicious = "suspicious"
 
 
-@dataclass
-class PreflightStatus:
+class PreflightStatus(BaseModel):
     """Specification of Preflight status entry."""
 
     key: PreflightStatusValues
     info: str | None = None
 
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        ret["key"] = str(self.key)
-        return prune_dir(ret)
 
-
-class FileType(Enum):
+class FileType(str, Enum):
     """Classification of files."""
 
-    TEX = 1
-    BIB = 2
-    OTHER = 5
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    tex = "tex"
+    bib = "bib"
+    other = "other"
 
 
-@dataclass
-class IncludeSpec:
+class IncludeSpec(BaseModel):
     """Specification of an include statement in a TeX file."""
 
     cmd: str
@@ -71,7 +57,7 @@ class IncludeSpec:
     multi_args: bool = False
 
 
-class LanguageType(Enum):
+class LanguageType(str, Enum):
     r"""Possible language types of a submission/file.
 
     TEX does not allow compiling as latex, e.g., because it contains \bye
@@ -79,145 +65,222 @@ class LanguageType(Enum):
     UNKNOWN allows compilation as either TEX or LATEX.
     """
 
-    TEX = 1
-    LATEX = 2
-
-    UNKNOWN = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    unknown = "unknown"
+    tex = "tex"
+    latex = "latex"
+    pdf = "pdf"
 
 
-class EngineType(Enum):
+class EngineType(str, Enum):
     """Possible engines in use."""
 
-    TEX = 1
-    LUATEX = 2
-    XETEX = 3
-    PTEX = 4
-    UPTEX = 5
-
-    UNKNOWN = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    unknown = "unknown"
+    tex = "tex"
+    luatex = "luatex"
+    xetex = "xetex"
+    ptex = "ptex"
+    uptex = "uptex"
 
 
-class OutputType(Enum):
+class OutputType(str, Enum):
     """Possible output types of the first run."""
 
-    DVI = 1
-    PDF = 2
-    UNKNOWN = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    unknown = "unknown"
+    dvi = "dvi"
+    pdf = "pdf"
 
 
-class IndexCompiler(Enum):
+class IndexCompiler(str, Enum):
     """Possible index compiler."""
 
-    MAKEINDEX = 1
-    UNKNOWN = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    unknown = "unknown"
+    makeindex = "makeindex"
 
 
-class BibCompiler(Enum):
+class BibCompiler(str, Enum):
     """Possible index compiler."""
 
-    BIBTEX = 1
-    BIBTEX8 = 2
-    UBIBTEX = 3
-    BIBER = 4
-    UNKNOWN = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    unknown = "unknown"
+    bibtex = "bibtex"
+    bibtex8 = "bibtex8"
+    ubibtex = "ubibtex"
+    biber = "biber"
 
 
-class PostProcessType(Enum):
+class PostProcessType(str, Enum):
     """Possible conversion types from dvi to pdf."""
 
-    NOT_NECESSARY = 1
-    DVIPS_PS2PDF = 2
-    DVIPDFMX = 3
-
-    UNKNOWN = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    unknown = "unknown"
+    none = "none"
+    dvips_ps2pdf = "dvips_ps2pdf"
+    dvipdfmx = "dvipdfmx"
 
 
-@dataclass
-class IndexProcessSpec:
+class PreflightException(Exception):
+    """General exception when parsing preflight."""
+
+    pass
+
+
+class ParseSyntaxError(PreflightException):
+    """Syntax error when parsing a dict to an object."""
+
+    pass
+
+
+class IndexProcessSpec(BaseModel):
     """Specification of the indexing process."""
 
-    processor: IndexCompiler = IndexCompiler.UNKNOWN
-    pre_generated: bool = False
-
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        ret["processor"] = str(self.processor)
-        return prune_dir(ret)
+    processor: IndexCompiler = IndexCompiler.unknown
+    pre_generated: bool
 
 
-@dataclass
-class BibProcessSpec:
+class BibProcessSpec(BaseModel):
     """Specification of the bibliography process."""
 
-    processor: BibCompiler = BibCompiler.UNKNOWN
-    pre_generated: bool = False
-
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        ret["processor"] = str(self.processor)
-        return prune_dir(ret)
+    processor: BibCompiler = BibCompiler.unknown
+    pre_generated: bool
 
 
-@dataclass
-class MainProcessSpec:
+class CompilerSpec(BaseModel):
+    """Specification of the compiler (engine+postprocess)."""
+
+    engine: EngineType
+    lang: LanguageType
+    output: OutputType
+    postp: PostProcessType | None
+
+    _COMPILER_SELECTION = {
+        LanguageType.tex: {
+            OutputType.dvi: {
+                EngineType.tex: "etex",
+                EngineType.luatex: "dviluatex",
+                # not eaasy to do: EngineType.XETEX: "xetex",
+                EngineType.ptex: "ptex",
+                EngineType.uptex: "uptex",
+            },
+            OutputType.pdf: {
+                EngineType.tex: "pdfetex",
+                EngineType.luatex: "luatex",
+                EngineType.xetex: "xetex",
+                # EngineType.PTEX: "ptex",
+                # EngineType.UPTEX: "uptex",
+            },
+        },
+        LanguageType.latex: {
+            OutputType.dvi: {
+                EngineType.tex: "latex",
+                EngineType.luatex: "dvilualatex",
+                # not eaasy to do: EngineType.XETEX: "xetex",
+                EngineType.ptex: "platex",
+                EngineType.uptex: "uplatex",
+            },
+            OutputType.pdf: {
+                EngineType.tex: "pdflatex",
+                EngineType.luatex: "lualatex",
+                EngineType.xetex: "xelatex",
+                # EngineType.PTEX: "ptex",
+                # EngineType.UPTEX: "uptex",
+            },
+        },
+    }
+
+    def __init__(self, **kwargs):
+        """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
+        if len(kwargs) == 1 and "compiler" in kwargs:
+            compiler = kwargs["compiler"]
+            super().__init__(
+                engine=EngineType.unknown,
+                lang=LanguageType.unknown,
+                output=OutputType.unknown,
+                postp=PostProcessType.unknown,
+            )
+            self.from_compiler_string(compiler)
+        else:
+            super().__init__(**kwargs)
+
+    @property
+    def compiler_string(self) -> str | None:
+        """Convert Language/Output/Engine/PostProcess to compiler string."""
+        # first deal with PDF only submissions:
+        if self.lang.value == "pdf":
+            return "pdf_submission"
+        if self.lang in self._COMPILER_SELECTION:
+            if self.output in self._COMPILER_SELECTION[self.lang]:
+                if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
+                    ret = self._COMPILER_SELECTION[self.lang][self.output][self.engine]
+                    if self.postp is not None and not self.postp == PostProcessType.none:
+                        # TODO should we check whether output == DVI ?
+                        # we might have other non-dvi2pdf related postprocessing later on?
+                        ret += f"+{self.postp.value}"
+                    return ret
+        # if we are still here, something was wrong ....
+        return None
+
+    def from_compiler_string(self, compiler: str):
+        """Convert compiler string to Language/Output/Engine/PostProcess types."""
+        if compiler == "pdf_submission":
+            self.lang = LanguageType.pdf
+            self.engine = EngineType.unknown
+            self.output = OutputType.unknown
+            self.postp = PostProcessType.none
+            return
+        parts = compiler.split("+", 1)
+        comp: str = ""
+        if len(parts) == 2:
+            comp, postp = parts
+            for pp in PostProcessType:
+                if pp.value == postp:
+                    self.postp = pp
+                    break
+        else:
+            comp = parts[0]
+            self.postp = PostProcessType.none
+        for lang in self._COMPILER_SELECTION:
+            for outp in self._COMPILER_SELECTION[lang]:
+                for eng in self._COMPILER_SELECTION[lang][outp]:
+                    if comp == self._COMPILER_SELECTION[lang][outp][eng]:
+                        self.lang = lang
+                        self.output = outp
+                        self.engine = eng
+                        break
+
+
+class MainProcessSpec(BaseModel):
     """Specification of the main process to compile a document."""
 
-    compiler: str = "unknown"
+    compiler: CompilerSpec
     bibliography: BibProcessSpec | None = None
     index: IndexProcessSpec | None = None
-    options: dict | None = None
+    fontmaps: list[str] | None = None
 
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        if self.bibliography:
-            ret["bibliography"] = self.bibliography.asdict()
-        if self.index:
-            ret["index"] = self.index.asdict()
-        return prune_dir(ret)
+    def __init__(self, **kwargs):
+        """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
+        if "compiler" in kwargs and isinstance(kwargs["compiler"], str):
+            compiler = kwargs["compiler"]
+            del kwargs["compiler"]
+            super().__init__(compiler=CompilerSpec(compiler=compiler), **kwargs)
+        else:
+            super().__init__(**kwargs)
 
 
-class IssueType(Enum):
+class IssueType(str, Enum):
     """Possible issues we detect."""
 
-    FILE_NOT_FOUND = 1
-    CONFLICTING_FILE_TYPE = 2
-    CONFLICTING_OUTPUT_TYPE = 3
-    CONFLICTING_ENGINE_TYPE = 4
-    CONFLICTING_POSTPROCESS_TYPE = 5
-    UNSUPPORTED_COMPILER_TYPE = 6
-    CONFLICTING_IMAGE_TYPES = 7
-    INCLUDE_COMMAND_WITH_MACRO = 8
-    CONTENTS_DECODE_ERROR = 9
-    ISSUE_IN_SUBFILE = 99
-    OTHER = 100
-
-    def __str__(self) -> str:
-        return self.name.lower()
+    file_not_found = "file_not_found"
+    conflicting_file_type = "conflicting_file_type"
+    conflicting_output_type = "conflicting_output_type"
+    conflicting_engine_type = "conflicting_engine_type"
+    conflicting_postprocess_type = "conflicting_postprocess_type"
+    unsupported_compiler_type = "unsupported_compiler_type"
+    conflicting_image_types = "conflicting_image_types"
+    include_command_with_macro = "include_command_with_macro"
+    contents_decode_error = "contents_decode_error"
+    issue_in_subfile = "issue_in_subfile"
+    other = "other"
 
 
-@dataclass
-class TeXFileIssue:
+class TeXFileIssue(BaseModel):
     """Specification of Issue in a file."""
 
     key: IssueType
@@ -225,63 +288,28 @@ class TeXFileIssue:
     # line: int
     filename: str | None = None
 
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        ret["key"] = str(self.key)
-        return prune_dir(ret)
+    def __init__(self, key: IssueType, info: str, filename: str | None = None, **kwargs) -> None:
+        """Override __init__ to be able to use positional parameters."""
+        super().__init__(key=key, info=info, filename=filename, **kwargs)
 
 
-@dataclass
-class ParsedTeXFile:
+class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    data: str
-    output_type: OutputType = OutputType.UNKNOWN
-    language: LanguageType = LanguageType.UNKNOWN
-    engine: EngineType = EngineType.UNKNOWN
-    postprocess: PostProcessType = PostProcessType.UNKNOWN
-    used_tex_files: list[str] = field(default_factory=list)
-    used_bib_files: list[str] = field(default_factory=list)
-    used_other_files: list[str] = field(default_factory=list)
-    used_system_files: list[str] = field(default_factory=list)
-    mentioned_files: dict[str, IncludeSpec] = field(default_factory=dict)
-    issues: list[TeXFileIssue] = field(default_factory=list)
-    children: list["ParsedTeXFile"] = field(default_factory=list)
-    parents: list["ParsedTeXFile"] = field(default_factory=list)
-
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        ret["output_type"] = str(self.output_type)
-        ret["language"] = str(self.language)
-        ret["engine"] = str(self.engine)
-        ret["postprocess"] = str(self.postprocess)
-        del ret["mentioned_files"]
-        del ret["used_system_files"]
-        ret["issues"] = [li.asdict() for li in self.issues]
-        del ret["children"]
-        del ret["parents"]
-        del ret["data"]
-        return prune_dir(ret)
-
-    def __repr__(self):
-        return f"""ParsedTeXFile(
-  filename = {self.filename},
-  output_type = {self.output_type},
-  language = {self.language},
-  engine = {self.engine},
-  postprocess = {self.postprocess},
-  used_tex_files = {self.used_tex_files},
-  used_bib_files = {self.used_bib_files},
-  used_other_files = {self.used_other_files},
-  mentioned_files = {self.mentioned_files},
-  used_system_files = {self.used_system_files},
-  issues = {self.issues},
-  children = {[n.filename for n in self.children]},
-  parents = {[n.filename for n in self.parents]}
-)"""
+    _data: str = ""
+    output_type: OutputType = OutputType.unknown
+    language: LanguageType = LanguageType.unknown
+    engine: EngineType = EngineType.unknown
+    postprocess: PostProcessType = PostProcessType.unknown
+    used_tex_files: list[str] = []
+    used_bib_files: list[str] = []
+    used_other_files: list[str] = []
+    used_system_files: list[str] = Field(exclude=True, default=[])
+    mentioned_files: dict[str, IncludeSpec] = Field(exclude=True, default={})
+    issues: list[TeXFileIssue] = []
+    children: list["ParsedTeXFile"] = Field(exclude=True, default=[])
+    parents: list["ParsedTeXFile"] = Field(exclude=True, default=[])
 
     def detect_language(self) -> None:
         """Detect the language used in the given file (TeX, LaTeX, or unknown)."""
@@ -289,35 +317,35 @@ class ParsedTeXFile:
         # certain values, switch to either TEX or LATEX only
         # we check for \bye first, so that if a file contains both
         # \documentclass and \bye (which is a syntax error!)
-        language = LanguageType.UNKNOWN
+        language = LanguageType.unknown
         if self.filename.endswith(".sty"):
-            language = LanguageType.LATEX
-        if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self.data, re.MULTILINE):
-            language = LanguageType.LATEX
-        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_\n]", self.data, re.MULTILINE):
-            language = LanguageType.TEX
-        if re.search(r"^[^%\n]*\\documentclass", self.data, re.MULTILINE):
-            if language == LanguageType.TEX:
+            language = LanguageType.latex
+        if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
+            language = LanguageType.latex
+        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_\n]", self._data, re.MULTILINE):
+            language = LanguageType.tex
+        if re.search(r"^[^%\n]*\\documentclass", self._data, re.MULTILINE):
+            if language == LanguageType.tex:
                 self.issues.append(
-                    TeXFileIssue(IssueType.CONFLICTING_FILE_TYPE, "containing both bye and documentclass")
+                    TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
-            language = LanguageType.LATEX
+            language = LanguageType.latex
         self.language = language
 
     def detect_engine(self) -> None:
         """If possible, update the engine type based on the content of the file."""
-        self.engine = EngineType.UNKNOWN
+        self.engine = EngineType.unknown
 
     def detect_postprocess(self) -> None:
         """If possible, update the postprocess type based on the content of the file."""
-        if self.output_type == OutputType.DVI:
-            self.postprocess = PostProcessType.DVIPS_PS2PDF
-        elif self.output_type == OutputType.PDF:
-            self.postprocess = PostProcessType.NOT_NECESSARY
-        elif self.output_type == OutputType.UNKNOWN:
-            self.postprocess = PostProcessType.UNKNOWN
+        if self.output_type == OutputType.dvi:
+            self.postprocess = PostProcessType.dvips_ps2pdf
+        elif self.output_type == OutputType.pdf:
+            self.postprocess = PostProcessType.none
+        elif self.output_type == OutputType.unknown:
+            self.postprocess = PostProcessType.unknown
         else:
-            raise ValueError(f"unknown output type {self.output_type}")
+            raise PreflightException(f"unknown output type {self.output_type}")
 
     def detect_output_type(self) -> None:
         """If possible, update the output type based on the content of the file."""
@@ -331,28 +359,28 @@ class ParsedTeXFile:
             found_eps = ext in dvips_exts
             if (
                 (found_pdf and found_eps)
-                or (self.output_type == OutputType.PDF and found_eps)
-                or (self.output_type == OutputType.DVI and found_pdf)
+                or (self.output_type == OutputType.pdf and found_eps)
+                or (self.output_type == OutputType.dvi and found_pdf)
             ):
-                self.output_type = OutputType.UNKNOWN
+                self.output_type = OutputType.unknown
                 self.issues.append(
                     TeXFileIssue(
-                        IssueType.CONFLICTING_IMAGE_TYPES, "images of formats that cannot be loaded at the same time"
+                        IssueType.conflicting_image_types, "images of formats that cannot be loaded at the same time"
                     )
                 )
             else:
                 if found_pdf:
-                    self.output_type = OutputType.PDF
+                    self.output_type = OutputType.pdf
                 elif found_eps:
-                    self.output_type = OutputType.DVI
+                    self.output_type = OutputType.dvi
                 else:
-                    self.output_type = OutputType.UNKNOWN
+                    self.output_type = OutputType.unknown
 
     def update_engine_based_on_system_files(self) -> None:
         """Check in the list of used systemfiles for indications a specific compiler needs to be used."""
         for f in self.used_system_files:
             if "/luatex/" in f or "/lualatex/" in f:
-                self.engine = EngineType.LUATEX
+                self.engine = EngineType.luatex
 
     def detect_included_files(self) -> None:
         """Detect and update included files."""
@@ -367,10 +395,10 @@ class ParsedTeXFile:
         # in the dict due to insertion order.
         # Later one we want to do depth first search for documentclass etc
         # (contemplate whether this is strictly necessary!)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self.data):
+        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self._data):
             self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX, self.data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(ARGS_INCLUDE_REGEX, self._data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             self.collect_included_files(i)
         logging.debug("%s found included files: %s", self.filename, self.mentioned_files)
@@ -415,7 +443,7 @@ class ParsedTeXFile:
         if re.match(r"#[1-9]", include_argument):
             self.issues.append(
                 TeXFileIssue(
-                    IssueType.INCLUDE_COMMAND_WITH_MACRO, info=f"command {include_command} used with macro parameter #"
+                    IssueType.include_command_with_macro, f"command {include_command} used with macro parameter #"
                 )
             )
             # logging.debug("Include command found with macro argument, we cannot deal with this!")
@@ -467,7 +495,7 @@ class ParsedTeXFile:
                         include_options,
                         include_extra_argument,
                     )
-                    raise ValueError
+                    raise PreflightException(f"Unexpected number of file_argument value {incdef.file_argument}")
                 if incdef.multi_args:
                     for f in filearg.split(","):
                         fn = f[2:] if f.startswith("./") else f
@@ -477,16 +505,18 @@ class ParsedTeXFile:
                     file_incspec[filearg] = incdef
 
             else:
-                raise ValueError
+                raise PreflightException(f"Unexpected type of file_argument: {type(incdef.file_argument)}")
 
         logging.debug(file_incspec)
         self.mentioned_files |= file_incspec
 
-    def walk_document_tree(self, func: Callable[["ParsedTeXFile"], list[any]]) -> list[any]:
+    def walk_document_tree(self, func: Callable[["ParsedTeXFile"], list[typing.Any]]) -> list[typing.Any]:
         """Call a function on any node of a document tree."""
         return self._walk_document_tree(func, {})
 
-    def _walk_document_tree(self, func: Callable[["ParsedTeXFile"], list[any]], visited: dict[str, bool]) -> list[any]:
+    def _walk_document_tree(
+        self, func: Callable[["ParsedTeXFile"], list[typing.Any]], visited: dict[str, bool]
+    ) -> list[typing.Any]:
         """Call a function on any node of a document tree - internal helper."""
         ret = func(self)
         visited[self.filename] = True
@@ -519,55 +549,55 @@ class ParsedTeXFile:
             logging.debug("find_entry_in_subgraph: recursively calling into %s", n.filename)
             visited[n.filename] = True
             kid_language, kid_output, kid_engine, kid_postprocess, kid_issues = n._find_entry_in_subgraph(visited)
-            if found_language == LanguageType.UNKNOWN:
+            if found_language == LanguageType.unknown:
                 found_language = kid_language
-            elif found_language == LanguageType.TEX:
-                if kid_language == LanguageType.LATEX:
+            elif found_language == LanguageType.tex:
+                if kid_language == LanguageType.latex:
                     issues.append(
-                        TeXFileIssue(IssueType.CONFLICTING_FILE_TYPE, "conflicting lang types of main and subfiles")
+                        TeXFileIssue(IssueType.conflicting_file_type, "conflicting lang types of main and subfiles")
                     )
                 # always upgrade to LaTeX
-                found_language = LanguageType.LATEX
-            elif found_language == LanguageType.LATEX:
-                if kid_language == LanguageType.TEX:
+                found_language = LanguageType.latex
+            elif found_language == LanguageType.latex:
+                if kid_language == LanguageType.tex:
                     issues.append(
-                        TeXFileIssue(IssueType.CONFLICTING_FILE_TYPE, "conflicting lang types of main and subfiles")
+                        TeXFileIssue(IssueType.conflicting_file_type, "conflicting lang types of main and subfiles")
                     )
                 # keep found_language as LATEX
             else:
-                raise ValueError(f"Unknown LanguageType {found_language}")
+                raise PreflightException(f"Unknown LanguageType {found_language}")
 
-            if found_output == OutputType.UNKNOWN:
+            if found_output == OutputType.unknown:
                 found_output = kid_output
-            elif kid_output == OutputType.UNKNOWN:
+            elif kid_output == OutputType.unknown:
                 # keep found_output
                 pass
             elif kid_output != found_output:
                 issues.append(
-                    TeXFileIssue(IssueType.CONFLICTING_OUTPUT_TYPE, "conflicting output types of main and subfiles")
+                    TeXFileIssue(IssueType.conflicting_output_type, "conflicting output types of main and subfiles")
                 )
 
-            if found_engine == EngineType.UNKNOWN:
+            if found_engine == EngineType.unknown:
                 found_engine = kid_engine
-            elif kid_engine == EngineType.UNKNOWN:
+            elif kid_engine == EngineType.unknown:
                 # keep found_compiler
                 pass
             elif kid_engine != found_engine:
                 # TODO maybe order engines? tex < luatex ???
                 issues.append(
-                    TeXFileIssue(IssueType.CONFLICTING_ENGINE_TYPE, "conflicting engine types of main and subfiles")
+                    TeXFileIssue(IssueType.conflicting_engine_type, "conflicting engine types of main and subfiles")
                 )
 
-            if found_postprocess == PostProcessType.UNKNOWN:
+            if found_postprocess == PostProcessType.unknown:
                 found_postprocess = kid_postprocess
-            elif kid_postprocess == PostProcessType.UNKNOWN:
+            elif kid_postprocess == PostProcessType.unknown:
                 # keep found_compiler
                 pass
             elif kid_postprocess != found_postprocess:
                 # TODO maybe order engines? tex < luatex ???
                 issues.append(
                     TeXFileIssue(
-                        IssueType.CONFLICTING_POSTPROCESS_TYPE, "conflicting postprocess types of main and subfiles"
+                        IssueType.conflicting_postprocess_type, "conflicting postprocess types of main and subfiles"
                     )
                 )
 
@@ -581,16 +611,16 @@ class ParsedTeXFile:
 
     def _recursive_collect_files(self, what: FileType | str, visited: dict[str, bool]) -> list[str]:
         """Recursively collect all tex/bib/other files."""
-        if what == FileType.BIB:
+        if what == FileType.bib:
             idx = "used_bib_files"
-        elif what == FileType.TEX:
+        elif what == FileType.tex:
             idx = "used_tex_files"
-        elif what == FileType.OTHER:
+        elif what == FileType.other:
             idx = "used_other_files"
         elif what == "issues":
             idx = "issues"
         else:
-            raise ValueError(f"no such file type: {what}")
+            raise PreflightException(f"no such file type: {what}")
         found = getattr(self, idx)
         visited[self.filename] = True
         for n in self.children:
@@ -601,20 +631,20 @@ class ParsedTeXFile:
         return found
 
 
-@dataclass
-class ToplevelFile:
+class ToplevelFile(BaseModel):
     """Toplevel file and how to compile it."""
 
     filename: str
-    process: MainProcessSpec = field(default_factory=MainProcessSpec)
-    issues: list[TeXFileIssue] = field(default_factory=list)
+    process: MainProcessSpec
+    issues: list[TeXFileIssue] = []
 
-    def asdict(self) -> dict:
-        """Representation as dictionary for json response."""
-        ret = self.__dict__.copy()
-        ret["issues"] = [li.asdict() for li in self.issues]
-        ret["process"] = self.process.asdict()
-        return prune_dir(ret)
+
+class PreflightResponse(BaseModel):
+    """Preflight response model."""
+
+    status: PreflightStatus
+    detected_toplevel_files: list[ToplevelFile]
+    tex_files: list[ParsedTeXFile]
 
 
 #
@@ -660,83 +690,91 @@ CONDITIONALLY_INCLUDED_FILES = [
 
 # hash command name -> [ take_options, multi_args, possible_extensions ]
 INCLUDE_COMMANDS = [
-    IncludeSpec("input", "core", FileType.TEX, TEX_EXTENSIONS, take_options=False),
-    IncludeSpec("include", "core", FileType.TEX, TEX_EXTENSIONS, take_options=False),
-    IncludeSpec("InputIfFileExists", "core", FileType.TEX, TEX_EXTENSIONS, take_options=False),
-    IncludeSpec("documentstyle", "core", FileType.TEX, "cls"),
-    IncludeSpec("documentclass", "core", FileType.TEX, "cls"),
-    IncludeSpec("LoadClass", "core", FileType.TEX, "cls"),
-    IncludeSpec("LoadClassWithOptions", "core", FileType.TEX, "cls", take_options=False),
-    IncludeSpec("usepackage", "core", FileType.TEX, "sty", take_options=True, multi_args=True),
+    IncludeSpec(cmd="input", source="core", type=FileType.tex, extensions=TEX_EXTENSIONS, take_options=False),
+    IncludeSpec(cmd="include", source="core", type=FileType.tex, extensions=TEX_EXTENSIONS, take_options=False),
     IncludeSpec(
-        "RequirePackage",
-        "core",
-        FileType.TEX,
-        "sty",
+        cmd="InputIfFileExists", source="core", type=FileType.tex, extensions=TEX_EXTENSIONS, take_options=False
+    ),
+    IncludeSpec(cmd="documentstyle", source="core", type=FileType.tex, extensions="cls"),
+    IncludeSpec(cmd="documentclass", source="core", type=FileType.tex, extensions="cls"),
+    IncludeSpec(cmd="LoadClass", source="core", type=FileType.tex, extensions="cls"),
+    IncludeSpec(cmd="LoadClassWithOptions", source="core", type=FileType.tex, extensions="cls", take_options=False),
+    IncludeSpec(
+        cmd="usepackage", source="core", type=FileType.tex, extensions="sty", take_options=True, multi_args=True
+    ),
+    IncludeSpec(
+        cmd="RequirePackage",
+        source="core",
+        type=FileType.tex,
+        extensions="sty",
         take_options=True,
         multi_args=True,
     ),
     IncludeSpec(
-        "RequirePackageWithOptions",
-        "core",
-        FileType.TEX,
-        "sty",
+        cmd="RequirePackageWithOptions",
+        source="core",
+        type=FileType.tex,
+        extensions="sty",
         take_options=False,
         multi_args=False,
     ),
-    IncludeSpec("bibliography", "core", FileType.BIB, "bib", take_options=False),
-    IncludeSpec("includegraphics", "graphics", FileType.OTHER, IMAGE_EXTENSIONS),
-    IncludeSpec("psfig", "epsfig", FileType.OTHER, EPS_EXTENSIONS),
+    IncludeSpec(cmd="bibliography", source="core", type=FileType.bib, extensions="bib", take_options=False),
+    IncludeSpec(cmd="includegraphics", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
+    IncludeSpec(cmd="psfig", source="epsfig", type=FileType.other, extensions=EPS_EXTENSIONS),
     IncludeSpec(
-        "subfile",
-        "subfiles",
-        FileType.TEX,
-        TEX_EXTENSIONS,
+        cmd="subfile",
+        source="subfiles",
+        type=FileType.tex,
+        extensions=TEX_EXTENSIONS,
         take_options=False,
         multi_args=False,
     ),
     IncludeSpec(
-        "subfileinclude",
-        "subfiles",
-        FileType.TEX,
-        TEX_EXTENSIONS,
+        cmd="subfileinclude",
+        source="subfiles",
+        type=FileType.tex,
+        extensions=TEX_EXTENSIONS,
         take_options=False,
         multi_args=False,
     ),
-    IncludeSpec("includesvg", "svg", FileType.OTHER, "svg"),
-    IncludeSpec("includepdf", "pdfpages", FileType.OTHER, "pdf"),
-    IncludeSpec("epsfbox", "epsf", FileType.OTHER, EPS_EXTENSIONS),
-    IncludeSpec("epsfig", "epsfig", FileType.OTHER, EPS_EXTENSIONS),
-    IncludeSpec("loadglsentries", "glossaries", FileType.OTHER, "gls"),  # TODO check extensions!!!
+    IncludeSpec(cmd="includesvg", source="svg", type=FileType.other, extensions="svg"),
+    IncludeSpec(cmd="includepdf", source="pdfpages", type=FileType.other, extensions="pdf"),
+    IncludeSpec(cmd="epsfbox", source="epsf", type=FileType.other, extensions=EPS_EXTENSIONS),
+    IncludeSpec(cmd="epsfig", source="epsfig", type=FileType.other, extensions=EPS_EXTENSIONS),
     IncludeSpec(
-        "DTLloaddb", "datatool", FileType.OTHER, None, file_argument=2
+        cmd="loadglsentries", source="glossaries", type=FileType.other, extensions="gls"
+    ),  # TODO check extensions!!!
+    IncludeSpec(
+        cmd="DTLloaddb", source="datatool", type=FileType.other, extensions=None, file_argument=2
     ),  # \DTLloaddb[hoptionsi]{hdb namei}{hfilenamei}
     IncludeSpec(
-        "DTLloadrawdb", "datatool", FileType.OTHER, None, file_argument=2
+        cmd="DTLloadrawdb", source="datatool", type=FileType.other, extensions=None, file_argument=2
     ),  # \DTLloaddb[hoptionsi]{hdb namei}{hfilenamei}
-    IncludeSpec("import", "import", FileType.TEX, TEX_EXTENSIONS, file_argument=[1, 2]),  # \import{prefix}{file}
     IncludeSpec(
-        "usetikzlibrary",
-        "tikz",
-        FileType.TEX,
-        TEX_EXTENSIONS,
+        cmd="import", source="import", type=FileType.tex, extensions=TEX_EXTENSIONS, file_argument=[1, 2]
+    ),  # \import{prefix}{file}
+    IncludeSpec(
+        cmd="usetikzlibrary",
+        source="tikz",
+        type=FileType.tex,
+        extensions=TEX_EXTENSIONS,
         take_options=False,
         multi_args=True,
     ),
     IncludeSpec(
-        "usepgflibrary",
-        "tikz",
-        FileType.TEX,
-        TEX_EXTENSIONS,
+        cmd="usepgflibrary",
+        source="tikz",
+        type=FileType.tex,
+        extensions=TEX_EXTENSIONS,
         take_options=False,
         multi_args=True,
     ),
     IncludeSpec(
-        "lstinputlisting", "listings", FileType.TEX, TEX_EXTENSIONS
+        cmd="lstinputlisting", source="listings", type=FileType.tex, extensions=TEX_EXTENSIONS
     ),  # \lstinputlisting[lastline=4]{listings.sty}
-    IncludeSpec("tcbuselibrary", "tcolorbox", FileType.TEX, "code.tex"),
-    IncludeSpec("tcbincludegraphics", "tcolorbos", FileType.OTHER, IMAGE_EXTENSIONS),
-    IncludeSpec("asyinclude", "asy", FileType.OTHER, "asy"),
+    IncludeSpec(cmd="tcbuselibrary", source="tcolorbox", type=FileType.tex, extensions="code.tex"),
+    IncludeSpec(cmd="tcbincludegraphics", source="tcolorbos", type=FileType.other, extensions=IMAGE_EXTENSIONS),
+    IncludeSpec(cmd="asyinclude", source="asy", type=FileType.other, extensions="asy"),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
@@ -784,53 +822,19 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
 """
 
 
-COMPILER_SELECTION = {
-    LanguageType.TEX: {
-        OutputType.DVI: {
-            EngineType.TEX: "etex",
-            EngineType.LUATEX: "dviluatex",
-            # not eaasy to do: EngineType.XETEX: "xetex",
-            EngineType.PTEX: "ptex",
-            EngineType.UPTEX: "uptex",
-        },
-        OutputType.PDF: {
-            EngineType.TEX: "pdfetex",
-            EngineType.LUATEX: "luatex",
-            EngineType.XETEX: "xetex",
-            # EngineType.PTEX: "ptex",
-            # EngineType.UPTEX: "uptex",
-        },
-    },
-    LanguageType.LATEX: {
-        OutputType.DVI: {
-            EngineType.TEX: "latex",
-            EngineType.LUATEX: "dvilualatex",
-            # not eaasy to do: EngineType.XETEX: "xetex",
-            EngineType.PTEX: "platex",
-            EngineType.UPTEX: "uplatex",
-        },
-        OutputType.PDF: {
-            EngineType.TEX: "pdflatex",
-            EngineType.LUATEX: "lualatex",
-            EngineType.XETEX: "xelatex",
-            # EngineType.PTEX: "ptex",
-            # EngineType.UPTEX: "uptex",
-        },
-    },
-}
-
-
 SUPPORTED_PIPELINES: list[str] = ["etex+dvips_ps2pdf", "latex+dvips_ps2pdf", "pdflatex"]
 
 
 #
 # FUNCTIONS
 #
-
-
-def prune_dir(a: dict) -> dict:
-    """Remove entries with value None from dict."""
-    return {k: v for k, v in a.items() if v is not None and v != [] and v != "unknown"}
+def string_to_bool(value: str) -> bool:
+    """Convert a string to a bool."""
+    if value.lower() in ["true", "yes", "on", "1"]:
+        return True
+    if value.lower() in ["false", "no", "off", "0"]:
+        return False
+    raise ParseSyntaxError(f"Cannot parse value to boolean: {value}")
 
 
 def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
@@ -839,25 +843,28 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
         rawdata = f.read()
     detected_encoding_data = chardet.detect(rawdata)
     encoding: str | None = detected_encoding_data.get("encoding")
+    data: str
     if encoding is None:
         encoding = "utf-8"
     try:
-        data: str = str(rawdata.decode(encoding))
+        data = str(rawdata.decode(encoding))
     except UnicodeDecodeError:
         logging.warning("Failed to decode %s in %s", filename, encoding)
         try:
             # try once more, this time with ascii
-            data: str = str(rawdata.decode("ascii"))
+            data = str(rawdata.decode("ascii"))
         except UnicodeDecodeError:
-            n = ParsedTeXFile(filename, "")
+            n = ParsedTeXFile(filename=filename)
+            n._data = ""
             n.issues.append(
-                TeXFileIssue(IssueType.CONTENTS_DECODE_ERROR, f"cannot decode file, tried {encoding} and ascii")
+                TeXFileIssue(IssueType.contents_decode_error, f"cannot decode file, tried {encoding} and ascii")
             )
             return n
     # standardize line endings
     line_ending_re = re.compile(r"\r\n|\r|\n")
     data = re.sub(line_ending_re, "\n", data)
-    n = ParsedTeXFile(filename, data)
+    n = ParsedTeXFile(filename=filename)
+    n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
     n.detect_included_files()
     logging.debug("parse_file: starting detect_language")
@@ -889,7 +896,9 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
         # we didn't find any tex file, check for a single PDF file
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
-            return ToplevelFile(files[0], process=MainProcessSpec(compiler="pdf_submission"))
+            return ToplevelFile(
+                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler="pdf_submission"))
+            )
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
     return nodes
@@ -901,17 +910,17 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
     for _, n in nodes.items():
         for k, v in n.mentioned_files.items():
             if isinstance(v.extensions, dict):
-                if n.output_type == OutputType.DVI:  # TODO should we check for dvipdfmx?
-                    if n.postprocess == PostProcessType.DVIPS_PS2PDF:
+                if n.output_type == OutputType.dvi:  # TODO should we check for dvipdfmx?
+                    if n.postprocess == PostProcessType.dvips_ps2pdf:
                         exts = v.extensions["dvips"]
-                    elif n.postprocess == PostProcessType.DVIPDFMX:
+                    elif n.postprocess == PostProcessType.dvipdfmx:
                         exts = v.extensions["dvipdfmx"]
                     else:
                         exts = v.extensions["pdftex"]  # assume pdflatex as default
-                elif n.output_type == OutputType.PDF or n.output_type == OutputType.UNKNOWN:  # TODO unify these cases?
-                    if n.engine == EngineType.TEX:
+                elif n.output_type == OutputType.pdf or n.output_type == OutputType.unknown:  # TODO unify these cases?
+                    if n.engine == EngineType.tex:
                         exts = v.extensions["pdftex"]
-                    elif n.engine == EngineType.XETEX or n.engine == EngineType.LUATEX:
+                    elif n.engine == EngineType.xetex or n.engine == EngineType.luatex:
                         exts = v.extensions["xetex"]
                     else:
                         exts = v.extensions["pdftex"]
@@ -957,16 +966,16 @@ def update_nodes_with_kpse_info(
             # if we don't find the file, and it is not loaded optionally, record it as issue
             if found == "":
                 if n.mentioned_files[f].cmd != "InputIfFileExists":
-                    n.issues.append(TeXFileIssue(IssueType.FILE_NOT_FOUND, f))
+                    n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
                 continue
-            if n.mentioned_files[f].type == FileType.TEX:
+            if n.mentioned_files[f].type == FileType.tex:
                 n.used_tex_files.append(found)
-            elif n.mentioned_files[f].type == FileType.BIB:
+            elif n.mentioned_files[f].type == FileType.bib:
                 n.used_bib_files.append(found)
-            elif n.mentioned_files[f].type == FileType.OTHER:
+            elif n.mentioned_files[f].type == FileType.other:
                 n.used_other_files.append(found)
             else:
-                raise ValueError(f"Unknown file type {n.mentioned_files[f].type} for file {f}")
+                raise PreflightException(f"Unknown file type {n.mentioned_files[f].type} for file {f}")
         n.update_engine_based_on_system_files()
     return nodes
 
@@ -996,24 +1005,6 @@ def compute_document_graph(
     return roots, nodes
 
 
-def compute_compiler(engine: EngineType, output: OutputType, lang: LanguageType, postprocess: PostProcessType) -> str:
-    """Determine the actual compiler from engine/output/language."""
-    if lang in COMPILER_SELECTION:
-        if output in COMPILER_SELECTION[lang]:
-            if engine in COMPILER_SELECTION[lang][output]:
-                compiler = COMPILER_SELECTION[lang][output][engine]
-    if not compiler:
-        logging.warning("No compiler found for engine=%s, output=%s, lang=%s", engine, output, lang)
-        return ""
-    if postprocess == PostProcessType.NOT_NECESSARY:
-        pass
-    elif postprocess == PostProcessType.UNKNOWN:
-        logging.warning("No postprocess type found")
-    else:
-        compiler += f"+{postprocess!s}"
-    return compiler
-
-
 def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, ParsedTeXFile]) -> dict[str, ToplevelFile]:
     """Determine the toplevel files."""
     toplevel_files = {}
@@ -1022,35 +1013,37 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         if f.endswith(".sty") or f.endswith(".cls") or f.endswith(".clo"):
             continue
         found_language, found_output, found_engine, found_postprocess, issues = n.find_entry_in_subgraph()
-        tl = ToplevelFile(filename=n.filename)
-        engine: EngineType = EngineType.TEX if found_engine == EngineType.UNKNOWN else found_engine
-        lang: LanguageType = LanguageType.TEX if found_language == LanguageType.UNKNOWN else found_language
+        engine: EngineType = EngineType.tex if found_engine == EngineType.unknown else found_engine
+        lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
         output: OutputType
-        if lang == LanguageType.TEX:
-            output = OutputType.DVI if found_output == OutputType.UNKNOWN else found_output
-        elif lang == LanguageType.LATEX:
-            output = OutputType.PDF if found_output == OutputType.UNKNOWN else found_output
+        if lang == LanguageType.tex:
+            output = OutputType.dvi if found_output == OutputType.unknown else found_output
+        elif lang == LanguageType.latex:
+            output = OutputType.pdf if found_output == OutputType.unknown else found_output
         else:
-            raise ValueError(f"Unsupported language type {lang}")
+            raise PreflightException(f"Unsupported language type {lang}")
         postprocess: PostProcessType
-        if output == OutputType.DVI:
+        if output == OutputType.dvi:
             postprocess = (
-                PostProcessType.DVIPS_PS2PDF if found_postprocess == PostProcessType.UNKNOWN else found_postprocess
+                PostProcessType.dvips_ps2pdf if found_postprocess == PostProcessType.unknown else found_postprocess
             )
-        elif output == OutputType.PDF:
-            postprocess = (
-                PostProcessType.NOT_NECESSARY if found_postprocess == PostProcessType.UNKNOWN else found_postprocess
-            )
-        compiler: str = compute_compiler(engine, output, lang, postprocess)
-        if compiler not in SUPPORTED_PIPELINES:
-            issues.append(TeXFileIssue(IssueType.UNSUPPORTED_COMPILER_TYPE, f"compiler {compiler} not supported"))
-        tl.process = MainProcessSpec(compiler)
+        elif output == OutputType.pdf:
+            postprocess = PostProcessType.none if found_postprocess == PostProcessType.unknown else found_postprocess
+        tl = ToplevelFile(
+            filename=n.filename,
+            process=MainProcessSpec(compiler=CompilerSpec(engine=engine, output=output, lang=lang, postp=postprocess)),
+        )
+        compiler: str | None = tl.process.compiler.compiler_string
+        if compiler is None:
+            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
+        elif compiler not in SUPPORTED_PIPELINES:
+            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, f"compiler {compiler} not supported"))
 
         # count issues in sub files
         tl_n = nodes[f]
         for fn, nr_issues in tl_n.walk_document_tree(lambda n: [tuple((n.filename, len(n.issues)))]):
             if nr_issues > 0:
-                issues.append(TeXFileIssue(IssueType.ISSUE_IN_SUBFILE, str(nr_issues), filename=fn))
+                issues.append(TeXFileIssue(IssueType.issue_in_subfile, str(nr_issues), filename=fn))
         tl.issues = issues
         toplevel_files[f] = tl
 
@@ -1066,31 +1059,19 @@ def deal_with_bibliographies(
         bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
         if bbl_file_present:
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
-            tl_n.process.bibliography = BibProcessSpec(BibCompiler.UNKNOWN, pre_generated=True)
+            tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=True)
             # TODO, maybe remove issues with missing .bib files?
             continue
         # toplevel filename .bbl is missing -> require .bib to be available,
         top_node = nodes[tl_f]
-        all_bib = top_node.recursive_collect_files(FileType.BIB)
+        all_bib = top_node.recursive_collect_files(FileType.bib)
         if all_bib:
             # TODO detect biber usage!
-            tl_n.process.bibliography = BibProcessSpec(BibCompiler.UNKNOWN, pre_generated=False)
+            tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
 
 
-def format_json_response(
-    toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile], ret_status: PreflightStatus
-) -> str:
-    """Format json object for API preflight return."""
-    ret = {}
-    ret["detected_toplevel_files"] = [tl.asdict() for tl in toplevel_files.values()]
-    ret["tex_files"] = [n.asdict() for n in nodes.values()]
-    ret["status"] = ret_status.asdict()
-    # pprint(ret)
-    return json.dumps(ret)
-
-
-def generate_preflight_response(rundir: str) -> str:
-    """Parse submission and generated preflight response."""
+def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
+    """Parse submission and generated preflight response as dictionary."""
     # parse files
     n: dict[str, ParsedTeXFile] | ToplevelFile = parse_dir(rundir)
     nodes: dict[str, ParsedTeXFile]
@@ -1100,13 +1081,13 @@ def generate_preflight_response(rundir: str) -> str:
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
         nodes = {}
-        status = PreflightStatus(PreflightStatusValues.SUCCESS)
+        status = PreflightStatus(key=PreflightStatusValues.success)
     else:
         nodes = n
         if nodes == {}:
             roots = {}
             toplevel_files = {}
-            status = PreflightStatus(PreflightStatusValues.ERROR, info="No TeX files found")
+            status = PreflightStatus(key=PreflightStatusValues.error, info="No TeX files found")
         else:
             # search for files with kpse
             kpse_found = kpse_search_files(rundir, nodes)
@@ -1121,5 +1102,25 @@ def generate_preflight_response(rundir: str) -> str:
             # deal with bibliographies, which is painful
             deal_with_bibliographies(rundir, toplevel_files, nodes)
             # TODO check for suspicious status!
-            status = PreflightStatus(PreflightStatusValues.SUCCESS)
-    return format_json_response(toplevel_files, nodes, status)
+            status = PreflightStatus(key=PreflightStatusValues.success)
+    return PreflightResponse(
+        status=status,
+        detected_toplevel_files=[tl for tl in toplevel_files.values()],
+        tex_files=[n for n in nodes.values()],
+    )
+
+
+def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> PreflightResponse | str:
+    """Parse submission and generated preflight response as dictionary or json."""
+    try:
+        pfr: PreflightResponse = _generate_preflight_response_dict(rundir)
+    except PreflightException as e:
+        pfr = PreflightResponse(
+            status=PreflightStatus(key=PreflightStatusValues.error, info=str(e)),
+            detected_toplevel_files=[],
+            tex_files=[],
+        )
+    if json:
+        return pfr.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
+    else:
+        return pfr
