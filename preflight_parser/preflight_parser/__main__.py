@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from . import generate_preflight_response_json
+from . import generate_preflight_response
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -21,4 +21,4 @@ args = parser.parse_args()
 if args.log:
     loglevel = getattr(logging, args.log.upper(), None)
     logging.basicConfig(level=loglevel)
-print(generate_preflight_response_json(args.subdir))
+print(generate_preflight_response(args.subdir, json=True))

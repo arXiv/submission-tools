@@ -116,7 +116,13 @@ class PostProcessType(str, Enum):
     dvipdfmx = "dvipdfmx"
 
 
-class ParseSyntaxError(Exception):
+class PreflightException(Exception):
+    """General exception when parsing preflight."""
+
+    pass
+
+
+class ParseSyntaxError(PreflightException):
     """Syntax error when parsing a dict to an object."""
 
     pass
@@ -339,7 +345,7 @@ class ParsedTeXFile(BaseModel):
         elif self.output_type == OutputType.unknown:
             self.postprocess = PostProcessType.unknown
         else:
-            raise ValueError(f"unknown output type {self.output_type}")
+            raise PreflightException(f"unknown output type {self.output_type}")
 
     def detect_output_type(self) -> None:
         """If possible, update the output type based on the content of the file."""
@@ -489,7 +495,7 @@ class ParsedTeXFile(BaseModel):
                         include_options,
                         include_extra_argument,
                     )
-                    raise ValueError
+                    raise PreflightException(f"Unexpected number of file_argument value {incdef.file_argument}")
                 if incdef.multi_args:
                     for f in filearg.split(","):
                         fn = f[2:] if f.startswith("./") else f
@@ -499,7 +505,7 @@ class ParsedTeXFile(BaseModel):
                     file_incspec[filearg] = incdef
 
             else:
-                raise ValueError
+                raise PreflightException(f"Unexpected type of file_argument: {type(incdef.file_argument)}")
 
         logging.debug(file_incspec)
         self.mentioned_files |= file_incspec
@@ -559,7 +565,7 @@ class ParsedTeXFile(BaseModel):
                     )
                 # keep found_language as LATEX
             else:
-                raise ValueError(f"Unknown LanguageType {found_language}")
+                raise PreflightException(f"Unknown LanguageType {found_language}")
 
             if found_output == OutputType.unknown:
                 found_output = kid_output
@@ -614,7 +620,7 @@ class ParsedTeXFile(BaseModel):
         elif what == "issues":
             idx = "issues"
         else:
-            raise ValueError(f"no such file type: {what}")
+            raise PreflightException(f"no such file type: {what}")
         found = getattr(self, idx)
         visited[self.filename] = True
         for n in self.children:
@@ -969,7 +975,7 @@ def update_nodes_with_kpse_info(
             elif n.mentioned_files[f].type == FileType.other:
                 n.used_other_files.append(found)
             else:
-                raise ValueError(f"Unknown file type {n.mentioned_files[f].type} for file {f}")
+                raise PreflightException(f"Unknown file type {n.mentioned_files[f].type} for file {f}")
         n.update_engine_based_on_system_files()
     return nodes
 
@@ -1015,7 +1021,7 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         elif lang == LanguageType.latex:
             output = OutputType.pdf if found_output == OutputType.unknown else found_output
         else:
-            raise ValueError(f"Unsupported language type {lang}")
+            raise PreflightException(f"Unsupported language type {lang}")
         postprocess: PostProcessType
         if output == OutputType.dvi:
             postprocess = (
@@ -1064,12 +1070,7 @@ def deal_with_bibliographies(
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
 
 
-def generate_preflight_response_json(rundir: str, **kwargs) -> str:
-    """JSON representation of the preflight response."""
-    return generate_preflight_response(rundir).model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
-
-
-def generate_preflight_response(rundir: str) -> PreflightResponse:
+def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     """Parse submission and generated preflight response."""
     # parse files
     n: dict[str, ParsedTeXFile] | ToplevelFile = parse_dir(rundir)
@@ -1107,3 +1108,17 @@ def generate_preflight_response(rundir: str) -> PreflightResponse:
         detected_toplevel_files=[tl for tl in toplevel_files.values()],
         tex_files=[n for n in nodes.values()],
     )
+
+def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> PreflightResponse|str:
+    try:
+        pfr: PreflightResponse = _generate_preflight_response_dict(rundir)
+    except PreflightException as e:
+        pfr = PreflightResponse(
+            status = PreflightStatus(key=PreflightStatusValues.error, info=str(e)),
+            detected_toplevel_files=[],
+            tex_files=[]
+        )
+    if json:
+        return pfr.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
+    else:
+        return pfr
