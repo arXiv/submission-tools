@@ -1071,7 +1071,7 @@ def deal_with_bibliographies(
 
 
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
-    """Parse submission and generated preflight response."""
+    """Parse submission and generated preflight response as dictionary."""
     # parse files
     n: dict[str, ParsedTeXFile] | ToplevelFile = parse_dir(rundir)
     nodes: dict[str, ParsedTeXFile]
@@ -1109,14 +1109,16 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         tex_files=[n for n in nodes.values()],
     )
 
-def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> PreflightResponse|str:
+
+def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> PreflightResponse | str:
+    """Parse submission and generated preflight response as dictionary or json."""
     try:
         pfr: PreflightResponse = _generate_preflight_response_dict(rundir)
     except PreflightException as e:
         pfr = PreflightResponse(
-            status = PreflightStatus(key=PreflightStatusValues.error, info=str(e)),
+            status=PreflightStatus(key=PreflightStatusValues.error, info=str(e)),
             detected_toplevel_files=[],
-            tex_files=[]
+            tex_files=[],
         )
     if json:
         return pfr.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
