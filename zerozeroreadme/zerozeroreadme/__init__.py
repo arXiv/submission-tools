@@ -8,6 +8,7 @@ from enum import Enum
 
 import toml
 import tomli_w
+
 from preflight_parser import (
     CompilerSpec,
     EngineType,
@@ -73,6 +74,7 @@ class ZeroZeroReadMe:
     compilation: MainProcessSpec
     sources: OrderedDict[str, UserFile]
     stamp: bool | None
+    nohyperref: bool | None
 
     def __init__(self, in_dir: str | None = None, version: int = 1):  # noqa: D107
         self.version = version  # classic 00README.XXX is v1, dict i/o is v2.
@@ -96,6 +98,8 @@ class ZeroZeroReadMe:
                 result["sources"].append(v.model_dump(exclude_none=True, exclude_defaults=True))
         if self.stamp is not None:
             result["stamp"] = self.stamp
+        if self.nohyperref is not None:
+            result["nohyperref"] = self.nohyperref
         return result
 
     def intern_00readme(self, in_dir: str) -> None:
@@ -198,8 +202,7 @@ class ZeroZeroReadMe:
                 if idioms[0] == "nostamp":
                     self.stamp = False
                 elif idioms[0] == "nohyperref":
-                    # ignored - TODO should we warn here
-                    pass
+                    self.nohyperref = True
 
     def fetch_00readme_v2(self, filename: str) -> None:
         """Read and parse 00README.XXX file, v2."""
@@ -244,6 +247,18 @@ class ZeroZeroReadMe:
                         self.stamp = string_to_bool(v)
                 else:
                     raise ParseSyntaxError(f"Invalid key for 00README: {k}")
+
+    def find_metadata(self, filename: str) -> UserFile:
+        """Get an instance of a SourceFileMeta from filename, and create one if it doesn't exist."""
+        meta = self.sources.get(filename)
+        if meta is None:
+            meta = UserFile(filename=filename)
+            self.sources[filename] = meta
+        return meta
+
+    def set_tex_compiler(self, tc: str) -> None:
+        """Set TeX compiler."""
+        self.compilation.compiler = CompilerSpec(compiler=tc)
 
     def is_landscape(self, testing: str) -> bool:
         """Landscape orientation - only cares the file stem unlike other predicates."""
@@ -302,6 +317,25 @@ class ZeroZeroReadMe:
     def keepcomments(self) -> set[str]:
         """Returns a set of keep_comments designated files. Obsolete, use is_keep_comments instead."""
         return set([filename for filename, source in self.sources.items() if source.keep_comments])
+
+    @property
+    def nohyperref(self) -> bool:
+        return self.nohyperref
+
+    @property
+    def hyperref(self) -> bool:
+        return not self.nohyperref
+
+    @property
+    def assembling_files(self) -> list[str]:
+        """Compute list of assembling files."""
+        assembly = []
+        for fn, uf in self.sources.items():
+            if uf.usage == FileUsageType.toplevel:
+                assembly.append(fn)
+            elif uf.usage == FileUsageType.include:
+                assembly.append(fn)
+        return assembly
 
     def to_yaml(self, output: typing.TextIO) -> typing.TextIO:
         """Provide YAML representation of ZZRM."""
