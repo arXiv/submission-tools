@@ -12,6 +12,17 @@ files = [
 ]
 
 [[package]]
+name = "chardet"
+version = "5.2.0"
+description = "Universal encoding detector for Python 3"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "chardet-5.2.0-py3-none-any.whl", hash = "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970"},
+    {file = "chardet-5.2.0.tar.gz", hash = "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -115,6 +126,25 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
+
+[[package]]
+name = "preflight-parser"
+version = "0.0.1"
+description = "TeX and LaTeX parser"
+optional = false
+python-versions = "^3.11"
+files = []
+develop = false
+
+[package.dependencies]
+chardet = "^5.0"
+
+[package.source]
+type = "git"
+url = "https://github.com/arXiv/submission-tools.git"
+reference = "HEAD"
+resolved_reference = "f981c099cd50b949b4a486bd26dbfd283ba57d11"
+subdirectory = "preflight_parser"
 
 [[package]]
 name = "pydantic"
@@ -383,4 +413,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "6adbe6c1addd5a27fbe450bc7aa0d33f261340c35fafbe2574bd435b77542388"
+content-hash = "5dde73d3b8b9dee64cb12143869316d567ee444362cff7d4480808bee4a4e468"
