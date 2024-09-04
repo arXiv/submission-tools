@@ -8,7 +8,6 @@ from enum import Enum
 
 import toml
 import tomli_w
-
 from preflight_parser import (
     CompilerSpec,
     EngineType,
@@ -194,7 +193,12 @@ class ZeroZeroReadMe:
                     raise KeyError(keyword)
                 if userfile is not None:
                     # no keys were set, the file is treated as a toplevel file
-                    if userfile.keep_comments is None and userfile.orientation is None and userfile.usage is None and userfile.fontmaps is None:
+                    if (
+                        userfile.keep_comments is None
+                        and userfile.orientation is None
+                        and userfile.usage is None
+                        and userfile.fontmaps is None
+                    ):
                         userfile.usage = FileUsageType.toplevel
                     self.sources[filename] = userfile
 
@@ -235,7 +239,12 @@ class ZeroZeroReadMe:
                             uf = UserFile(**vv)
                             if uf.filename is None:
                                 raise ParseSyntaxError(f"Missing filename in UserFile: {vv}")
-                            if uf.keep_comments is None and uf.orientation is None and uf.usage is None and uf.fontmaps is None:
+                            if (
+                                uf.keep_comments is None
+                                and uf.orientation is None
+                                and uf.usage is None
+                                and uf.fontmaps is None
+                            ):
                                 uf.usage = FileUsageType.toplevel
                             self.sources[uf.filename] = uf
                     else:
@@ -320,10 +329,12 @@ class ZeroZeroReadMe:
 
     @property
     def nohyperref(self) -> bool:
+        """Returns the value for nohyperref setting (unsupported as of now)."""
         return self.nohyperref
 
     @property
     def hyperref(self) -> bool:
+        """Returns the value for hyperref setting (unsupported as of now)."""
         return not self.nohyperref
 
     @property
