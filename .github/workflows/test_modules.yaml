@@ -30,3 +30,22 @@ jobs:
         cd tex_inspection
         export PYTHONPATH=$PWD
         poetry run pytest tests
+    - name: Install dependencies for preflight_parser
+      run: |
+        cd preflight_parser
+        poetry install
+    - name: pytest for preflight_parser
+      run: |
+        cd preflight_parser
+        export PYTHONPATH=$PWD
+        poetry run pytest tests
+    - name: Install dependencies for zerozeroreadme
+      run: |
+        cd zerozeroreadme
+        poetry install
+    - name: pytest for zerozeroreadme
+      run: |
+        cd zerozeroreadme
+        export PYTHONPATH=$PWD
+        poetry run pytest tests
+      
