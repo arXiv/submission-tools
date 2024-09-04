@@ -82,6 +82,7 @@ class ZeroZeroReadMe:
         self.compilation = MainProcessSpec(compiler="pdflatex")
         self.sources = OrderedDict()
         self.stamp = True
+        self.nohyperref = None
         if in_dir:
             self.intern_00readme(in_dir)
 
@@ -326,11 +327,6 @@ class ZeroZeroReadMe:
     def keepcomments(self) -> set[str]:
         """Returns a set of keep_comments designated files. Obsolete, use is_keep_comments instead."""
         return set([filename for filename, source in self.sources.items() if source.keep_comments])
-
-    @property
-    def nohyperref(self) -> bool:
-        """Returns the value for nohyperref setting (unsupported as of now)."""
-        return self.nohyperref
 
     @property
     def hyperref(self) -> bool:
