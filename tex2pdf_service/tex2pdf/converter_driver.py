@@ -23,7 +23,7 @@ from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, Watermark
 from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
                             SubmissionFileType)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
-from preflight_parser import generate_preflight_response_json
+from preflight_parser import generate_preflight_response
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
@@ -190,7 +190,7 @@ class ConverterDriver:
             # Generally, the assembling files are the compiled tex files and the unused graphics
             self.zzrm.set_assembling_files(self.outcome["pdf_files"] + strip_to_basename(self.unused_pics()))
         elif self.preflight == PreflightVersion.V2:
-            self.outcome["preflight_v2"] = generate_preflight_response_json(self.in_dir)
+            self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
         else:
             # Should not happen, we check this already on entrance of API call
             raise ValueError(f"Invalid PreflightVersion: {self.preflight}")
