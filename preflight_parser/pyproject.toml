@@ -8,6 +8,7 @@ include = ["kpse_search.lua"]
 [tool.poetry.dependencies]
 python = "^3.11"
 chardet = "^5.0"
+pydantic = "^2.8.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
