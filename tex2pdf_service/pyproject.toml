@@ -19,6 +19,7 @@ python-multipart = "^0.0.6"
 psutil = "^5.9.8"
 tex_inspection = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex_inspection"}
 preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser"}
+zerozeroreadme = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "zerozeroreadme"}
 hypercorn = {extras = ["h2"], version = "^0.16.0"}
 pymupdf = "^1.24.9"
 

@@ -772,18 +772,19 @@ name = "preflight-parser"
 version = "0.0.1"
 description = "TeX and LaTeX parser"
 optional = false
-python-versions = "*"
+python-versions = "^3.11"
 files = []
 develop = false
 
 [package.dependencies]
 chardet = "^5.0"
+pydantic = "^2.8.2"
 
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "3b67c37112431cb6ee0d523bdf737ac017185383"
+resolved_reference = "8951ae40c0f06a4679dc8e0c262a9cc90c787a77"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -1243,6 +1244,17 @@ files = [
 ]
 
 [[package]]
+name = "tomli-w"
+version = "1.0.0"
+description = "A lil' TOML writer"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tomli_w-1.0.0-py3-none-any.whl", hash = "sha256:9f2a07e8be30a0729e533ec968016807069991ae2fd921a78d42f429ae5f4463"},
+    {file = "tomli_w-1.0.0.tar.gz", hash = "sha256:f463434305e0336248cac9c2dc8076b707d8a12d019dd349f5c1e382dd1ae1b9"},
+]
+
+[[package]]
 name = "tomlkit"
 version = "0.13.2"
 description = "Style preserving TOML library"
@@ -1412,7 +1424,29 @@ files = [
 [package.dependencies]
 h11 = ">=0.9.0,<1"
 
+[[package]]
+name = "zerozeroreadme"
+version = "0.0.1"
+description = "00README parser and tools"
+optional = false
+python-versions = "^3.11"
+files = []
+develop = false
+
+[package.dependencies]
+preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser"}
+ruamel-yaml = "^0.18.5"
+toml = "^0.10.2"
+tomli_w = "^1.0"
+
+[package.source]
+type = "git"
+url = "https://github.com/arXiv/submission-tools.git"
+reference = "HEAD"
+resolved_reference = "8951ae40c0f06a4679dc8e0c262a9cc90c787a77"
+subdirectory = "zerozeroreadme"
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "0456ba52e5f0929cfcedff231493423f7c7f10c1b0d8267d1539756f91675ad3"
+content-hash = "6a1c293f00e7ce097b7f9ff59946bda8bacb9c5487bf169ebe2a775ea8fb6191"
