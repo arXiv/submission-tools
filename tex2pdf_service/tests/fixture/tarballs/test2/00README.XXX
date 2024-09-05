@@ -1,0 +1,5 @@
+Makefile ignore
+fake-file-2.tex toplevelfile
+fake-file-3.tex ignore
+fake-file-2.dvi landscape
+

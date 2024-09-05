@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "tex-inspection"
+version = "0.1.0"
+description = "Inspecting TeX in arXiv submissions"
+authors = ["arxiv.org"]
+license = "BSD-3 License"
+readme = "README.rst"
+packages = [
+    { include = "tex_inspection" }
+]
+include = ["LICENSE", "README.md"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+ruamel-yaml = "^0.18.5"
+toml = "^0.10.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+mypy = "*"
+mypy-extensions = "*"
+pydantic = "2.8.*"
+types-toml = "^0.10.8.20240310"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

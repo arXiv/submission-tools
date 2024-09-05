@@ -1,5 +1,5 @@
 """
-TeX file patching for the GCP PDF generation.
+TeX file patching for the Tex to PDF generation.
 
 The primary motivation of this is, using Pygmentize for code highlighting, the package option
 for first and second run of latex command needs to be changed.
@@ -14,7 +14,7 @@ import os
 import re
 import typing
 
-from tex2pdf import TEX_FILE_EXTS
+from tex_inspection import TEX_FILE_EXTS
 
 graphicspath_re = re.compile(r"\\graphicspath\{((\{.+?\})+)\}")
 paths_re = re.compile(r'\{(.+?)\}')
@@ -57,9 +57,9 @@ def remove_auto_pst_pdf(line: str) -> str:
 
 
 def set_overleafhome_and_homepath(line: str) -> str:
-    """If you find a tex line setting \overleafhome, set \homepath as well
+    """If you find a tex line setting \\overleafhome, set \\homepath as well
     """
-    if line.find("\def\overleafhome{") != -1:
+    if line.find(r"\def\overleafhome{") != -1:
         matched = re.search(r"\\overleafhome\{([^}]*)\}", line)
         if matched:
             home = matched.group(1)

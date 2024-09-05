@@ -1,0 +1,5 @@
+compilation:
+  compiler: latex
+sources:
+  - filename: main.tex
+  - filename: gdp.tex

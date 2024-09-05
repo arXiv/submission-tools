@@ -1,0 +1,34 @@
+{
+  "compilation": {
+    "compiler": "latex",
+    "fontmaps": [
+      "myfonts1.map",
+      "myfonts2.map"
+      ]
+  },
+  "sources": [
+    {
+      "filename": "fake-file-1.tex",
+      "usage": "include"
+    },
+    {
+      "filename": "fake-file-2.tex"
+    },
+    {
+      "filename": "fake-file-3.TEX",
+      "usage": "ignore"
+    },
+    {
+      "filename": "fake-file-2.dvi",
+      "orientation": "landscape"
+    },
+    {
+      "filename": "fake-file-4.dvi",
+      "keep_comments": "yes"
+    },
+    {
+      "filename": "jackson-5.tex"
+    }
+  ],
+  "stamp": "no"
+}

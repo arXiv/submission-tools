@@ -1,12 +1,23 @@
-app_tag := arxiv-tex2pdf-app
-app_name := tex2pdf_app
+app_tag := public-tex2pdf-app
+app_name := public_tex2pdf_app
 app_port := 6301
 dockerport := 8080
-APP_DOCKER_RUN := docker run --cpus 2 --rm -p ${app_port}:${dockerport} -e PORT=${dockerport} --name ${app_name} --security-opt="no-new-privileges=true" 
 
-.PHONY: HELLO app.docker app.run app.stop bootstrap
+TEXLIVE_BASE_RELEASE := 2024
+TEXLIVE_BASE_IMAGE_DATE := 2024-07-21
+base_tag_version := ${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE}
 
-default: HELLO venv/lib/python3.10/site-packages/fastapi
+
+ROOT_DIR := $(shell pwd)
+TEX2PDF_CPUS := $(shell echo $${TEX2PDF_CPUS:-4})
+TEX2PDF_WORKERS := $(shell echo $${TEX2PDF_WORKERS:-8})
+TEX2PDF_DOCKER_PLATFORM := $(shell echo $${TEX2PDF_DOCKER_PLATFORM:-linux/amd64})
+
+APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -p ${app_port}:${dockerport} -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true" 
+
+.PHONY: HELLO app.docker app.run app.stop
+
+default: HELLO venv/lib/python3.11/site-packages/fastapi
 
 HELLO:
 	@echo To see the README of this Makefile, type "make help"
@@ -14,18 +25,6 @@ HELLO:
 	@echo Docker command params is:
 	@echo ${APP_DOCKER_RUN}
 
-
-venv:
-	python3 -m venv venv
-	. venv/bin/activate && pip install --upgrade pip
-
-venv/bin/poetry: venv
-	. venv/bin/activate && pip install poetry
-
-venv/lib/python3.10/site-packages/fastapi: venv/bin/poetry
-	. venv/bin/activate && poetry install
-
-bootstrap: venv/lib/python3.10/site-packages/fastapi
 
 #-#
 #-# Command: help
@@ -36,7 +35,7 @@ help:
 #-#
 #-# Command: app.docker
 #-#   builds the applience docker image
-app.docker: bootstrap
+app.docker:
 	@if [ -n "$$INSIDE_EMACS" ]; then \
 	  echo "Detected Emacs shell mode, stopping."; \
 	  exit 1; \
@@ -44,14 +43,17 @@ app.docker: bootstrap
 	@echo "PLATFORM: ${PLATFORM}"
 	@echo "dockerport: ${app_port}"
 	@echo "tag: ${appl_tag}"
-	@echo "name: ${app_name}"
-	docker build -f ./Appliance.Dockerfile -t ${app_tag} .
+	docker buildx build -f ./Appliance.Dockerfile \
+		--progress=plain \
+	        --build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_BASE_RELEASE} \
+		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_BASE_IMAGE_DATE} \
+		--platform=linux/amd64 -t ${app_tag}-${base_tag_version}:latest .
 
 #-#
 #-# Command: app.run
 #-#   runs the appliance container with the terminal attached (for test)
 app.run: app.stop
-	${APP_DOCKER_RUN} -it ${app_tag} 
+	${APP_DOCKER_RUN} -it ${app_tag}-${base_tag_version}:latest 
 
 #-#
 #-# Command: app.stop
@@ -63,5 +65,6 @@ app.stop:
 #-#
 #-# Command: sh
 #-#   runs a bash shell in the container to look inside of it
-app.sh: bootstrap app.stop
-	${APP_DOCKER_RUN}  -v /home/ntai/Downloads:/home/worker/Downloads -w /home/worker -it ${tag} /bin/bash
+app.sh: app.stop
+	${APP_DOCKER_RUN}  -v ${HOME}/Downloads:/home/worker/Downloads -w /home/worker -it ${app_tag}-${base_tag_version}:latest  /bin/bash
+
