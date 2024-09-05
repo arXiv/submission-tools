@@ -14,7 +14,7 @@ from pikepdf import PdfError
 
 from tex2pdf import file_props, file_props_in_dir, catalog_files, \
     ID_TAG, graphics_exts, test_file_extent, MAX_TIME_BUDGET
-from tex2pdf.doc_converter import combine_documents, strip_to_basename
+from tex2pdf.doc_converter import combine_documents
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import unpack_tarball, chmod_775
 from tex2pdf.tex_to_pdf_converters import BaseConverter
@@ -23,7 +23,7 @@ from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, Watermark
 from tex_inspection import (maybe_bbl, find_unused_toplevel_files,
                             SubmissionFileType)
 from tex2pdf.tex_to_pdf_converters import select_converter_classes
-from preflight_parser import generate_preflight_response, PreflightResponse, \
+from preflight_parser import generate_preflight_response, \
     PreflightStatusValues
 from zerozeroreadme import ZeroZeroReadMe, FileUsageType
 
@@ -135,19 +135,22 @@ class ConverterDriver:
         fix_tex_sources(self.in_dir)
 
         # When ZZRM is defined, take it
-        if self.zzrm.version == 2:
+        if self.zzrm.readme_filename is not None:
             tex_files = self.zzrm.toplevels
+            max_tex_files = len(tex_files)
         else:
-            # run preflight
+            # no 00README whatsoever provided, run preflight
+            logger.debug("Running preflight for input since no 00README present")
             preflight_response = generate_preflight_response(self.in_dir)
             if preflight_response.status.key == PreflightStatusValues.success:
                 tex_files = [ t.filename for t in preflight_response.detected_toplevel_files ]
             else:
                 # TODO what to do here?
                 raise Exception("Preflight didn't succeed!")
+            # if no ZZRM was present, we default to only compile the
+            # first self.max_tex_files files
+            max_tex_files = self.max_tex_files
 
-        # If 00README input exists, obey the designation
-        max_tex_files = len(tex_files) if self.zzrm.readme or self.zzrm.version > 1 else self.max_tex_files
         self.tex_files = tex_files[:max_tex_files]  # Used tex files
         unused_tex_files = tex_files[max_tex_files:]
         self.outcome["possible_tex_files"] = tex_files
@@ -256,7 +259,7 @@ class ConverterDriver:
                 if pdf_file_props["size"]:
                     outcome["pdf_files"].append(pdf_file)
                     # Remember the compiler if it's not set
-                    if self.zzrm.compilation.get("compiler") is None:
+                    if self.zzrm.compilation.compiler is None:
                         self.zzrm.set_tex_compiler(self.converter.tex_compiler_name())
                     pass
                 else:
@@ -385,7 +388,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             final_pdf, used_gfx, unused_gfx, addon_outcome = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
             outcome |= addon_outcome
-            self.zzrm.set_assembling_files(used_gfx)
+            # self.zzrm.set_assembling_files(used_gfx)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
             outcome["unused_figures"] = self.unused_pics()[self.max_appending_files:] + unused_gfx
