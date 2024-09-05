@@ -1,53 +1,45 @@
-# NOTE - This Dockerfile is expected to run from tex2pdf_service directory
-FROM registry.gitlab.com/islandoftex/images/texlive:TL2023-2023-05-21-full
-RUN apt update && apt install -y python3-venv inkscape python3-pygments
-RUN useradd -rm -d /home/worker -s /bin/bash -g users -u 1000 worker
+# defaults for these values are set in cicd/appliance.yaml
+# and need to be passed via --build-arg, see Makefile
+# Give default values to silence docker build warnings
+# https://docs.docker.com/reference/build-checks/invalid-default-arg-in-from/
+ARG TEXLIVE_BASE_RELEASE=2024
+ARG TEXLIVE_BASE_IMAGE_DATE=2024-07-21
+FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
+ARG TEXLIVE_BASE_RELEASE
 
-# Allow statements and log messages to immediately appear in the Cloud Run logs
-ENV PYTHONUNBUFFERED True
-ENV PORT 8080
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    WORKER_HOME="/home/worker" \
+    VENV_PATH="/home/worker/.venv" \
+    PORT=8080
 
-RUN apt-get clean autoclean && apt-get autoremove --yes
-RUN rm -rf /var/lib/{apt,dpkg,cache,log}/ /usr/local/texlive/texmf-local
-# Add Norbert key
-RUN curl -fsSL https://www.preining.info/rsa.asc | tlmgr key add -
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
-ENV TEXMFHOME /usr/local/texlive/2023
-RUN echo "Meaning of life is 42" > /home/worker/hello.txt
-RUN chown -R worker:users /home/worker
-RUN chown -R worker /usr/local/texlive/2023
+# install the arXiv specific changes:
+# - special settings in texmf.cnf
+COPY texlive/common/texmf.cnf /usr/local/texlive/${TEXLIVE_BASE_RELEASE}/
 
-WORKDIR /usr/local/texlive/2023
-COPY texlive/2023/texmf-arxiv/ ./texmf-arxiv/
-COPY texlive/2023/texmf-local/ ./texmf-local/
-COPY texlive/2023/texmf.cnf .
-RUN chown -R worker texmf.cnf ./texmf-arxiv/ ./texmf-local/
-
+RUN useradd -m -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
 USER worker
-WORKDIR /home/worker
-ENV TEXMFHOME /usr/local/texlive/2023
-COPY pyproject.toml .
-COPY poetry.lock .
-RUN python -m venv ./venv
-RUN . venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install poetry lockfile && \
-    venv/bin/poetry install
-RUN mkdir -p texlive/2023
-RUN tlmgr info --json --verify-repo=none > texlive/2023/tlmgr-info.json; exit 0
-COPY app-logging.conf .
-#
-RUN tlmgr update --self; exit 0
-#RUN tlmgr update --all; exit 0
-RUN tlmgr update minted; exit 0
-RUN tlmgr repository add https://mirror.ctan.org/systems/texlive/tlcontrib tlcontrib; exit 0
-RUN tlmgr pinning add tlcontrib "*"; exit 0
-COPY texlive/2023/tex-packages.txt ./texlive/2023/tex-packages.txt
-#RUN tlmgr install $(cat texlive/2023/tex-packages.txt); exit 0
-#RUN tlmgr restore hyperxmp; exit 0
-RUN mktexlsr; exit 0
+WORKDIR $WORKER_HOME
 COPY tex2pdf/ ./tex2pdf/
-ENV TEXMFHOME /usr/local/texlive/2023
-ENV PYTHONPATH /home/worker
+COPY poetry.lock pyproject.toml ./
+# poetry is BROKEN wrt to installing multiple packages from same git repo
+# see https://github.com/python-poetry/poetry/issues/6958
+RUN poetry config installer.parallel false
+# install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
+RUN poetry install --without=dev
+
+
+# application specific changes
+ENV PYTHONPATH=$WORKER_HOME
+COPY app-logging.conf .
+COPY app-logging.json .
+COPY hypercorn-config.toml .
 COPY app.sh ./app.sh
 CMD ["/bin/bash", "app.sh"]

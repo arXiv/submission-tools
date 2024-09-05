@@ -16,17 +16,23 @@ ID_TAG = "arxiv_id"
 _gexts_ = [".png", ".jpg", ".jpeg", ".gif"]
 graphics_exts = {key: True for key in _gexts_}
 
-# Text file extensions
-TEX_FILE_EXTS = [".tex", ".ltf", ".ltx", ".latex", ".txt"]
 
 MAX_TIME_BUDGET: float = float(os.environ.get("MAX_TIME_BUDGET", "595"))
 MAX_LATEX_RUNS: int = int(os.environ.get("MAX_LATEX_RUNS", "5"))
 
+# Log level name may be different depending on the service provider
+LOG_LEVEL_NAME = os.environ.get("LOG_LEVEL_NAME", "severity")
+
+USE_ADDON_TREE: bool = os.environ.get("USE_ADDON_TREE") in ["y", "true"]
+
+MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
+MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 
 class CustomJsonFormatter(JsonFormatter):
-    """Logging formatter to play nice with GCP Logs Explorer"""
+    """Logging formatter to play nice with JSON logger"""
     def __init__(self, *args: list, **kwargs: Any):
-        super().__init__(*args, **kwargs, rename_fields={"levelname": "level", "asctime": "time"})
+        super().__init__(*args, **kwargs,
+                         rename_fields={"levelname": LOG_LEVEL_NAME, "asctime": "time"})
 
     def _perform_rename_log_fields(self, log_record: dict) -> None:
         if "color_message" in log_record:

@@ -1,4 +1,4 @@
-#!/bin/barh
+#!/bin/bash
 cd /home/worker
 if [ -z "$WORKERS" ]; then
     WORKERS=4
@@ -8,7 +8,6 @@ if [ -z "$PORT" ]; then
     PORT=8080
 fi
 export PORT
-export TEXMFHOME=/usr/local/texlive/2023
-. /home/worker/venv/bin/activate
-echo "{\"message\": \"uvicorn --host 0.0.0.0 --port $PORT --log-config app-logging.conf --workers $WORKERS tex2pdf.tex2pdf_api:app\", \"level\": \"INFO\"}"
-uvicorn --host 0.0.0.0 --port $PORT --log-config app-logging.conf --workers $WORKERS tex2pdf.tex2pdf_api:app
+#export TEXMFHOME=/usr/local/texlive/2023
+#. /home/worker/venv/bin/activate
+hypercorn --config hypercorn-config.toml --bind 0.0.0.0:$PORT --log-config app-logging.conf --workers $WORKERS tex2pdf.tex2pdf_api:app

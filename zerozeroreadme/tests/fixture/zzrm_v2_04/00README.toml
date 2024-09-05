@@ -1,0 +1,23 @@
+[compilation]
+compiler = "pdflatex"
+fontmaps = "myfonts1.map", "myfonts2.map"
+stamp = "no"
+
+[[sources]]
+filename = "fake-file-1.tex"
+usage = "include"
+
+[[sources]]
+filename = "fake-file-2.tex"
+
+[[sources]]
+filename = "fake-file-3.TEX"
+usage = "ignore"
+
+[[sources]]
+filename = "fake-file-2.dvi"
+orientation = "landscape"
+
+[[sources]]
+filename = "fake-file-4.dvi"
+keep_comments = "yes"

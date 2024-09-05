@@ -1,0 +1,77 @@
+ban_list:
+  - description: ACM sample
+    condition:
+      filename:
+        startswith: sample-
+      line:
+        startswith: \title{The Name of the Title is Hope}
+
+  - description: Guide to Using SIAM's LaTeX
+    condition:
+      filename:
+        equals: docsimart.tex
+      line:
+        startswith: \title{Guide to Using SIAM's \LaTeX\ Style\thanks{Submitted to the editors DATE.
+
+  - description: Half baked TeX source
+    condition:
+      filename:
+        equals: arxiv-template.tex
+      line:
+        startswith: pdftitle={A template for the arxiv style}
+
+  - description: Submission and Formatting Instructions for ICML 2024
+    condition:
+      filename:
+        equals: example_paper.tex
+      line:
+        startswith: \icmltitlerunning{Submission and Formatting Instructions for ICML 2024}
+
+  - description: Responsible NLP research checklist version 0.1
+    condition:
+      filename:
+        equals: responsibleNLPresearch.tex
+      line:
+        startswith: \title{Responsible NLP Research Checklist
+
+  - description: check list, not paper
+    condition:
+      filename:
+        equals: responsible_checklist.tex
+      line:
+        startswith: \title{Responsible CheckList}
+
+  - description: This is an example SIAM \LaTeX\ article. This can be used as a template for new articles.
+    condition:
+      filename:
+        equals: ex_article.tex
+      line:
+        startswith: This is an example SIAM \LaTeX\ article. This can be used as a
+
+  - description: This is an example SIAM \LaTeX\ article. This can be used as a template for new articles.
+    condition:
+      filename:
+        equals: ex_supplement.tex
+      line:
+        contains: "pdftitle={Supplementary Materials: An Example Article},"
+
+  - description: Guide to Using SIAM's LaTeX Style
+    condition:
+      filename:
+        equals: app-2-writing_sample.tex
+      line:
+        startswith: \usepackage{fontspec}
+
+  - description: Latex Diff file - the output of tex differ and never part of actual submission
+    condition:
+      filename:
+        equals: diff.tex
+      line:
+        contains: "%DIF LATEXDIFF DIFFERENCE FILE"
+
+  - description: Copyright 2019 Elsevier Ltd,  This file is part of the 'CAS Bundle'
+    condition:
+      filename:
+        equals: cas-sc-template.tex
+      line:
+        startswith: \title [mode = title]{This is a specimen $a_b$ title}
