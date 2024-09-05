@@ -75,7 +75,7 @@ class ZeroZeroReadMe:
     stamp: bool | None
     nohyperref: bool | None
 
-    def __init__(self, in_dir: str | None = None, version: int = 1):  # noqa: D107
+    def __init__(self, in_dir: str | None = None, version: int = 1):
         self.version = version  # classic 00README.XXX is v1, dict i/o is v2.
         self.readme_filename = None
         self.readme = None

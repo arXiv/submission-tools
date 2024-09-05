@@ -20,15 +20,18 @@ lint.select = [
 ]
 lint.ignore = [
     "D105", # no docstring in magic method like __str__
-    "D203", # one blank line before class
-    "D213", # multi-line summary second line
+    "D107", # no docstring in __init__
 ]
+
 
 output-format = "grouped"
 
 # Assume Python 3.11
 # Note: helps prevent breaking autofixes from, e.g., pyupgrade
 target-version = "py311"
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
 
 [tool.black]
 line-length = 120
