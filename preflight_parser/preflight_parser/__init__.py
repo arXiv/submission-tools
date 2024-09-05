@@ -249,7 +249,7 @@ class CompilerSpec(BaseModel):
 class MainProcessSpec(BaseModel):
     """Specification of the main process to compile a document."""
 
-    compiler: CompilerSpec
+    compiler: CompilerSpec | None = None
     bibliography: BibProcessSpec | None = None
     index: IndexProcessSpec | None = None
     fontmaps: list[str] | None = None
@@ -1033,7 +1033,7 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             filename=n.filename,
             process=MainProcessSpec(compiler=CompilerSpec(engine=engine, output=output, lang=lang, postp=postprocess)),
         )
-        compiler: str | None = tl.process.compiler.compiler_string
+        compiler: str | None = None if tl.process.compiler is None else tl.process.compiler.compiler_string
         if compiler is None:
             issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
         elif compiler not in SUPPORTED_PIPELINES:
