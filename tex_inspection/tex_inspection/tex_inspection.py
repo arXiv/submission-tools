@@ -781,7 +781,7 @@ def find_unused_toplevel_files(in_dir: str, tex_files: typing.List[str]) -> typi
 
 
 def find_pdfoutput_1(tex_file: str, in_dir: str) -> bool:
-    """Find the \pdfoutput=1 marker"""
+    r"""Find the \pdfoutput=1 marker"""
     sources = [tex_file]
     checked = set()
     while sources:
