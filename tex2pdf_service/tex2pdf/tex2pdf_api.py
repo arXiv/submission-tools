@@ -100,7 +100,8 @@ async def convert_pdf(incoming: UploadFile,
                       preflight: typing.Annotated[str | None,
                           Query(title="Preflight", description="Do preflight check, pass in version number (v1, v2)")] = None,
                       watermark_text: str | None = None,
-                      watermark_link: str | None = None) -> Response:
+                      watermark_link: str | None = None,
+                      auto_detect: bool = False) -> Response:
     """
     get a tarball, and convert to PDF
     """
@@ -150,7 +151,8 @@ async def convert_pdf(incoming: UploadFile,
                                  max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
-                                 preflight=preflight_version
+                                 preflight=preflight_version,
+                                 auto_detect=auto_detect
                                  )
         try:
             _pdf_file = driver.generate_pdf()
