@@ -1,5 +1,5 @@
 {
-  "compilation": {
+  "process": {
     "compiler": "latex",
     "fontmaps": [
       "myfonts1.map",

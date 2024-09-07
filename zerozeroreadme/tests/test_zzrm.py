@@ -30,7 +30,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
-        self.assertEqual("pdflatex", zzrm.compilation.compiler.compiler_string)
+        self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
 
     def test_zzrm_v2_02(self) -> None:
@@ -42,7 +42,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
-        self.assertEqual("latex", zzrm.compilation.compiler.compiler_string)
+        self.assertEqual("latex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
 
     def test_zzrm_v2_03(self) -> None:
@@ -54,7 +54,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
-        self.assertEqual("pdflatex", zzrm.compilation.compiler.compiler_string)
+        self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
 
     def test_zzrm_v2_04(self) -> None:
@@ -66,7 +66,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
-        self.assertEqual("pdflatex", zzrm.compilation.compiler.compiler_string)
+        self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
 
     def test_zzrm_out_yaml(self) -> None:
@@ -77,7 +77,7 @@ class Test00README(unittest.TestCase):
         sio.flush()
         sio.seek(0)
         data = sio.read()
-        expected = """compilation:
+        expected = """process:
   compiler: pdflatex
   fontmaps:
   - myfonts1.map
@@ -113,7 +113,7 @@ stamp: false
 ]
 stamp = false
 
-[compilation]
+[process]
 compiler = "pdflatex"
 fontmaps = [
     "myfonts1.map",
@@ -127,7 +127,7 @@ fontmaps = [
         zzrm = ZeroZeroReadMe(dir_path)
         data = zzrm.to_json()
         expected = """{
-    "compilation": {
+    "process": {
         "compiler": "pdflatex",
         "fontmaps": [
             "myfonts1.map",

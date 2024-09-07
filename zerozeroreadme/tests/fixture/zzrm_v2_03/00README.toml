@@ -21,6 +21,6 @@ keep_comments = "yes"
 [[sources]]
 filename = "toml-5.tex"
 
-[compilation]
+[process]
 compiler = "pdflatex"
 fontmaps = ["myfonts1.map", "myfonts2.map"]

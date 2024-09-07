@@ -200,6 +200,16 @@ class CompilerSpec(BaseModel):
             super().__init__(**kwargs)
 
     @property
+    def is_determined(self) -> bool:
+        if (
+            self.engine == EngineType.unknown
+            or self.lang == LanguageType.unknown
+            or self.output == OutputType.unknown
+        ):
+            return False
+        return True
+
+    @property
     def compiler_string(self) -> str | None:
         """Convert Language/Output/Engine/PostProcess to compiler string."""
         # first deal with PDF only submissions:

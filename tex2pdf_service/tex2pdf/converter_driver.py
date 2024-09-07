@@ -75,12 +75,14 @@ class ConverterDriver:
     today: str | None
     water: Watermark
     preflight: PreflightVersion
+    auto_detect: bool = False
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, watermark: Watermark | None = None,
                  max_time_budget: float | None = None,
                  max_tex_files: int = 1,  max_appending_files: int = 0,
-                 preflight: PreflightVersion = PreflightVersion.NONE
+                 preflight: PreflightVersion = PreflightVersion.NONE,
+                 auto_detect: bool = False
                  ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -102,16 +104,17 @@ class ConverterDriver:
         self.max_appending_files = max_appending_files
         self.today = None
         self.preflight = preflight
+        self.auto_detect = auto_detect
         pass
 
     @property
     def driver_log(self) -> str:
-        """The converter driver log"""
+        """The converter driver log."""
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
 
 
     def generate_pdf(self) -> str|None:
-        """We have the beef"""
+        """We have the beef."""
         logger = get_logger()
         self.t0 = time.perf_counter()
 
@@ -134,19 +137,29 @@ class ConverterDriver:
         # Find the starting point
         fix_tex_sources(self.in_dir)
 
-        # When ZZRM is defined, take it
-        if self.zzrm.readme_filename is not None:
-            tex_files = self.zzrm.toplevels
-            max_tex_files = len(tex_files)
-        else:
-            # no 00README whatsoever provided, run preflight
+        if not self.zzrm.is_ready_for_compilation:
+            if not self.auto_detect:
+                raise Exception("Not ready for compilation and auto-detect disabled")
             logger.debug("Running preflight for input since no 00README present")
             preflight_response = generate_preflight_response(self.in_dir)
-            if preflight_response.status.key == PreflightStatusValues.success:
-                tex_files = [ t.filename for t in preflight_response.detected_toplevel_files ]
-            else:
+            if preflight_response.status.key != PreflightStatusValues.success:
                 # TODO what to do here?
                 raise Exception("Preflight didn't succeed!")
+            if self.zzrm.update_from_preflight(preflight_response):
+                raise Exception("Cannot determine compiler from preflight and sources")
+
+        # we should now be ready to go
+        if not self.zzrm.is_ready_for_compilation:
+            raise Exception("Still not ready for compilation -- this is strange")
+
+        if not self.zzrm.is_supported_compiler:
+            raise Exception("Unsupported compiler")
+
+        tex_files = self.zzrm.toplevels
+        if self.zzrm.readme_filename is not None:
+            # zzrm was provided
+            max_tex_files = len(tex_files)
+        else:
             # if no ZZRM was present, we default to only compile the
             # first self.max_tex_files files
             max_tex_files = self.max_tex_files
@@ -259,7 +272,7 @@ class ConverterDriver:
                 if pdf_file_props["size"]:
                     outcome["pdf_files"].append(pdf_file)
                     # Remember the compiler if it's not set
-                    if self.zzrm.compilation.compiler is None:
+                    if self.zzrm.process.compiler is None:
                         self.zzrm.set_tex_compiler(self.converter.tex_compiler_name())
                     pass
                 else:
