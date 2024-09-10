@@ -8,11 +8,12 @@ import shlex
 import time
 import typing
 from abc import abstractmethod
+
 from tex2pdf import file_props, local_exec, file_props_in_dir, \
-    MAX_LATEX_RUNS, ID_TAG, test_file_extent, MAX_TIME_BUDGET
+    MAX_LATEX_RUNS, ID_TAG, MAX_TIME_BUDGET
 from tex2pdf.service_logger import get_logger
-from tex_inspection import (pick_package_names, ZeroZeroReadMe, is_pdftex_line,
-                            is_pdflatex_line, find_pdfoutput_1, TEX_FILE_EXTS)
+from tex_inspection import find_pdfoutput_1
+from zerozeroreadme import ZeroZeroReadMe
 from .log_inspection import inspect_log
 
 WITH_SHELL_ESCAPE = False
@@ -72,16 +73,6 @@ class BaseConverter:
     def time_left(self) -> float:
         """Returns the time left before the timeout"""
         return self.max_time_budget - (time.perf_counter() - self.init_time)
-
-    @classmethod
-    def decline_file(cls, _tex_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
-        """Decline the file if the converter cannot handle it"""
-        return True, "The base class has no capability to handle any file"
-
-    @classmethod
-    def decline_tex(cls, _tex_line: str, _line_number: int) -> typing.Tuple[bool, str]:
-        """Decline the tex line if the converter cannot handle it"""
-        return True, "The base class has no capability to handle any file"
 
     def is_internal_converter(self) -> bool:
         """If the converter is internal, the work dir needs cleanup."""
@@ -310,85 +301,21 @@ class BaseConverter:
         return run
     pass
 
-#
-def select_converter_classes(in_dir: str, zzrm: ZeroZeroReadMe | None = None) \
-        -> typing.Tuple[typing.List[type[BaseConverter]], typing.List[str]]:
-    """Create a converter based on the tex file"""
-    # candidates = [VanillaTexConverter, PdfTexConverter, PdfLatexConverter, LatexConverter]
-    # https://info.arxiv.org/help/submit_tex.html
-    # arXiv does not presently support PDFTeX.
-    # since this seems to do more harm than good, at least for now, remove PDFTex.
-    # We may revise this if we can come up with better method.
-    candidates: typing.List[typing.Type[BaseConverter]] = [VanillaTexConverter, PdfLatexConverter, LatexConverter]
-    if zzrm is not None and zzrm.version > 1:
-        # If zzrm designates
-        comp = "compiler"
-        compiler: str = zzrm.compilation.get(comp, "auto")
-        # not sure this is a good idea to have "auto", seems like having an escape hatch is okay.
-        if compiler != "auto":
-            cc_list: dict[str, typing.Type[BaseConverter]] = {cc.tex_compiler_name(): cc for cc in candidates}
-            if compiler in cc_list:
-                candidates = [cc_list[compiler]]
-                pass
-            else:
-                raise ValueError(f"compiler {compiler} is not in " + repr(cc_list.keys()))
-            # Just return the designated class and give no reason since there were no judgement
-            return copy.copy(candidates), []
 
-    classes = candidates.copy()
-    tex_files = []
-    reasons = []
-    for rootdir, _dirs, files in os.walk(in_dir, topdown=True):
-        for filename in files:
-            declined = []
-            for cc in classes:
-                answer, reason = cc.decline_file(filename, rootdir)
-                if answer:
-                    declined.append((cc, reason))
-                    break
-                pass
-            for cc, reason in declined:
-                if cc in classes:
-                    classes.remove(cc)
-                    reasons.append(reason)
-                    pass
-                pass
-            # find all the tex files in root dir
-            if test_file_extent(filename, TEX_FILE_EXTS):
-                tex_files.append(os.path.join(rootdir, filename))
-                pass
-            pass
-        pass
-
-    if len(classes) > 1:
-        for tex_file in tex_files:
-            with open(tex_file, encoding='iso-8859-1') as src:
-                for line_no, line in enumerate(src.readlines()):
-                    if not line:
-                        continue
-                    if line.strip()[0:1] == "%":
-                        continue
-                    declined = []
-                    for cc in classes:
-                        answer, reason = cc.decline_tex(line, line_no+1)
-                        if answer:
-                            declined.append((cc, reason))
-                            break
-                        pass
-                    for cc, reason in declined:
-                        if cc in classes:
-                            reasons.append(reason)
-                            classes.remove(cc)
-                            pass
-                        pass
-                    if len(classes) < 2:
-                        break
-                else:
-                    continue
-                break
-            pass
-        pass
-    return classes, reasons
+def select_converter_class(zzrm: ZeroZeroReadMe) -> type[BaseConverter]:
+    """Select converter based on ZZRM."""
+    process_spec = zzrm.process.compiler.compiler_string
+    if process_spec == "etex+dvips_ps2pdf":
+        return VanillaTexConverter
+    # users might select `compiler = latex` in 00readme.yaml, which results in a plain
+    # latex compilation to dvi without postprocessing. Make sure we accept the right
+    # one here.
+    elif process_spec == "latex+dvips_ps2pdf" or process_spec == "latex":
+        return LatexConverter
+    elif process_spec == "pdflatex":
+        return PdfLatexConverter
+    else:
+        raise ValueError("Unknown compiler, cannot select converter: %s", process_spec)
 
 
 #bad_for_latex_file_exts = {ext: True for ext in [".png", ".jpg", ".jpeg"]}
@@ -507,30 +434,6 @@ class LatexConverter(BaseDviConverter):
         """TeX Compiler """
         return "latex"
 
-    @classmethod
-    def decline_file(cls, any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
-        # Cannot handle files other than .ps and .eps
-        # if test_file_extent(any_file, bad_for_latex_file_exts):
-        #     return True, f"LatexConverter cannot handle {any_file}." + \
-        #         "See the list of excluded extensions."
-        return False, ""
-
-    @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-        if is_pdftex_line(tex_line):
-            return True, f"LatexConverter cannot handle pdftex at line {line_number}"
-        # if is_vanilla_tex _line(tex_line):
-        #     return True, f"LatexConverter cannot handle pdftex at line {line_number}"
-        if (line_number < 6) and (tex_line.find("\\pdfoutput=1") >= 0):
-            return True, f"LatexConverter cannot handle \\pdfoutput=1 at line {line_number}"
-        for package_name in pick_package_names(tex_line):
-            if package_name in bad_for_latex_packages:
-                # if a package is explicitli asking for dvi, it is ok.
-                if tex_line.find("[dvipdfmx]") >= 0:
-                    continue
-                return True, f"LatexConverter cannot handle {package_name} at line {line_number}"
-        return False, ""
-
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Produce PDF
 
@@ -563,7 +466,7 @@ class LatexConverter(BaseDviConverter):
             args.append("-shell-escape")
         args.append(tex_file)
         return self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
-    
+
     def _ps_to_pdf_run(self, work_dir: str, in_dir: str, out_dir: str) -> dict:
         return super()._base_ps_to_pdf_run(self.stem, work_dir, in_dir, out_dir)
 
@@ -602,38 +505,6 @@ class PdfLatexConverter(BaseConverter):
         """TeX Compiler """
         return "pdflatex"
 
-
-    @classmethod
-    def decline_file(cls, _any_file: str, _parent_dir: str) -> typing.Tuple[bool, str]:
-        # if any_file == ms_dot_tex:
-        #     return True
-
-        # Just having .ps file does not mean that it is bad for pdflatex.
-        #
-        # it = os.path.splitext(any_file)
-        # # Cannot handle .ps file but alt may exist.
-        # if it[1] in bad_for_pdflatex_file_exts:
-        #     for alt_ext in bad_for_latex_file_exts:
-        #         if os.path.exists(os.path.join(parent_dir, it[0] + alt_ext)):
-        #             return False
-        #     return True
-        return False, ""
-
-    @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-        if is_pdftex_line(tex_line):
-            return True, f"PdfLatexConverter cannot handle pdftex at line {line_number}"
-        # filename = find_include_graphics_filename(tex_line)
-        # if filename:
-        #     if test_file_extent(filename, bad_for_pdflatex_file_exts):
-        #         return True, f"PdfLatexConverter cannot handle {filename} at {line_number}."
-        #     pass
-        for package_name in pick_package_names(tex_line):
-            if package_name in bad_for_pdflatex_packages:
-                return True, f"PdfLatexConverter cannot handle {package_name} at line {line_number}"
-
-        return False, ""
-
     def _get_pdflatex_args(self, tex_file: str) -> typing.List[str]:
         """Return the pdflatex command line arguments"""
         args = ["/usr/bin/pdflatex"] + [
@@ -661,7 +532,7 @@ class PdfLatexConverter(BaseConverter):
 
         # This breaks many packages... f"-output-directory=../{bod}"
         self.to_pdf_args = self._get_pdflatex_args(tex_file)
-        
+
         outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "pdf")
         logger.debug("pdflatex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
         return outcome
@@ -764,19 +635,6 @@ class VanillaTexConverter(BaseDviConverter):
     def tex_compiler_name(cls) -> str:
         """TeX Compiler """
         return "tex"
-
-    @classmethod
-    def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
-        return False, ""
-
-    @classmethod
-    def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-        if is_pdflatex_line(tex_line):
-            return True, f"VanillaTexConverter cannot handle line {line_number}"
-        for package_name in pick_package_names(tex_line):
-            if package_name in bad_for_tex_packages:
-                return True, f"TexConverter cannot handle {package_name} at line {line_number}"
-        return False, ""
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Produce PDF
