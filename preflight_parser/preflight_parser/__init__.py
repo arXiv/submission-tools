@@ -665,6 +665,10 @@ class PreflightResponse(BaseModel):
     detected_toplevel_files: list[ToplevelFile]
     tex_files: list[ParsedTeXFile]
 
+    def to_json(self, **kwargs) -> str:
+        """Return a json representation."""
+        return self.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
+
 
 #
 # GLOBAL CONSTANTS
@@ -1140,6 +1144,6 @@ def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> Pr
             tex_files=[],
         )
     if json:
-        return pfr.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
+        return pfr.to_json(**kwargs)
     else:
         return pfr
