@@ -1,4 +1,4 @@
-files: preflight_parser|zerozeroreadme
+files: preflight_parser|zerozeroreadme|tex_inspection
 
 default_language_version:
   python: python3.11
