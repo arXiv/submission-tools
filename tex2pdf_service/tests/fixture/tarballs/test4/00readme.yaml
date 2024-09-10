@@ -1,4 +1,4 @@
-compilation:
+process:
   compiler: latex
 sources:
   - filename: main.tex

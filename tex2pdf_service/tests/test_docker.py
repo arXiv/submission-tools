@@ -11,7 +11,7 @@ PORT = 33031
 
 def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10) -> None | dict:
     meta = None
-    url = service + f"/?timeout={tex2pdf_timeout}"
+    url = service + f"/?timeout={tex2pdf_timeout}&auto_detect=true"
     with open(tarball, "rb") as data_fd:
         uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
         while True:
@@ -114,7 +114,16 @@ def test_api_smoke(docker_container):
     meta = submit_tarball(url, tarball, outcome)
     assert meta is not None
 
-
+#
+# currently fails
+# reason:
+# - old tex2pdf used *all* tex files
+# - new tex2pdf only uses the ones mentioned on ZZRM, in this case only fake-file-2.tex
+# That is, the output gets:
+# - meta.get("pdf_file") == "test2.pdf" (OK)
+# - meta.get("tex_files") == ['fake-file-2.tex'] (ERROR)
+# - meta.get("documents") == [out/fake-file-2.pdf'] (ERROR)
+# I think the new approach of interpreting ZZRM files is cleaner and more easily understandable
 @pytest.mark.integration
 def test_api_test2(docker_container):
     url = docker_container + "/convert"
@@ -128,6 +137,9 @@ def test_api_test2(docker_container):
     assert meta.get("documents") == ['out/fake-file-1.pdf', 'out/fake-file-2.pdf']
 
 
+# That fails now because there is no entry
+#   meta.get("documents")
+# but meta.get("available_documents") is there ... strange TODO
 @pytest.mark.integration
 def test_api_test3(docker_container):
     url = docker_container + "/convert"
@@ -142,6 +154,11 @@ def test_api_test3(docker_container):
     assert meta.get("documents") == ['out/fake-file-2.pdf', 'out/fake-file-1.pdf', 'out/fake-file-3.pdf']
 
 
+#
+# 00readme.yaml contains `compiler = latex` which results
+# in a compilerspec where there is no postprocess
+#   Unknown compiler, cannot select converter latex
+# because we check for "latex+dvips_ps2pdf"
 @pytest.mark.integration
 def test_api_test4(docker_container):
     url = docker_container + "/convert"
