@@ -155,7 +155,7 @@ class CompilerSpec(BaseModel):
             OutputType.dvi: {
                 EngineType.tex: "etex",
                 EngineType.luatex: "dviluatex",
-                # not eaasy to do: EngineType.XETEX: "xetex",
+                # not easy to do: EngineType.XETEX: "xetex",
                 EngineType.ptex: "ptex",
                 EngineType.uptex: "uptex",
             },
@@ -171,7 +171,7 @@ class CompilerSpec(BaseModel):
             OutputType.dvi: {
                 EngineType.tex: "latex",
                 EngineType.luatex: "dvilualatex",
-                # not eaasy to do: EngineType.XETEX: "xetex",
+                # not easy to do: EngineType.XETEX: "xetex",
                 EngineType.ptex: "platex",
                 EngineType.uptex: "uplatex",
             },
@@ -201,11 +201,8 @@ class CompilerSpec(BaseModel):
 
     @property
     def is_determined(self) -> bool:
-        if (
-            self.engine == EngineType.unknown
-            or self.lang == LanguageType.unknown
-            or self.output == OutputType.unknown
-        ):
+        """Check whether a compiler spec is completely determined (no unknowns)."""
+        if self.engine == EngineType.unknown or self.lang == LanguageType.unknown or self.output == OutputType.unknown:
             return False
         return True
 
@@ -225,6 +222,18 @@ class CompilerSpec(BaseModel):
                         ret += f"+{self.postp.value}"
                     return ret
         # if we are still here, something was wrong ....
+        return None
+
+    @property
+    def tex_compiler(self) -> str | None:
+        """Return the TeX compiler to be used."""
+        # first deal with PDF only submissions:
+        if self.lang.value == "pdf":
+            return "pdf_submission"
+        if self.lang in self._COMPILER_SELECTION:
+            if self.output in self._COMPILER_SELECTION[self.lang]:
+                if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
+                    return self._COMPILER_SELECTION[self.lang][self.output][self.engine]
         return None
 
     def from_compiler_string(self, compiler: str):
