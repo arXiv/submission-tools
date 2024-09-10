@@ -1,0 +1,6 @@
+main.tex toplevelfile
+nohyperref
+nostamp
+bla.dvi keepcomments
+foo.dvi landscape
+bar.map fontmap
