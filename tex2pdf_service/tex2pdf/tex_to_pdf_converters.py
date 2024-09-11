@@ -307,10 +307,7 @@ def select_converter_class(zzrm: ZeroZeroReadMe) -> type[BaseConverter]:
     process_spec = zzrm.process.compiler.compiler_string
     if process_spec == "etex+dvips_ps2pdf":
         return VanillaTexConverter
-    # users might select `compiler = latex` in 00readme.yaml, which results in a plain
-    # latex compilation to dvi without postprocessing. Make sure we accept the right
-    # one here.
-    elif process_spec == "latex+dvips_ps2pdf" or process_spec == "latex":
+    elif process_spec == "latex+dvips_ps2pdf":
         return LatexConverter
     elif process_spec == "pdflatex":
         return PdfLatexConverter

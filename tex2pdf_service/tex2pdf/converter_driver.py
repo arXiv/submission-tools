@@ -22,7 +22,7 @@ from tex2pdf import (
     graphics_exts,
     test_file_extent,
 )
-from tex2pdf.doc_converter import combine_documents
+from tex2pdf.doc_converter import combine_documents, strip_to_basename
 from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import chmod_775, unpack_tarball
@@ -350,28 +350,21 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         outcome["pdf_file"] = merged_pdf  # init
         try:
             # artifact moving has moved the pdfs to out_dir while unused pics still in in_dir
-
-            # Docs v2 does not change the compiled order
-            docs_v2 = [f"out/{pdf_file}" for pdf_file in pdf_files]
-            if self.zzrm and self.zzrm.version == 1:
-                docs = sorted(docs_v2)
-                pic_adds = self.unused_pics()[:self.max_appending_files]
-            else:
-                docs = docs_v2
-                pic_adds = self.unused_pics()[:self.max_appending_files]
+            docs = [f"out/{pdf_file}" for pdf_file in pdf_files]
+            pic_adds = self.unused_pics()[:self.max_appending_files]
 
             # Does the converter class support pic additions?
             if self.converter and self.converter.__class__.yes_pix():
                 docs += [f"in/{pic}" for pic in pic_adds]
 
-            # Note the available documents that can be bombined.
+            # Note the available documents that can be combined.
             outcome["available_documents"] = docs
 
             # After all the trouble, if assembling_files is designated in post process, use it.
             # Here, instead of taking the raw, match the basenames and list the docs in the
             # order that appears in the assembling files. If it is missing in either, it is
             # ignored.
-            if self.zzrm and self.zzrm.version > 1 and self.zzrm.assembling_files:
+            if self.zzrm and self.zzrm.assembling_files:
                 # Lay out the ingredients
                 ingredients = {os.path.basename(doc) : doc for doc in docs}
                 cooked = []
