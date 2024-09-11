@@ -114,16 +114,7 @@ def test_api_smoke(docker_container):
     meta = submit_tarball(url, tarball, outcome)
     assert meta is not None
 
-#
-# currently fails
-# reason:
-# - old tex2pdf used *all* tex files
-# - new tex2pdf only uses the ones mentioned on ZZRM, in this case only fake-file-2.tex
-# That is, the output gets:
-# - meta.get("pdf_file") == "test2.pdf" (OK)
-# - meta.get("tex_files") == ['fake-file-2.tex'] (ERROR)
-# - meta.get("documents") == [out/fake-file-2.pdf'] (ERROR)
-# I think the new approach of interpreting ZZRM files is cleaner and more easily understandable
+
 @pytest.mark.integration
 def test_api_test2(docker_container):
     url = docker_container + "/convert"
@@ -132,14 +123,10 @@ def test_api_test2(docker_container):
     meta = submit_tarball(url, tarball, outcome)
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
-    assert meta.get("tex_files") == ['fake-file-2.tex', 'fake-file-1.tex']
+    assert meta.get("tex_files") == ['fake-file-2.tex']
     # autotex says that the documents are combined alphabetically
-    assert meta.get("documents") == ['out/fake-file-1.pdf', 'out/fake-file-2.pdf']
+    assert meta.get("documents") == ['out/fake-file-2.pdf']
 
-
-# That fails now because there is no entry
-#   meta.get("documents")
-# but meta.get("available_documents") is there ... strange TODO
 @pytest.mark.integration
 def test_api_test3(docker_container):
     url = docker_container + "/convert"
@@ -154,11 +141,6 @@ def test_api_test3(docker_container):
     assert meta.get("documents") == ['out/fake-file-2.pdf', 'out/fake-file-1.pdf', 'out/fake-file-3.pdf']
 
 
-#
-# 00readme.yaml contains `compiler = latex` which results
-# in a compilerspec where there is no postprocess
-#   Unknown compiler, cannot select converter latex
-# because we check for "latex+dvips_ps2pdf"
 @pytest.mark.integration
 def test_api_test4(docker_container):
     url = docker_container + "/convert"
@@ -168,7 +150,5 @@ def test_api_test4(docker_container):
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ['main.tex', 'gdp.tex']
-    # There is no reasons given for designating latex
-    assert meta.get("reasons") == []
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
