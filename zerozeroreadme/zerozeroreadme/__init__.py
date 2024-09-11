@@ -33,6 +33,7 @@ DEFAULT_LANGUAGE_TYPE: LanguageType = LanguageType.latex
 DEFAULT_OUTPUT_TYPE: OutputType = OutputType.pdf
 DEFAULT_POSTPROCESS_TYPE: PostProcessType = PostProcessType.none
 
+
 def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
     """Convert string to yaml representation."""
     if "\n" in data:
@@ -43,6 +44,13 @@ def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
 def yaml_repr_ordered_dict(dumper: RoundTripRepresenter, data: OrderedDict) -> MappingNode:
     """Convert ordered dict to yaml representation."""
     return dumper.represent_mapping("tag:yaml.org,2002:map", dict(data))
+
+
+def strip_to_basename(path_list: list[str], extent: None | str = None) -> list[str]:
+    """Strip the path to the basename."""
+    if extent is None:
+        return [os.path.basename(path) for path in path_list]
+    return [os.path.splitext(os.path.basename(path))[0] + extent for path in path_list]
 
 
 class FileUsageType(str, Enum):
@@ -312,7 +320,9 @@ class ZeroZeroReadMe:
         # Now we are sure we have toplevel files set.
         # If no compiler is selected, select it based on the first toplevel file
         if self.process.compiler is None:
-            self.process.compiler = CompilerSpec(engine=EngineType.unknown, lang=LanguageType.unknown, output=OutputType.unknown)
+            self.process.compiler = CompilerSpec(
+                engine=EngineType.unknown, lang=LanguageType.unknown, output=OutputType.unknown
+            )
         if not self.process.compiler.is_determined:
             first_tex = self.toplevels[0]
             # search for first_tex in the detected toplevel files
@@ -325,7 +335,7 @@ class ZeroZeroReadMe:
                 # Couldn't find selected file in list of toplevel files
                 return False
             if self.process.compiler.engine == EngineType.unknown:
-                if found_tlp.process.compiler.engine ==  EngineType.unknown:
+                if found_tlp.process.compiler.engine == EngineType.unknown:
                     self.process.compiler.engine = DEFAULT_ENGINE_TYPE
                 else:
                     self.process.compiler.engine = found_tlp.process.compiler.engine
@@ -418,7 +428,8 @@ class ZeroZeroReadMe:
         assembly = []
         for fn, uf in self.sources.items():
             if uf.usage == FileUsageType.toplevel:
-                assembly.append(fn)
+                # convert .tex to .pdf filename
+                assembly.append(strip_to_basename([fn], ".pdf")[0])
             elif uf.usage == FileUsageType.include:
                 assembly.append(fn)
         return assembly
