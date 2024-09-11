@@ -138,12 +138,13 @@ develop = false
 
 [package.dependencies]
 chardet = "^5.0"
+pydantic = "^2.8.2"
 
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "HEAD"
-resolved_reference = "f981c099cd50b949b4a486bd26dbfd283ba57d11"
+reference = "ARXIVCE-2542-use-new-preflight"
+resolved_reference = "bd9e714a2ecf5c8305e839bbe83b5ad0e41e2c25"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -413,4 +414,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "5dde73d3b8b9dee64cb12143869316d567ee444362cff7d4480808bee4a4e468"
+content-hash = "88c4f85f83b9b81ba580feacbaafbcc178e84b6695d063b9091d78f7e05617ef"
