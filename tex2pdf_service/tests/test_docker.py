@@ -43,39 +43,40 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
     return meta
 
 @pytest.fixture(scope="module")
-def docker_container():
+def docker_container(request):
+    PORT = request.config.getoption('--docker-port')
+    url = f"http://localhost:{PORT}"
+
     os.makedirs("tests/output", exist_ok=True)
 
-    image_name = "public-tex2pdf-app-2024-2024-07-21"
-    container_name = "test-arxiv-tex2pdf"
-    dockerport = "8080"
+    if not request.config.getoption('--no-docker-setup'):
+        image_name = "public-tex2pdf-app-2024-2024-07-21"
+        container_name = "test-arxiv-tex2pdf"
+        dockerport = "8080"
 
-    subprocess.call(["docker", "kill", container_name])
+        subprocess.call(["docker", "kill", container_name])
 
-    # Make sure the container is the latest
-    args = ["make", "app.docker"]
-    make = subprocess.run(args, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if make.returncode != 0:
-        print(make.stdout)
-        print(make.stderr)
-        pass
+        # Make sure the container is the latest
+        args = ["make", "app.docker"]
+        make = subprocess.run(args, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if make.returncode != 0:
+            print(make.stdout)
+            print(make.stderr)
+            pass
 
-    # Start the container
-    args = ["docker", "run", '--security-opt', "no-new-privileges=true", "--cpus", "1", "--rm",
-            "-d",
-            "-p", f"{PORT}:{dockerport}",
-            "-e", f"PORT={dockerport}",
-            "--name", container_name,
-            image_name]
-    docker = subprocess.run(args, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if docker.returncode != 0:
-        logging.error("tex2pdf container did not start")
-        pass
-
-    # container_id = docker.stdout
+        # Start the container
+        args = ["docker", "run", '--security-opt', "no-new-privileges=true", "--cpus", "1", "--rm",
+                "-d",
+                "-p", f"{PORT}:{dockerport}",
+                "-e", f"PORT={dockerport}",
+                "--name", container_name,
+                image_name]
+        docker = subprocess.run(args, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if docker.returncode != 0:
+            logging.error("tex2pdf container did not start")
+            pass
 
     # Wait for the API to be ready
-    url = f"http://localhost:{PORT}"
     for _ in range(60):  # retries for 60 seconds
         try:
             response = requests.get(url)
@@ -89,10 +90,11 @@ def docker_container():
 
     yield url
 
-    # Stop the container after tests
-    with open("tex2pdf.log", "w", encoding="utf-8") as log:
-        subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
-    subprocess.call(["docker", "kill", container_name])
+    if not request.config.getoption('--no-docker-setup'):
+        # Stop the container after tests
+        with open("tex2pdf.log", "w", encoding="utf-8") as log:
+            subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
+        subprocess.call(["docker", "kill", container_name])
 
 @pytest.mark.integration
 def test_api_hello(docker_container):
