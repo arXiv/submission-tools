@@ -17,7 +17,7 @@ from preflight_parser import (
 class TestBaseModels(unittest.TestCase):
     def test_preflightstatus(self):
         pfs = PreflightStatus(key=PreflightStatusValues.success, info="Something")
-        ret = pfs.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
+        ret = pfs.json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
     "key": "success",
     "info": "Something"
@@ -26,7 +26,7 @@ class TestBaseModels(unittest.TestCase):
 
     def test_includespec_1(self):
         inc = IncludeSpec(cmd="input", source="core", type=FileType.tex, extensions=TEX_EXTENSIONS, take_options=False)
-        ret = inc.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
+        ret = inc.json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
     "cmd": "input",
     "source": "core",
@@ -40,7 +40,7 @@ class TestBaseModels(unittest.TestCase):
         inc = IncludeSpec(
             cmd="usepackage", source="core", type=FileType.tex, extensions="sty", take_options=True, multi_args=True
         )
-        ret = inc.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
+        ret = inc.json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
     "cmd": "usepackage",
     "source": "core",
@@ -52,7 +52,7 @@ class TestBaseModels(unittest.TestCase):
 
     def test_indexprocessorspec(self):
         ips = IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True)
-        ret = ips.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
+        ret = ips.json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
     "processor": "makeindex",
     "pre_generated": true
@@ -61,7 +61,7 @@ class TestBaseModels(unittest.TestCase):
 
     def test_bibprocessorspec(self):
         ips = BibProcessSpec(processor=BibCompiler.biber, pre_generated=False)
-        ret = ips.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
+        ret = ips.json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
     "processor": "biber",
     "pre_generated": false
@@ -71,55 +71,55 @@ class TestBaseModels(unittest.TestCase):
     def test_compilerspec_1(self):
         """Test CompilerSpec initialized from compiler string."""
         self.assertEqual(
-            CompilerSpec(compiler="etex+dvipdfmx").model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvipdfmx"}""",
+            CompilerSpec(compiler="etex+dvipdfmx").json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "tex", "output": "dvi", "postp": "dvipdfmx"}""",
         )
         self.assertEqual(
-            CompilerSpec(compiler="pdflatex").model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            CompilerSpec(compiler="pdflatex").json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
         self.assertEqual(
-            CompilerSpec(compiler="etex+dvips_ps2pdf").model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvips_ps2pdf"}""",
+            CompilerSpec(compiler="etex+dvips_ps2pdf").json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "tex", "output": "dvi", "postp": "dvips_ps2pdf"}""",
         )
         self.assertEqual(
-            CompilerSpec(compiler="latex+dvips_ps2pdf").model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
+            CompilerSpec(compiler="latex+dvips_ps2pdf").json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "dvi", "postp": "dvips_ps2pdf"}""",
         )
         self.assertEqual(
-            CompilerSpec(compiler="pdf_submission").model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"unknown","lang":"pdf","output":"unknown","postp":"none"}""",
+            CompilerSpec(compiler="pdf_submission").json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "unknown", "lang": "pdf", "output": "unknown", "postp": "none"}""",
         )
 
     def test_compilerspec_2(self):
         """Test CompilerSpec initialized from dict of data."""
         self.assertEqual(
-            CompilerSpec(engine="tex", lang="tex", output="dvi", postp="dvipdfmx").model_dump_json(
+            CompilerSpec(engine="tex", lang="tex", output="dvi", postp="dvipdfmx").json(
                 exclude_none=True, exclude_defaults=True
             ),
-            """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvipdfmx"}""",
+            """{"engine": "tex", "lang": "tex", "output": "dvi", "postp": "dvipdfmx"}""",
         )
         self.assertEqual(
-            CompilerSpec(engine="tex", lang="latex", output="pdf", postp="none").model_dump_json(
+            CompilerSpec(engine="tex", lang="latex", output="pdf", postp="none").json(
                 exclude_none=True, exclude_defaults=True
             ),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
         self.assertEqual(
-            CompilerSpec(engine="tex", lang="tex", output="dvi", postp="dvips_ps2pdf").model_dump_json(
+            CompilerSpec(engine="tex", lang="tex", output="dvi", postp="dvips_ps2pdf").json(
                 exclude_none=True, exclude_defaults=True
             ),
-            """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvips_ps2pdf"}""",
+            """{"engine": "tex", "lang": "tex", "output": "dvi", "postp": "dvips_ps2pdf"}""",
         )
         self.assertEqual(
-            CompilerSpec(engine="tex", lang="latex", output="dvi", postp="dvips_ps2pdf").model_dump_json(
+            CompilerSpec(engine="tex", lang="latex", output="dvi", postp="dvips_ps2pdf").json(
                 exclude_none=True, exclude_defaults=True
             ),
-            """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
+            """{"engine": "tex", "lang": "latex", "output": "dvi", "postp": "dvips_ps2pdf"}""",
         )
         self.assertEqual(
-            CompilerSpec(engine="unknown", lang="pdf", output="unknown", postp="none").model_dump_json(
+            CompilerSpec(engine="unknown", lang="pdf", output="unknown", postp="none").json(
                 exclude_none=True, exclude_defaults=True
             ),
-            """{"engine":"unknown","lang":"pdf","output":"unknown","postp":"none"}""",
+            """{"engine": "unknown", "lang": "pdf", "output": "unknown", "postp": "none"}""",
         )

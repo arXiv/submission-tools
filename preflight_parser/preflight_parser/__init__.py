@@ -12,7 +12,7 @@ from itertools import zip_longest
 from pprint import pformat
 
 import chardet
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -316,7 +316,7 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    _data: str = ""
+    _data: str = PrivateAttr(default="")
     output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
@@ -667,7 +667,7 @@ class PreflightResponse(BaseModel):
 
     def to_json(self, **kwargs) -> str:
         """Return a json representation."""
-        return self.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
+        return self.json(exclude_none=True, exclude_defaults=True, **kwargs)
 
 
 #

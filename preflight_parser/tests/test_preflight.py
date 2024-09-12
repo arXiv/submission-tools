@@ -26,8 +26,8 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.tex_files[0].used_other_files, ["ImageOfNobelPrize.jpg"])
         # check for correct detection of output==pdf when a jpg is included
         self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
 
     def test_preflight_single_tex_1(self):
@@ -36,8 +36,8 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
 
     def test_preflight_single_tex_2(self):
@@ -47,8 +47,8 @@ class TestPreflight(unittest.TestCase):
         # we do NOT check for 00README entries, so nothing is ignored
         self.assertEqual(len(pf.detected_toplevel_files), 3)
         self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
 
     def test_preflight_single_tex_3(self):
@@ -58,8 +58,8 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
         for tf in pf.tex_files:
             if tf.filename == "fake-file-1.tex":
@@ -73,8 +73,8 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 2)
         self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
         for tf in pf.tex_files:
             if tf.filename == "fake-file-1.tex":
@@ -89,6 +89,6 @@ class TestPreflight(unittest.TestCase):
         pf_json: str = generate_preflight_response(dir_path, json=True)
         pf_dict: dict = json.loads(pf_json)
         pf: PreflightResponse = PreflightResponse(**pf_dict)
-        pf_json_roundtrip = pf.model_dump_json(exclude_none=True, exclude_defaults=True)
+        pf_json_roundtrip = pf.json(exclude_none=True, exclude_defaults=True)
         self.assertEqual(pf_json, pf_json_roundtrip)
 
