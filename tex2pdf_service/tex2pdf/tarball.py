@@ -23,6 +23,16 @@ class RemovedSubmission(Exception):
     pass
 
 
+class ZZRMUnderspecified(Exception):
+    """Submitted archive either misses a 00README file or it is underspecified."""
+    pass
+
+
+class ZZRMUnsupportedCompiler(Exception):
+    """Submitted archive contains 00Readme but compiler is not supported."""
+    pass
+
+
 def chmod_775(root_dir: str) -> None:
     """Recursively chmod 775 the directory"""
     for dirpath, _dirnames, filenames in os.walk(root_dir):

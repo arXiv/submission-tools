@@ -25,7 +25,7 @@ from tex2pdf import (
 from tex2pdf.doc_converter import combine_documents, strip_to_basename
 from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
 from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import chmod_775, unpack_tarball
+from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, chmod_775, unpack_tarball
 from tex2pdf.tex_patching import fix_tex_sources
 from tex2pdf.tex_to_pdf_converters import BaseConverter, select_converter_class
 from tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -143,7 +143,7 @@ class ConverterDriver:
 
         if not self.zzrm.is_ready_for_compilation:
             if not self.auto_detect:
-                raise Exception("Not ready for compilation and auto-detect disabled")
+                raise ZZRMUnderspecified("Not ready for compilation and auto-detect disabled")
             logger.debug("Running preflight for input since no 00README present")
             preflight_response = generate_preflight_response(self.in_dir)
             self.outcome["preflight_v2"] = preflight_response.to_json()
@@ -152,14 +152,14 @@ class ConverterDriver:
                 # TODO what to do here?
                 raise Exception("Preflight didn't succeed!")
             if not self.zzrm.update_from_preflight(preflight_response):
-                raise Exception("Cannot determine compiler from preflight and sources")
+                raise ZZRMUnderspecified("Cannot determine compiler from preflight and sources")
 
         # we should now be ready to go
         if not self.zzrm.is_ready_for_compilation:
-            raise Exception("Still not ready for compilation -- this is strange")
+            raise ZZRMUnderspecified("Still not ready for compilation -- this is strange")
 
         if not self.zzrm.is_supported_compiler:
-            raise Exception("Unsupported compiler")
+            raise ZZRMUnsupportedCompiler
 
         tex_files = self.zzrm.toplevels
         if self.zzrm.readme_filename is not None:
@@ -216,6 +216,7 @@ class ConverterDriver:
     def report_preflight(self) -> None:
         """Set the values to zzrm."""
         if self.preflight == PreflightVersion.V1:
+            # should not happen, we bail out already at the API entry point.
             raise ValueError("Preflight v1 is not supported anymore")
         elif self.preflight == PreflightVersion.V2:
             # we might have already computed preflight, don't recompute it again
