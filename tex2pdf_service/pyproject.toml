@@ -17,9 +17,9 @@ ruamel-yaml = "^0.18.5"
 pillow = "^10.2.0"
 python-multipart = "^0.0.6"
 psutil = "^5.9.8"
-tex_inspection = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex_inspection", branch = "pydantic1" }
-preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser", branch = "pydantic1" }
-zerozeroreadme = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "zerozeroreadme", branch = "pydantic1" }
+tex_inspection = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex_inspection", branch = "ARXIVCE-2542-use-new-preflight" }
+preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser", branch = "ARXIVCE-2542-use-new-preflight" }
+zerozeroreadme = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "zerozeroreadme", branch = "ARXIVCE-2542-use-new-preflight" }
 hypercorn = {extras = ["h2"], version = "^0.16.0"}
 pymupdf = "^1.24.9"
 
