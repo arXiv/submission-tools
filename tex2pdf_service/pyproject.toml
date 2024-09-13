@@ -14,7 +14,7 @@ fastapi = "^0.104.1"
 pikepdf = "^8.7.1"
 python-json-logger = "^2.0.7"
 ruamel-yaml = "^0.18.5"
-pillow = "^10.2.0"
+pillow = "^10.4.0"
 python-multipart = "^0.0.6"
 psutil = "^5.9.8"
 tex_inspection = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex_inspection", branch = "ARXIVCE-2542-use-new-preflight" }
