@@ -44,6 +44,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
 
 @pytest.fixture(scope="module")
 def docker_container(request):
+    global PORT
     PORT = request.config.getoption('--docker-port')
     url = f"http://localhost:{PORT}"
 
