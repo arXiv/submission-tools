@@ -12,7 +12,7 @@ tomli_w = "^1.0"
 preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser", branch = "ARXIVCE-2542-use-new-preflight" }
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.2"
+pytest = "^8.3.3"
 mypy = "*"
 mypy-extensions = "*"
 pydantic = "==1.10.*"

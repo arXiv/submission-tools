@@ -12,7 +12,7 @@ pydantic = "==1.10.*"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
-pytest = "^8.3.2"
+pytest = "^8.3.3"
 mypy = "*"
 mypy-extensions = "*"
 
