@@ -141,6 +141,11 @@ class ConverterDriver:
         # Find the starting point
         fix_tex_sources(self.in_dir)
 
+        if self.preflight is not PreflightVersion.NONE:
+            logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
+            self.report_preflight()
+            return None
+
         if not self.zzrm.is_ready_for_compilation:
             if not self.auto_detect:
                 raise ZZRMUnderspecified("Not ready for compilation and auto-detect disabled")
@@ -189,11 +194,6 @@ class ConverterDriver:
                          extra=self.log_extra)
             self.outcome.update({"status": "fail", "tex_file": None,
                                  "in_files": file_props_in_dir(self.in_dir)})
-            return None
-
-        if self.preflight is not PreflightVersion.NONE:
-            logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
-            self.report_preflight()
             return None
 
         # Once no-hyperref is implemented, change here - future fixme
