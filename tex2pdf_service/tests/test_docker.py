@@ -6,12 +6,13 @@ import subprocess
 import pytest
 from bin.compile_submissions import get_outcome_meta
 import logging
+import json
 
 PORT = 33031
 
-def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10) -> None | dict:
+def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10, json_response: bool = False, api_args: str = "") -> None | dict:
     meta = None
-    url = service + f"/?timeout={tex2pdf_timeout}&auto_detect=true"
+    url = service + f"/?timeout={tex2pdf_timeout}{api_args}"
     with open(tarball, "rb") as data_fd:
         uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
         while True:
@@ -26,10 +27,12 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
 
                 if status_code == 200:
                     if res.content:
-                        with open(outcome_file, "wb") as out:
-                            out.write(res.content)
-                        meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(
-                            outcome_file)
+                        if json_response:
+                            return json.loads(res.content)
+                        else:
+                            with open(outcome_file, "wb") as out:
+                                out.write(res.content)
+                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
                 else:
                     logging.warning(f"%s: status code %d", url, status_code)
 
@@ -114,7 +117,7 @@ def test_api_smoke(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test1/test1.tar.gz"
     outcome = "tests/output/test1.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome)
+    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
     assert meta is not None
 
 
@@ -123,7 +126,7 @@ def test_api_test2(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test2/test2.tar.gz"
     outcome = "tests/output/test2.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome)
+    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
     assert meta.get("tex_files") == ['fake-file-2.tex']
@@ -135,7 +138,7 @@ def test_api_test3(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
     outcome = "tests/output/test3.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome)
+    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
     assert meta.get("tex_files") == ['fake-file-2.tex', 'fake-file-1.tex', 'fake-file-3.tex']
@@ -149,9 +152,23 @@ def test_api_test4(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test4/test4.tar.gz"
     outcome = "tests/output/test4.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome)
+    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ['main.tex', 'gdp.tex']
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
+
+@pytest.mark.integration
+def test_api_preflight(docker_container):
+    url = docker_container + "/convert"
+    tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
+    outcome = "tests/output/test3.outcome.tar.gz"
+    meta = submit_tarball(url, tarball, outcome, json_response=True, api_args="&preflight=v2")
+    assert meta is not None
+    print(meta)
+    assert meta.get("status").get("key") == "success"
+    assert len(meta.get("detected_toplevel_files")) == 3
+    assert [f["filename"] for f in meta.get("detected_toplevel_files")] == ['fake-file-1.tex', 'fake-file-2.tex', 'fake-file-3.tex']
+
+
