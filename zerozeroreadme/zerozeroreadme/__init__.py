@@ -340,17 +340,17 @@ class ZeroZeroReadMe:
                 else:
                     self.process.compiler.engine = found_tlp.process.compiler.engine
             if self.process.compiler.lang == LanguageType.unknown:
-                if found_tlp.process.lang == LanguageType.unknown:
+                if found_tlp.process.compiler.lang == LanguageType.unknown:
                     self.process.compiler.lang = DEFAULT_LANGUAGE_TYPE
                 else:
                     self.process.compiler.lang = found_tlp.process.compiler.lang
             if self.process.compiler.output == OutputType.unknown:
-                if found_tlp.process.output == OutputType.unknown:
+                if found_tlp.process.compiler.output == OutputType.unknown:
                     self.process.compiler.output = DEFAULT_OUTPUT_TYPE
                 else:
                     self.process.compiler.output = found_tlp.process.compiler.output
             if self.process.compiler.postp is None or self.process.compiler.postp == PostProcessType.unknown:
-                if found_tlp.process.postp == PostProcessType.unknown:
+                if found_tlp.process.compiler.postp == PostProcessType.unknown:
                     self.process.compiler.postp = DEFAULT_POSTPROCESS_TYPE
                 else:
                     self.process.compiler.postp = found_tlp.process.compiler.postp
