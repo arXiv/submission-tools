@@ -321,6 +321,8 @@ class ParsedTeXFile(BaseModel):
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
     postprocess: PostProcessType = PostProcessType.unknown
+    contains_documentclass: bool = False
+    contains_bye: bool = False
     used_tex_files: list[str] = []
     used_bib_files: list[str] = []
     used_other_files: list[str] = []
@@ -341,9 +343,11 @@ class ParsedTeXFile(BaseModel):
             language = LanguageType.latex
         if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
             language = LanguageType.latex
-        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_\n]", self._data, re.MULTILINE):
+        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_]", self._data, re.MULTILINE):
             language = LanguageType.tex
-        if re.search(r"^[^%\n]*\\documentclass", self._data, re.MULTILINE):
+            self.contains_bye = True
+        if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z0-9_]", self._data, re.MULTILINE):
+            self.contains_documentclass = True
             if language == LanguageType.tex:
                 self.issues.append(
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
@@ -529,8 +533,35 @@ class ParsedTeXFile(BaseModel):
         logging.debug(file_incspec)
         self.mentioned_files |= file_incspec
 
+    def generic_walk_document_tree(
+        self, map: Callable[["ParsedTeXFile"], typing.Any], reduce: Callable[[typing.Any, typing.Any], typing.Any]
+    ):
+        """Walk the document tree in map/reduce fashion."""
+        return self._generic_walk_document_tree(map, reduce, {})
+
+    def _generic_walk_document_tree(
+        self,
+        map: Callable[["ParsedTeXFile"], typing.Any],
+        reduce: Callable[[typing.Any, typing.Any], typing.Any],
+        visited: dict[str, bool],
+    ) -> list[typing.Any]:
+        """Call a function on any node of a document tree - internal helper."""
+        ret = map(self)
+        visited[self.filename] = True
+        for n in self.children:
+            if n.filename not in visited:
+                ret_kid = n._generic_walk_document_tree(map, reduce, visited)
+                ret = reduce(ret, ret_kid)
+        return ret
+
+    # TODO rewrite using _generic_walk_document_tree - below code breaks with
     def walk_document_tree(self, func: Callable[["ParsedTeXFile"], list[typing.Any]]) -> list[typing.Any]:
         """Call a function on any node of a document tree."""
+        # return self._generic_walk_document_tree(
+        #     func,
+        #     lambda x,y: x.extend(y),
+        #     {}
+        # )
         return self._walk_document_tree(func, {})
 
     def _walk_document_tree(
@@ -545,6 +576,7 @@ class ParsedTeXFile(BaseModel):
                 ret.extend(ret_kid)
         return ret
 
+    # TODO rewrite using _generic_walk_document_tree
     def find_entry_in_subgraph(
         self,
     ) -> tuple[LanguageType, OutputType, EngineType, PostProcessType, list[TeXFileIssue]]:
@@ -624,6 +656,7 @@ class ParsedTeXFile(BaseModel):
 
         return found_language, found_output, found_engine, found_postprocess, issues
 
+    # TODO rewrite using _generic_walk_document_tree
     def recursive_collect_files(self, what: FileType | str) -> list[str]:
         """Recursively collect all tex/bib/other files."""
         return self._recursive_collect_files(what, {})
@@ -1068,7 +1101,22 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             if nr_issues > 0:
                 issues.append(TeXFileIssue(IssueType.issue_in_subfile, str(nr_issues), filename=fn))
         tl.issues = issues
-        toplevel_files[f] = tl
+        # it is not enough to be a latex file and a root file to be a toplevel file
+        # we need to have documentclass being found in one of the include files
+        if tl_n.language == LanguageType.latex:
+            contains_documentclass_somewhere = tl_n.generic_walk_document_tree(
+                lambda x: x.contains_documentclass, lambda x, y: x or y
+            )
+            #
+            if contains_documentclass_somewhere:
+                toplevel_files[f] = tl
+        elif tl_n.language == LanguageType.tex or tl_n.language == LanguageType.unknown:
+            # we could have \bye in a subfile, and the main file is not detected as tex file
+            contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
+            if contains_bye_somewhere:
+                toplevel_files[f] = tl
+        else:
+            raise PreflightException(f"Unsupported language type {tl_n.language}")
 
     return toplevel_files
 
