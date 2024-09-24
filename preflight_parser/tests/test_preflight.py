@@ -83,6 +83,35 @@ class TestPreflight(unittest.TestCase):
                 self.assertEqual(tf.issues[0].key.value, "file_not_found")
             self.assertEqual(tf.language.value, "latex")
 
+    def test_preflight_multi_tex_3(self):
+        """Test multiple files, inclusions, plain tex."""
+        dir_path = os.path.join(self.fixture_dir, "multi_tex_3")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 8)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
+        )
+        found = False
+        for tf in pf.detected_toplevel_files:
+            print(f"===> {tf.filename}")
+            if tf.filename == "plain-main.tex":
+                self.assertEqual(
+                    tf.process.compiler.json(exclude_none=True, exclude_defaults=True),
+                    """{"engine": "tex", "lang": "tex", "output": "dvi", "postp": "dvips_ps2pdf"}""",
+                )
+                found = True
+                break
+        self.assertTrue(found)
+        # make sure that we do not detect section3.tex as toplevel
+        found = False
+        for tf in pf.detected_toplevel_files:
+            if tf.filename == "section3.tex":
+                found = True
+                break
+        self.assertTrue(not found)
+
     def test_preflight_roundtrip(self):
         """Test roundtrip behavior from json response via PreFlightResponse to json."""
         dir_path = os.path.join(self.fixture_dir, "2311.03267")
