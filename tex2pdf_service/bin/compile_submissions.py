@@ -24,20 +24,18 @@ gives you the all of outcome json files to single file once you run the harvest.
 """
 
 import hashlib
+import json
+import logging
 import os
-import time
-import typing
+import sqlite3
+import tarfile
+import threading
+from multiprocessing.pool import ThreadPool
 from sqlite3 import Connection
 
 import click
-import requests
-import logging
-import sqlite3
+from tex2pdf.remote_call import submit_tarball
 from tqdm import tqdm
-from multiprocessing.pool import ThreadPool
-import tarfile
-import json
-import threading
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -54,16 +52,15 @@ def score_db(score_path: str) -> Connection:
 def cli() -> None:
     pass
 
-
 def tarball_to_outcome_path(tarball: str) -> str:
-    """Map tarball to outcome file path"""
+    """Map tarball to outcome file path."""
     parent_dir, filename = os.path.split(tarball)
     stem = filename[:-7]
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
-def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], typing.List[str], typing.List[str], str]:
-    """Open a compressed outcome tar archive and get the metadata"""
+def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str], list[str], list[str], str]:
+    """Open a compressed outcome tar archive and get the metadata."""
     meta = {}
     files = set()
     clsfiles = set()
@@ -112,49 +109,21 @@ def get_outcome_meta(outcome_file: str) -> typing.Tuple[dict, typing.List[str], 
 @click.option('--post-timeout', default=600, help='timeout for the complete post')
 @click.option('--threads', default=64, help='Number of threads requested for threadpool')
 def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int) -> None:
-    """Compile submissions in a directory"""
+    """Compile submissions in a directory."""
 
-    def submit_tarball(tarball: str) -> None:
+    def local_submit_tarball(tarball: str) -> None:
         outcome_file = tarball_to_outcome_path(tarball)
-        if os.path.exists(outcome_file):
-            return
-        os.makedirs(os.path.dirname(outcome_file), exist_ok=True)
-        logging.info("File: %s", os.path.basename(tarball))
-        meta = {}
-        status_code = None
-
-        with open(tarball, "rb") as data_fd:
-            uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
-            while True:
-                try:
-                    res = requests.post(service + f"?timeout={tex2pdf_timeout}", files=uploading, timeout=post_timeout, allow_redirects=False)
-                    status_code = res.status_code
-                    if status_code == 504:
-                        logging.warning("Got 504 for %s", service)
-                        time.sleep(1)
-                        continue
-
-                    if status_code == 200:
-                        if res.content:
-                            with open(outcome_file, "wb") as out:
-                                out.write(res.content)
-                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
-                except TimeoutError:
-                    logging.warning("%s: Connection timed out", tarball)
-
-                except Exception as exc:
-                    logging.warning("%s: %s", tarball, str(exc))
-                break
-
-        success = meta.get("status") == "success"
-        logging.log(logging.INFO if success else logging.WARNING,
-                    "submit: %s (%s) %s", os.path.basename(tarball), str(status_code), success)
+        try:
+            submit_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout)
+        except FileExistsError:
+            logging.info(f"Not recreating already existing {outcome_file}.")
+            pass
 
     source_dir = os.path.expanduser(submissions)
     tarballs = [os.path.join(source_dir, tarball) for tarball in os.listdir(source_dir) if tarball.endswith(".tar.gz") and not tarball.startswith("outcome-")]
     logging.info("Got %d tarballs", len(tarballs))
     with ThreadPool(processes=int(threads)) as pool:
-        pool.map(submit_tarball, tarballs)
+        pool.map(local_submit_tarball, tarballs)
     logging.info("Finished")
 
 
@@ -164,7 +133,7 @@ def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, po
 @click.option('--update',  default=False, help="Update scores")
 @click.option('--purge-failed',  default=False, help="Purge failed outcomes")
 def register_outcomes(submissions: str, score: str, update: bool, purge_failed: bool) -> None:
-    """Register the outcomes to a score card db"""
+    """Register the outcomes to a score card db."""
     submissions = os.path.expanduser(submissions)
     sdb = score_db(score)
     outcomes_dir = os.path.join(submissions, "outcomes")
@@ -194,7 +163,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         outcome_file = tarball_to_outcome_path(tarball_path)
         if os.path.exists(outcome_file):
             try:
-                meta, files, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
+                meta, files, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
                 pdf_file = meta.get("pdf_file")
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
