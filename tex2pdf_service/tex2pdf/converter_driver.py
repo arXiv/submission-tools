@@ -24,6 +24,7 @@ from tex2pdf import (
 )
 from tex2pdf.doc_converter import combine_documents, strip_to_basename
 from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
+from tex2pdf.remote_call import submit_tarball, get_outcome_meta
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, chmod_775, unpack_tarball
 from tex2pdf.tex_patching import fix_tex_sources
@@ -552,3 +553,31 @@ class ConversionOutcomeMaker:
         except Exception as _exc:
             pass
         return meta
+
+class RemoteConverterDriver(ConverterDriver):
+    """Uses compilation service for conversion."""
+
+    service: str
+    post_timeout: int
+
+    def __init__(self, service: str, post_timeout: int, work_dir: str, source: str, **kwargs):
+        super().__init__(work_dir, source, **kwargs)
+        self.service = service
+        self.post_timeout = post_timeout
+
+    def generate_pdf(self) -> str|None:
+        """We have the beef."""
+        logger = get_logger()
+        self.t0 = time.perf_counter()
+
+        local_tarball = os.path.join(self.work_dir, self.source)
+        outcome_file = os.path.join(self.work_dir, f"outcome-{self.source}")
+
+        # hard coded post_timeout = 600 as of now
+        # not sure I want to make this another init option
+        submit_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout)
+        self.outcome = get_outcome_meta(outcome_file)
+
+        # TODO
+        # - discard (is this necessary?) the stuff we have created
+        return self.outcome.get("pdf_file")
