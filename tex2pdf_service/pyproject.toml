@@ -22,6 +22,7 @@ preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdi
 zerozeroreadme = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "zerozeroreadme", branch = "ARXIVCE-2542-use-new-preflight" }
 hypercorn = {extras = ["h2"], version = "^0.16.0"}
 pymupdf = "^1.24.10"
+requests = "^2.32.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
@@ -31,7 +32,6 @@ mypy = "*"
 mypy-extensions = "*"
 tqdm = "^4.66.2"
 uvicorn = "^0.29.0"
-requests = "^2.32.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1374,4 +1374,4 @@ subdirectory = "zerozeroreadme"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "0c1af3c635b1a4126ef297582f6ccc758c7c291c42687cf562148b571d7fde19"
+content-hash = "77933bd0b9d81ba27a6e04ff3ecbac247fb85d7df082aab5689dc28d3a5fc60b"
