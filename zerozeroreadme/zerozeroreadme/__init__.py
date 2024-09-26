@@ -16,6 +16,8 @@ from preflight_parser import (
     OutputType,
     ParseSyntaxError,
     PostProcessType,
+    PreflightResponse,
+    ToplevelFile,
     string_to_bool,
 )
 from pydantic import BaseModel
@@ -24,6 +26,12 @@ from ruamel.yaml.representer import RoundTripRepresenter
 
 # 00README file extensions - earlier wins
 ZZRM_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
+
+# We default to pdflatex
+DEFAULT_ENGINE_TYPE: EngineType = EngineType.tex
+DEFAULT_LANGUAGE_TYPE: LanguageType = LanguageType.latex
+DEFAULT_OUTPUT_TYPE: OutputType = OutputType.pdf
+DEFAULT_POSTPROCESS_TYPE: PostProcessType = PostProcessType.none
 
 
 def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
@@ -36,6 +44,13 @@ def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
 def yaml_repr_ordered_dict(dumper: RoundTripRepresenter, data: OrderedDict) -> MappingNode:
     """Convert ordered dict to yaml representation."""
     return dumper.represent_mapping("tag:yaml.org,2002:map", dict(data))
+
+
+def strip_to_basename(path: str, extent: None | str = None) -> str:
+    """Strip the path to the basename."""
+    if extent is None:
+        return os.path.basename(path)
+    return os.path.splitext(os.path.basename(path))[0] + extent
 
 
 class FileUsageType(str, Enum):
@@ -70,16 +85,16 @@ class ZeroZeroReadMe:
     readme: list[str] | None
     readme_filename: str | None
     version: int
-    compilation: MainProcessSpec
+    process: MainProcessSpec
     sources: OrderedDict[str, UserFile]
     stamp: bool | None
     nohyperref: bool | None
 
-    def __init__(self, in_dir: str | None = None, version: int = 1):  # noqa: D107
+    def __init__(self, in_dir: str | None = None, version: int = 1):
         self.version = version  # classic 00README.XXX is v1, dict i/o is v2.
         self.readme_filename = None
         self.readme = None
-        self.compilation = MainProcessSpec(compiler="pdflatex")
+        self.process = MainProcessSpec(compiler="pdflatex")
         self.sources = OrderedDict()
         self.stamp = True
         self.nohyperref = None
@@ -89,13 +104,13 @@ class ZeroZeroReadMe:
     def to_dict(self) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
         result = OrderedDict()
-        result["compilation"] = self.compilation.model_dump(exclude_none=True, exclude_defaults=True)
-        # the zzrm.compilation.compiler should be the compiler_string, not the actual object
-        result["compilation"]["compiler"] = self.compilation.compiler.compiler_string
+        result["process"] = self.process.dict(exclude_none=True, exclude_defaults=True)
+        # the zzrm.process.compiler should be the compiler_string, not the actual object
+        result["process"]["compiler"] = self.process.compiler.compiler_string
         if self.sources.keys():
             result["sources"] = []
             for k, v in self.sources.items():
-                result["sources"].append(v.model_dump(exclude_none=True, exclude_defaults=True))
+                result["sources"].append(v.dict(exclude_none=True, exclude_defaults=True))
         if self.stamp is not None:
             result["stamp"] = self.stamp
         if self.nohyperref is not None:
@@ -183,10 +198,10 @@ class ZeroZeroReadMe:
                     userfile.usage = FileUsageType.append
                 elif keyword == "fontmap":
                     # fontmap in 00README.XXX is a global option
-                    if self.compilation.fontmaps is None:
-                        self.compilation.fontmaps = [filename]
+                    if self.process.fontmaps is None:
+                        self.process.fontmaps = [filename]
                     else:
-                        self.compilation.fontmaps.append(filename)
+                        self.process.fontmaps.append(filename)
                     # make sure we don't add a userfile for a fontmap line
                     # since we added it to the global options
                     userfile = None  # type: ignore
@@ -228,11 +243,11 @@ class ZeroZeroReadMe:
             self.readme_filename = filename
             self.version = 2
             for k, v in zzrm.items():
-                if k == "compilation":
+                if k == "process":
                     if isinstance(v, dict):
-                        self.compilation = MainProcessSpec(**v)
+                        self.process = MainProcessSpec(**v)
                     else:
-                        raise ParseSyntaxError("Value of compilation is not a dictionary")
+                        raise ParseSyntaxError("Value of process is not a dictionary")
                 elif k == "sources":
                     if isinstance(v, list):
                         self.sources: OrderedDict[str, UserFile] = OrderedDict()
@@ -268,7 +283,7 @@ class ZeroZeroReadMe:
 
     def set_tex_compiler(self, tc: str) -> None:
         """Set TeX compiler."""
-        self.compilation.compiler = CompilerSpec(compiler=tc)
+        self.process.compiler = CompilerSpec(compiler=tc)
 
     def is_landscape(self, testing: str) -> bool:
         """Landscape orientation - only cares the file stem unlike other predicates."""
@@ -283,6 +298,80 @@ class ZeroZeroReadMe:
             if testing.lower() == filename.lower():
                 if source.keep_comments:
                     return True
+        return False
+
+    def update_from_preflight(self, pf: PreflightResponse) -> bool:
+        """Update ZZRM variables from Preflight response."""
+        if not self.toplevels:
+            for tlf in pf.detected_toplevel_files:
+                if tlf.filename in self.sources:
+                    # it cannot be a toplevel usage file, since we check
+                    # for toplevel files above, so it must be either ignore etc
+                    # Obey this indirection and ignore the PreFlight, we might
+                    # have been wrong here
+                    pass
+                else:
+                    uf = UserFile(filename=tlf.filename, usage=FileUsageType.toplevel)
+                    self.sources[tlf.filename] = uf
+        # if we still not have any toplevel files, because all files found by
+        # Preflight have been marked as ignored/append etc, then bail out
+        if not self.toplevels:
+            return False
+        # Now we are sure we have toplevel files set.
+        # If no compiler is selected, select it based on the first toplevel file
+        if self.process.compiler is None:
+            self.process.compiler = CompilerSpec(
+                engine=EngineType.unknown, lang=LanguageType.unknown, output=OutputType.unknown
+            )
+        if not self.process.compiler.is_determined:
+            first_tex = self.toplevels[0]
+            # search for first_tex in the detected toplevel files
+            found_tlp: ToplevelFile | None = None
+            for tlp in pf.detected_toplevel_files:
+                if tlp.filename == first_tex:
+                    found_tlp = tlp
+                    break
+            if not found_tlp:
+                # Couldn't find selected file in list of toplevel files
+                return False
+            if self.process.compiler.engine == EngineType.unknown:
+                if found_tlp.process.compiler.engine == EngineType.unknown:
+                    self.process.compiler.engine = DEFAULT_ENGINE_TYPE
+                else:
+                    self.process.compiler.engine = found_tlp.process.compiler.engine
+            if self.process.compiler.lang == LanguageType.unknown:
+                if found_tlp.process.compiler.lang == LanguageType.unknown:
+                    self.process.compiler.lang = DEFAULT_LANGUAGE_TYPE
+                else:
+                    self.process.compiler.lang = found_tlp.process.compiler.lang
+            if self.process.compiler.output == OutputType.unknown:
+                if found_tlp.process.compiler.output == OutputType.unknown:
+                    self.process.compiler.output = DEFAULT_OUTPUT_TYPE
+                else:
+                    self.process.compiler.output = found_tlp.process.compiler.output
+            if self.process.compiler.postp is None or self.process.compiler.postp == PostProcessType.unknown:
+                if found_tlp.process.compiler.postp == PostProcessType.unknown:
+                    self.process.compiler.postp = DEFAULT_POSTPROCESS_TYPE
+                else:
+                    self.process.compiler.postp = found_tlp.process.compiler.postp
+        return True
+
+    @property
+    def is_ready_for_compilation(self) -> bool:
+        """Check whether sufficient information is available for compilation."""
+        if (
+            self.toplevels  # at least one toplevel file
+            and self.process.compiler  # compiler is defined
+            and self.process.compiler.is_determined  # no unknown parts in engine/lang/output
+        ):
+            return True
+        return False
+
+    @property
+    def is_supported_compiler(self) -> bool:
+        """Check that we are ready for compilation and that the selected compiler is supported."""
+        if self.is_ready_for_compilation and self.process.compiler.compiler_string is not None:
+            return True
         return False
 
     @property
@@ -304,8 +393,8 @@ class ZeroZeroReadMe:
     def fontmaps(self) -> list[str]:
         """Returns the list of fontmaps declared."""
         ret = [filename for filename, source in self.sources.items() if source.fontmaps]
-        if self.compilation.fontmaps is not None:
-            ret += self.compilation.fontmaps
+        if self.process.fontmaps is not None:
+            ret += self.process.fontmaps
         return sorted(ret)
 
     @property
@@ -339,7 +428,8 @@ class ZeroZeroReadMe:
         assembly = []
         for fn, uf in self.sources.items():
             if uf.usage == FileUsageType.toplevel:
-                assembly.append(fn)
+                # convert .tex to .pdf filename
+                assembly.append(strip_to_basename(fn, ".pdf"))
             elif uf.usage == FileUsageType.include:
                 assembly.append(fn)
         return assembly

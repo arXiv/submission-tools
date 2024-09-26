@@ -1,9 +1,0 @@
-Makefile include
-fake-file-2.tex toplevelfile
-fake-file-3.tex ignore
-Q Q
-A B C
-##     |||     eee
-
-fake-file-2.tex landscape
-fake-file-1.tex keepcomments

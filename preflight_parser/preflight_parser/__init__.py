@@ -12,7 +12,7 @@ from itertools import zip_longest
 from pprint import pformat
 
 import chardet
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -155,7 +155,7 @@ class CompilerSpec(BaseModel):
             OutputType.dvi: {
                 EngineType.tex: "etex",
                 EngineType.luatex: "dviluatex",
-                # not eaasy to do: EngineType.XETEX: "xetex",
+                # not easy to do: EngineType.XETEX: "xetex",
                 EngineType.ptex: "ptex",
                 EngineType.uptex: "uptex",
             },
@@ -171,7 +171,7 @@ class CompilerSpec(BaseModel):
             OutputType.dvi: {
                 EngineType.tex: "latex",
                 EngineType.luatex: "dvilualatex",
-                # not eaasy to do: EngineType.XETEX: "xetex",
+                # not easy to do: EngineType.XETEX: "xetex",
                 EngineType.ptex: "platex",
                 EngineType.uptex: "uplatex",
             },
@@ -200,6 +200,13 @@ class CompilerSpec(BaseModel):
             super().__init__(**kwargs)
 
     @property
+    def is_determined(self) -> bool:
+        """Check whether a compiler spec is completely determined (no unknowns)."""
+        if self.engine == EngineType.unknown or self.lang == LanguageType.unknown or self.output == OutputType.unknown:
+            return False
+        return True
+
+    @property
     def compiler_string(self) -> str | None:
         """Convert Language/Output/Engine/PostProcess to compiler string."""
         # first deal with PDF only submissions:
@@ -215,6 +222,18 @@ class CompilerSpec(BaseModel):
                         ret += f"+{self.postp.value}"
                     return ret
         # if we are still here, something was wrong ....
+        return None
+
+    @property
+    def tex_compiler(self) -> str | None:
+        """Return the TeX compiler to be used."""
+        # first deal with PDF only submissions:
+        if self.lang.value == "pdf":
+            return "pdf_submission"
+        if self.lang in self._COMPILER_SELECTION:
+            if self.output in self._COMPILER_SELECTION[self.lang]:
+                if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
+                    return self._COMPILER_SELECTION[self.lang][self.output][self.engine]
         return None
 
     def from_compiler_string(self, compiler: str):
@@ -249,7 +268,7 @@ class CompilerSpec(BaseModel):
 class MainProcessSpec(BaseModel):
     """Specification of the main process to compile a document."""
 
-    compiler: CompilerSpec
+    compiler: CompilerSpec | None = None
     bibliography: BibProcessSpec | None = None
     index: IndexProcessSpec | None = None
     fontmaps: list[str] | None = None
@@ -297,11 +316,13 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    _data: str = ""
+    _data: str = PrivateAttr(default="")
     output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
     postprocess: PostProcessType = PostProcessType.unknown
+    contains_documentclass: bool = False
+    contains_bye: bool = False
     used_tex_files: list[str] = []
     used_bib_files: list[str] = []
     used_other_files: list[str] = []
@@ -322,9 +343,11 @@ class ParsedTeXFile(BaseModel):
             language = LanguageType.latex
         if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
             language = LanguageType.latex
-        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_\n]", self._data, re.MULTILINE):
+        if re.search(r"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
             language = LanguageType.tex
-        if re.search(r"^[^%\n]*\\documentclass", self._data, re.MULTILINE):
+            self.contains_bye = True
+        if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
+            self.contains_documentclass = True
             if language == LanguageType.tex:
                 self.issues.append(
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
@@ -510,8 +533,35 @@ class ParsedTeXFile(BaseModel):
         logging.debug(file_incspec)
         self.mentioned_files |= file_incspec
 
+    def generic_walk_document_tree(
+        self, map: Callable[["ParsedTeXFile"], typing.Any], reduce: Callable[[typing.Any, typing.Any], typing.Any]
+    ):
+        """Walk the document tree in map/reduce fashion."""
+        return self._generic_walk_document_tree(map, reduce, {})
+
+    def _generic_walk_document_tree(
+        self,
+        map: Callable[["ParsedTeXFile"], typing.Any],
+        reduce: Callable[[typing.Any, typing.Any], typing.Any],
+        visited: dict[str, bool],
+    ) -> list[typing.Any]:
+        """Call a function on any node of a document tree - internal helper."""
+        ret = map(self)
+        visited[self.filename] = True
+        for n in self.children:
+            if n.filename not in visited:
+                ret_kid = n._generic_walk_document_tree(map, reduce, visited)
+                ret = reduce(ret, ret_kid)
+        return ret
+
+    # TODO rewrite using _generic_walk_document_tree - below code breaks with
     def walk_document_tree(self, func: Callable[["ParsedTeXFile"], list[typing.Any]]) -> list[typing.Any]:
         """Call a function on any node of a document tree."""
+        # return self._generic_walk_document_tree(
+        #     func,
+        #     lambda x,y: x.extend(y),
+        #     {}
+        # )
         return self._walk_document_tree(func, {})
 
     def _walk_document_tree(
@@ -526,6 +576,7 @@ class ParsedTeXFile(BaseModel):
                 ret.extend(ret_kid)
         return ret
 
+    # TODO rewrite using _generic_walk_document_tree
     def find_entry_in_subgraph(
         self,
     ) -> tuple[LanguageType, OutputType, EngineType, PostProcessType, list[TeXFileIssue]]:
@@ -605,6 +656,7 @@ class ParsedTeXFile(BaseModel):
 
         return found_language, found_output, found_engine, found_postprocess, issues
 
+    # TODO rewrite using _generic_walk_document_tree
     def recursive_collect_files(self, what: FileType | str) -> list[str]:
         """Recursively collect all tex/bib/other files."""
         return self._recursive_collect_files(what, {})
@@ -645,6 +697,10 @@ class PreflightResponse(BaseModel):
     status: PreflightStatus
     detected_toplevel_files: list[ToplevelFile]
     tex_files: list[ParsedTeXFile]
+
+    def to_json(self, **kwargs) -> str:
+        """Return a json representation."""
+        return self.json(exclude_none=True, exclude_defaults=True, **kwargs)
 
 
 #
@@ -1033,7 +1089,7 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             filename=n.filename,
             process=MainProcessSpec(compiler=CompilerSpec(engine=engine, output=output, lang=lang, postp=postprocess)),
         )
-        compiler: str | None = tl.process.compiler.compiler_string
+        compiler: str | None = None if tl.process.compiler is None else tl.process.compiler.compiler_string
         if compiler is None:
             issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
         elif compiler not in SUPPORTED_PIPELINES:
@@ -1045,7 +1101,14 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             if nr_issues > 0:
                 issues.append(TeXFileIssue(IssueType.issue_in_subfile, str(nr_issues), filename=fn))
         tl.issues = issues
-        toplevel_files[f] = tl
+        # it is not enough to be a latex file and a root file to be a toplevel file
+        # we need to have documentclass being found in one of the include files
+        contains_documentclass_somewhere = tl_n.generic_walk_document_tree(
+            lambda x: x.contains_documentclass, lambda x, y: x or y
+        )
+        contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
+        if contains_documentclass_somewhere or contains_bye_somewhere:
+            toplevel_files[f] = tl
 
     return toplevel_files
 
@@ -1121,6 +1184,6 @@ def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> Pr
             tex_files=[],
         )
     if json:
-        return pfr.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
+        return pfr.to_json(**kwargs)
     else:
         return pfr

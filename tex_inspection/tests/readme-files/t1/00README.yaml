@@ -1,0 +1,6 @@
+compilation:
+  compiler: pdflatex
+sources:
+  - filename: main.tex
+  - filename: appendix.jpg
+    usage: append

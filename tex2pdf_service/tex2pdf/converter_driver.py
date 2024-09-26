@@ -12,18 +12,24 @@ from enum import Enum
 
 from pikepdf import PdfError
 
-from tex2pdf import file_props, file_props_in_dir, catalog_files, \
-    ID_TAG, graphics_exts, test_file_extent, MAX_TIME_BUDGET
+from preflight_parser import PreflightStatusValues, generate_preflight_response
+from tex2pdf import (
+    ID_TAG,
+    MAX_TIME_BUDGET,
+    catalog_files,
+    file_props,
+    file_props_in_dir,
+    graphics_exts,
+    test_file_extent,
+)
 from tex2pdf.doc_converter import combine_documents, strip_to_basename
+from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
 from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import unpack_tarball, chmod_775
-from tex2pdf.tex_to_pdf_converters import BaseConverter
+from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, chmod_775, unpack_tarball
 from tex2pdf.tex_patching import fix_tex_sources
-from tex2pdf.pdf_watermark import add_watermark_text_to_pdf, Watermark
-from tex_inspection import (find_primary_tex, maybe_bbl, ZeroZeroReadMe, find_unused_toplevel_files,
-                            SubmissionFileType)
-from tex2pdf.tex_to_pdf_converters import select_converter_classes
-from preflight_parser import generate_preflight_response
+from tex2pdf.tex_to_pdf_converters import BaseConverter, select_converter_class
+from tex_inspection import find_unused_toplevel_files, maybe_bbl
+from zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "
@@ -73,12 +79,14 @@ class ConverterDriver:
     today: str | None
     water: Watermark
     preflight: PreflightVersion
+    auto_detect: bool = False
 
     def __init__(self, work_dir: str, source: str, use_addon_tree: bool | None = None,
                  tag: str | None = None, watermark: Watermark | None = None,
                  max_time_budget: float | None = None,
                  max_tex_files: int = 1,  max_appending_files: int = 0,
-                 preflight: PreflightVersion = PreflightVersion.NONE
+                 preflight: PreflightVersion = PreflightVersion.NONE,
+                 auto_detect: bool = False
                  ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -100,16 +108,17 @@ class ConverterDriver:
         self.max_appending_files = max_appending_files
         self.today = None
         self.preflight = preflight
+        self.auto_detect = auto_detect
         pass
 
     @property
     def driver_log(self) -> str:
-        """The converter driver log"""
+        """The converter driver log."""
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
 
 
     def generate_pdf(self) -> str|None:
-        """We have the beef"""
+        """We have the beef."""
         logger = get_logger()
         self.t0 = time.perf_counter()
 
@@ -131,18 +140,50 @@ class ConverterDriver:
             self.outcome["watermark"] = self.water
         # Find the starting point
         fix_tex_sources(self.in_dir)
-        tex_files = find_primary_tex(self.in_dir, self.zzrm)
-        # If 00README input exists, obey the designation
-        max_tex_files = len(tex_files) if self.zzrm.readme or self.zzrm.version > 1 else self.max_tex_files
+
+        if self.preflight is not PreflightVersion.NONE:
+            logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
+            self.report_preflight()
+            return None
+
+        if not self.zzrm.is_ready_for_compilation:
+            if not self.auto_detect:
+                raise ZZRMUnderspecified("Not ready for compilation and auto-detect disabled")
+            logger.debug("Running preflight for input since no 00README present")
+            preflight_response = generate_preflight_response(self.in_dir)
+            self.outcome["preflight_v2"] = preflight_response.to_json()
+            logger.debug("Got preflight response: %s", preflight_response)
+            if preflight_response.status.key != PreflightStatusValues.success:
+                # TODO what to do here?
+                raise Exception("Preflight didn't succeed!")
+            if not self.zzrm.update_from_preflight(preflight_response):
+                raise ZZRMUnderspecified("Cannot determine compiler from preflight and sources")
+
+        # we should now be ready to go
+        if not self.zzrm.is_ready_for_compilation:
+            raise ZZRMUnderspecified("Still not ready for compilation -- this is strange")
+
+        if not self.zzrm.is_supported_compiler:
+            raise ZZRMUnsupportedCompiler
+
+        tex_files = self.zzrm.toplevels
+        if self.zzrm.readme_filename is not None:
+            # zzrm was provided
+            max_tex_files = len(tex_files)
+        else:
+            # if no ZZRM was present, we default to only compile the
+            # first self.max_tex_files files
+            max_tex_files = self.max_tex_files
+
         self.tex_files = tex_files[:max_tex_files]  # Used tex files
         unused_tex_files = tex_files[max_tex_files:]
         self.outcome["possible_tex_files"] = tex_files
         self.outcome["tex_files"] = self.tex_files
         self.outcome["unused_tex_files"] = unused_tex_files
         for tex_file in self.tex_files:
-            self.zzrm.find_metadata(tex_file).set_file_type(SubmissionFileType.toplevel)
+            self.zzrm.find_metadata(tex_file).usage = FileUsageType.toplevel
         for tex_file in unused_tex_files:
-            self.zzrm.find_metadata(tex_file).set_file_type(SubmissionFileType.ignored)
+            self.zzrm.find_metadata(tex_file).usage = FileUsageType.ignore
 
         if not self.tex_files:
             in_file: dict
@@ -153,11 +194,6 @@ class ConverterDriver:
                          extra=self.log_extra)
             self.outcome.update({"status": "fail", "tex_file": None,
                                  "in_files": file_props_in_dir(self.in_dir)})
-            return None
-
-        if self.preflight is not PreflightVersion.NONE:
-            logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
-            self.report_preflight()
             return None
 
         # Once no-hyperref is implemented, change here - future fixme
@@ -178,19 +214,14 @@ class ConverterDriver:
         return self.outcome.get("pdf_file")
 
     def report_preflight(self) -> None:
-        """Set the values to zzrm"""
+        """Set the values to zzrm."""
         if self.preflight == PreflightVersion.V1:
-            converters, reasons = select_converter_classes(self.in_dir, zzrm=self.zzrm)
-            self.outcome["converters"] = [converter.tex_compiler_name() for converter in converters]
-            self.outcome["reasons"] = reasons
-            self.outcome["pdf_files"] = strip_to_basename(self.tex_files, extent=".pdf")
-            self.zzrm.register_primary_tex_files(self.tex_files)
-            if len(self.converters) == 1:
-                self.zzrm.set_tex_compiler(self.converters[0].tex_compiler_name())
-            # Generally, the assembling files are the compiled tex files and the unused graphics
-            self.zzrm.set_assembling_files(self.outcome["pdf_files"] + strip_to_basename(self.unused_pics()))
+            # should not happen, we bail out already at the API entry point.
+            raise ValueError("Preflight v1 is not supported anymore")
         elif self.preflight == PreflightVersion.V2:
-            self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
+            # we might have already computed preflight, don't recompute it again
+            if "preflight_v2" not in self.outcome:
+                self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
         else:
             # Should not happen, we check this already on entrance of API call
             raise ValueError(f"Invalid PreflightVersion: {self.preflight}")
@@ -200,103 +231,88 @@ class ConverterDriver:
         t0_files = catalog_files(self.in_dir)
         start_process_time = time.process_time()
 
-        self.converters, reasons = select_converter_classes(self.in_dir, zzrm=self.zzrm)
+        # select compiler based on ZZRM or preflight, don't guess
+        converter_class = select_converter_class(self.zzrm)
         outcome = self.outcome # just an alias
-        outcome["reasons"] = reasons
 
-        for index, converter_class in enumerate(self.converters):
-            # Note that, self.tex_files is alraedy ordered with zzr in mind
-            ordered_tex_files = converter_class.order_tex_files(self.tex_files)
-            outcome["pdf_files"] = []
-            outcome["include_figures"] = converter_class.yes_pix()
-            for tex_file in ordered_tex_files:
-                self.converter = converter_class(self.tag, use_addon_tree=self.use_addon_tree,
-                                                 zzrm=self.zzrm, init_time=self.t0,
-                                                 max_time_budget=self.max_time_budget)
-                cpu_t0 = time.process_time()
+        ordered_tex_files = converter_class.order_tex_files(self.tex_files)
+        outcome["pdf_files"] = []
+        outcome["include_figures"] = converter_class.yes_pix()
+        for tex_file in ordered_tex_files:
+            self.converter = converter_class(self.tag, use_addon_tree=self.use_addon_tree,
+                                             zzrm=self.zzrm, init_time=self.t0,
+                                             max_time_budget=self.max_time_budget)
+            cpu_t0 = time.process_time()
 
-                # If the tarball contains a PDF file, pretend it not exist.
-                pdf_file = os.path.splitext(tex_file)[0] + ".pdf"
-                made_pdf_file = os.path.join(self.in_dir, pdf_file)
-                if os.path.exists(made_pdf_file):
-                    if pdf_file not in t0_files:
-                        logger.warning(winded_message,made_pdf_file, extra=self.log_extra)
-                        pass
-                    else:
-                        del t0_files[pdf_file]
-                    pass
-
-                # the converter returns the multiple runs of latex command, so it is named runs.
-                runs = self.converter.produce_pdf(tex_file, self.work_dir, self.in_dir, self.out_dir)
-
-                elapse_time = time.perf_counter() - self.t0
-                cpu_t1 = time.process_time()
-                cpu_time_per_run = cpu_t1 - cpu_t0
-
-                pdf_file = runs.get("pdf_file", pdf_file)
-                made_pdf_file = os.path.join(self.in_dir, pdf_file)
-                # I'm not liking this part very much
-                runs["tex_file"] = tex_file
-                runs["bbl_file"] = maybe_bbl(tex_file, self.in_dir)
-                runs["index"] = index
-                runs["converter"] = self.converter.converter_name()
-                runs["out_files"] = file_props_in_dir(self.out_dir)
-                runs["elapse_time"] = elapse_time
-                runs["cpu_time"] = cpu_time_per_run
-
-                # Once the runs made, attach it to the converter
-                outcome["converters"].append(runs)
-                pdf_file_props = file_props(made_pdf_file)
-                if pdf_file_props["size"]:
-                    outcome["pdf_files"].append(pdf_file)
-                    # Remember the compiler if it's not set
-                    if self.zzrm.compilation.get("compiler") is None:
-                        self.zzrm.set_tex_compiler(self.converter.tex_compiler_name())
+            # If the tarball contains a PDF file, pretend it not exist.
+            pdf_file = os.path.splitext(tex_file)[0] + ".pdf"
+            made_pdf_file = os.path.join(self.in_dir, pdf_file)
+            if os.path.exists(made_pdf_file):
+                if pdf_file not in t0_files:
+                    logger.warning(winded_message,made_pdf_file, extra=self.log_extra)
                     pass
                 else:
-                    logger.warning("PDF file error: %s", repr(pdf_file_props), extra=self.log_extra)
-                    pass
-
-                # truncate some latex logs for the HTTP replies. The full log file is in the
-                # out_dir and you can download.
-                conv_log = runs.get("runs", [{}])[-1].get("log")
-                if conv_log and isinstance(conv_log, str):  # be cautious and not die for log
-                    conv_log = conv_log.splitlines()
-                    if len(conv_log) > 100:
-                        desc = [f"TeX File: {tex_file}"]
-                        l30 = conv_log[:30]
-                        ll50 = conv_log[-50:]
-                        conv_log = desc + l30 + ["",
-                                          f"<{len(conv_log) - len(l30) - len(ll50)} lines removed>",
-                                          ""] + ll50
-                        pass
-                    self.converter_logs.append("\n".join(conv_log))
-                    pass
+                    del t0_files[pdf_file]
                 pass
 
-            t1_files = catalog_files(self.in_dir)
+            # the converter returns the multiple runs of latex command, so it is named runs.
+            runs = self.converter.produce_pdf(tex_file, self.work_dir, self.in_dir, self.out_dir)
 
-            artifacts = t1_files.keys() - t0_files.keys()
-            pdf_files = outcome["pdf_files"]
+            elapse_time = time.perf_counter() - self.t0
+            cpu_t1 = time.process_time()
+            cpu_time_per_run = cpu_t1 - cpu_t0
 
-            # If PDF files made, no need to run the next converter.
-            if pdf_files:
-                for artifact in artifacts:
-                    if artifact.endswith("-eps-converted-to.pdf"):
-                        continue
-                    from_file = os.path.join(self.in_dir, artifact)
-                    to_file = os.path.join(self.out_dir, artifact)
-                    os.makedirs(os.path.dirname(to_file), exist_ok=True)
-                    os.rename(from_file, to_file)
+            pdf_file = runs.get("pdf_file", pdf_file)
+            made_pdf_file = os.path.join(self.in_dir, pdf_file)
+            # I'm not liking this part very much
+            runs["tex_file"] = tex_file
+            runs["bbl_file"] = maybe_bbl(tex_file, self.in_dir)
+            runs["converter"] = self.converter.converter_name()
+            runs["out_files"] = file_props_in_dir(self.out_dir)
+            runs["elapse_time"] = elapse_time
+            runs["cpu_time"] = cpu_time_per_run
+
+            # Once the runs made, attach it to the converter
+            outcome["converters"].append(runs)
+            pdf_file_props = file_props(made_pdf_file)
+            if pdf_file_props["size"]:
+                outcome["pdf_files"].append(pdf_file)
+            else:
+                logger.warning("PDF file error: %s", repr(pdf_file_props), extra=self.log_extra)
+                pass
+
+            # truncate some latex logs for the HTTP replies. The full log file is in the
+            # out_dir and you can download.
+            conv_log = runs.get("runs", [{}])[-1].get("log")
+            if conv_log and isinstance(conv_log, str):  # be cautious and not die for log
+                conv_log = conv_log.splitlines()
+                if len(conv_log) > 100:
+                    desc = [f"TeX File: {tex_file}"]
+                    l30 = conv_log[:30]
+                    ll50 = conv_log[-50:]
+                    conv_log = desc + l30 + ["",
+                                      f"<{len(conv_log) - len(l30) - len(ll50)} lines removed>",
+                                      ""] + ll50
                     pass
-                break
-
-            # For next iteration, clean up the in-dir
-            for artifact in artifacts:
-                from_file = os.path.join(self.in_dir, artifact)
-                os.remove(from_file)
+                self.converter_logs.append("\n".join(conv_log))
                 pass
             pass
+
+        t1_files = catalog_files(self.in_dir)
+
+        artifacts = t1_files.keys() - t0_files.keys()
+        pdf_files = outcome["pdf_files"]
+
+        # If PDF files made, no need to run the next converter.
+        if pdf_files:
+            for artifact in artifacts:
+                if artifact.endswith("-eps-converted-to.pdf"):
+                    continue
+                from_file = os.path.join(self.in_dir, artifact)
+                to_file = os.path.join(self.out_dir, artifact)
+                os.makedirs(os.path.dirname(to_file), exist_ok=True)
+                os.rename(from_file, to_file)
+                pass
 
         # Keep the all of converters' runs (except the files created)
         outcome["total_time"] = time.perf_counter() - self.t0
@@ -335,28 +351,21 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
         outcome["pdf_file"] = merged_pdf  # init
         try:
             # artifact moving has moved the pdfs to out_dir while unused pics still in in_dir
-
-            # Docs v2 does not change the compiled order
-            docs_v2 = [f"out/{pdf_file}" for pdf_file in pdf_files]
-            if self.zzrm and self.zzrm.version == 1:
-                docs = sorted(docs_v2)
-                pic_adds = self.unused_pics()[:self.max_appending_files]
-            else:
-                docs = docs_v2
-                pic_adds = self.unused_pics()[:self.max_appending_files]
+            docs = [f"out/{pdf_file}" for pdf_file in pdf_files]
+            pic_adds = self.unused_pics()[:self.max_appending_files]
 
             # Does the converter class support pic additions?
             if self.converter and self.converter.__class__.yes_pix():
                 docs += [f"in/{pic}" for pic in pic_adds]
 
-            # Note the available documents that can be bombined.
+            # Note the available documents that can be combined.
             outcome["available_documents"] = docs
 
             # After all the trouble, if assembling_files is designated in post process, use it.
             # Here, instead of taking the raw, match the basenames and list the docs in the
             # order that appears in the assembling files. If it is missing in either, it is
             # ignored.
-            if self.zzrm and self.zzrm.version > 1 and self.zzrm.assembling_files:
+            if self.zzrm and self.zzrm.assembling_files:
                 # Lay out the ingredients
                 ingredients = {os.path.basename(doc) : doc for doc in docs}
                 cooked = []
@@ -379,7 +388,7 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             final_pdf, used_gfx, unused_gfx, addon_outcome = \
                 combine_documents(docs, self.out_dir, merged_pdf, log_extra=self.log_extra)
             outcome |= addon_outcome
-            self.zzrm.set_assembling_files(used_gfx)
+            # self.zzrm.set_assembling_files(used_gfx)
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
             outcome["unused_figures"] = self.unused_pics()[self.max_appending_files:] + unused_gfx

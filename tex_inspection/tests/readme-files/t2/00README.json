@@ -1,0 +1,9 @@
+{
+  "compilation": { 
+    "compiler": "latex+dvips_ps2pdf",
+    "options": { "fontmaps": [ "myfontmap1.txt", "myfontmap2.txt" ] }
+  },
+  "sources": [
+    { "filename": "main.tex" }
+  ]
+}

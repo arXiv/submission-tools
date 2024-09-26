@@ -22,6 +22,17 @@ mypy-extensions = "*"
 pydantic = "2.8.*"
 types-toml = "^0.10.8.20240310"
 
+[tool.ruff]
+# Extend the `pyproject.toml` from the toplevel dir
+extend = "../pyproject.toml"
+extend-exclude = ["tests"]
+
+[tool.black]
+line-length = 120
+
+[tool.pylint]
+max-line-length = 120
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

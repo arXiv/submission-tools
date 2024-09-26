@@ -8,11 +8,11 @@ include = ["kpse_search.lua"]
 [tool.poetry.dependencies]
 python = "^3.11"
 chardet = "^5.0"
-pydantic = "^2.8.2"
+pydantic = "==1.10.*"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
-pytest = "^8.3.2"
+pytest = "^8.3.3"
 mypy = "*"
 mypy-extensions = "*"
 

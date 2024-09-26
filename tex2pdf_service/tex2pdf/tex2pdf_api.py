@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
 from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
+from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
 from tex2pdf.fastapi_util import closer
 from tex2pdf.pdf_watermark import Watermark
 
@@ -98,9 +98,10 @@ async def convert_pdf(incoming: UploadFile,
                           Query(title="Max Extra File count",
                                 description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
                       preflight: typing.Annotated[str | None,
-                          Query(title="Preflight", description="Do preflight check, pass in version number (v1, v2)")] = None,
+                          Query(title="Preflight", description="Do preflight check, currently only supports v2")] = None,
                       watermark_text: str | None = None,
-                      watermark_link: str | None = None) -> Response:
+                      watermark_link: str | None = None,
+                      auto_detect: bool = False) -> Response:
     """
     get a tarball, and convert to PDF
     """
@@ -127,6 +128,9 @@ async def convert_pdf(incoming: UploadFile,
         preflight_version = PreflightVersion.NONE
     elif preflight == "v1" or preflight == "V1":
         preflight_version = PreflightVersion.V1
+        logger.info("Preflight version 1 not supported anymore.")
+        return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                            content={"message": "Preflight version 1 not supported anymore."})
     elif preflight == "v2" or preflight == "V2":
         preflight_version = PreflightVersion.V2
     else:
@@ -150,7 +154,8 @@ async def convert_pdf(incoming: UploadFile,
                                  max_time_budget=timeout_secs,
                                  max_tex_files=max_tex_files,
                                  max_appending_files=max_appending_files,
-                                 preflight=preflight_version
+                                 preflight=preflight_version,
+                                 auto_detect=auto_detect
                                  )
         try:
             _pdf_file = driver.generate_pdf()
@@ -159,10 +164,21 @@ async def convert_pdf(incoming: UploadFile,
             return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
                                 content={"message": "The source is marked deleted."})
 
+        except ZZRMUnsupportedCompiler:
+            logger.info("ZZRM selected compiler is not supported.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "ZZRM selected compiler is not supported."})
+
+        except ZZRMUnderspecified:
+            logger.info("ZZRM missing or underspecified.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "ZZRM missing or underspecified."})
+
         except UnsupportedArchive:
             logger.info("Archive is not supported")
             return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
                                 content={"message": "The archive is unsupported"})
+
         except Exception as exc:
             logger.error(f"Exception %s", str(exc), exc_info=True)
             return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
