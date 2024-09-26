@@ -46,11 +46,11 @@ def yaml_repr_ordered_dict(dumper: RoundTripRepresenter, data: OrderedDict) -> M
     return dumper.represent_mapping("tag:yaml.org,2002:map", dict(data))
 
 
-def strip_to_basename(path_list: list[str], extent: None | str = None) -> list[str]:
+def strip_to_basename(path: str, extent: None | str = None) -> str:
     """Strip the path to the basename."""
     if extent is None:
-        return [os.path.basename(path) for path in path_list]
-    return [os.path.splitext(os.path.basename(path))[0] + extent for path in path_list]
+        return os.path.basename(path)
+    return os.path.splitext(os.path.basename(path))[0] + extent
 
 
 class FileUsageType(str, Enum):
@@ -429,7 +429,7 @@ class ZeroZeroReadMe:
         for fn, uf in self.sources.items():
             if uf.usage == FileUsageType.toplevel:
                 # convert .tex to .pdf filename
-                assembly.append(strip_to_basename([fn], ".pdf")[0])
+                assembly.append(strip_to_basename(fn, ".pdf"))
             elif uf.usage == FileUsageType.include:
                 assembly.append(fn)
         return assembly
