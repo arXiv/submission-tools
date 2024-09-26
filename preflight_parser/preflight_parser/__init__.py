@@ -343,10 +343,10 @@ class ParsedTeXFile(BaseModel):
             language = LanguageType.latex
         if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
             language = LanguageType.latex
-        if re.search(r"^[^%\n]*\\bye[^a-zA-Z0-9_]", self._data, re.MULTILINE):
+        if re.search(r"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
             language = LanguageType.tex
             self.contains_bye = True
-        if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z0-9_]", self._data, re.MULTILINE):
+        if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
             self.contains_documentclass = True
             if language == LanguageType.tex:
                 self.issues.append(
