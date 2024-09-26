@@ -3,6 +3,7 @@ import tempfile
 import time
 import requests
 import subprocess
+import urllib.parse
 import pytest
 from bin.compile_submissions import get_outcome_meta
 import logging
@@ -10,9 +11,12 @@ import json
 
 PORT = 33031
 
-def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10, json_response: bool = False, api_args: str = "") -> None | dict:
+def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10, json_response: bool = False, api_args: dict= {}) -> None | dict:
     meta = None
-    url = service + f"/?timeout={tex2pdf_timeout}{api_args}"
+    params_dict = { "timeout": tex2pdf_timeout }
+    params_dict.update(api_args)
+    params = urllib.parse.urlencode(params_dict)
+    url = f"{service}/?{params}"
     with open(tarball, "rb") as data_fd:
         uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
         while True:
@@ -117,7 +121,7 @@ def test_api_smoke(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test1/test1.tar.gz"
     outcome = "tests/output/test1.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
 
 
@@ -126,7 +130,7 @@ def test_api_test2(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test2/test2.tar.gz"
     outcome = "tests/output/test2.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
     assert meta.get("tex_files") == ['fake-file-2.tex']
@@ -138,7 +142,7 @@ def test_api_test3(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
     outcome = "tests/output/test3.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
     assert meta.get("tex_files") == ['fake-file-2.tex', 'fake-file-1.tex', 'fake-file-3.tex']
@@ -152,7 +156,7 @@ def test_api_test4(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test4/test4.tar.gz"
     outcome = "tests/output/test4.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome, api_args="&auto_detect=true")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ['main.tex', 'gdp.tex']
@@ -164,7 +168,7 @@ def test_api_preflight(docker_container):
     url = docker_container + "/convert"
     tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
     outcome = "tests/output/test3.outcome.tar.gz"
-    meta = submit_tarball(url, tarball, outcome, json_response=True, api_args="&preflight=v2")
+    meta = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
     assert meta is not None
     print(meta)
     assert meta.get("status").get("key") == "success"
