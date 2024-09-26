@@ -121,3 +121,10 @@ class TestPreflight(unittest.TestCase):
         pf_json_roundtrip = pf.json(exclude_none=True, exclude_defaults=True)
         self.assertEqual(pf_json, pf_json_roundtrip)
 
+    def test_preflight_pre_postamble(self):
+        """Test recursive inclusion."""
+        dir_path = os.path.join(self.fixture_dir, "pre-postamble")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "main.tex")

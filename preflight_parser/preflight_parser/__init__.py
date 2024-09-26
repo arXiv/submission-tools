@@ -1103,20 +1103,12 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         tl.issues = issues
         # it is not enough to be a latex file and a root file to be a toplevel file
         # we need to have documentclass being found in one of the include files
-        if tl_n.language == LanguageType.latex:
-            contains_documentclass_somewhere = tl_n.generic_walk_document_tree(
-                lambda x: x.contains_documentclass, lambda x, y: x or y
-            )
-            #
-            if contains_documentclass_somewhere:
-                toplevel_files[f] = tl
-        elif tl_n.language == LanguageType.tex or tl_n.language == LanguageType.unknown:
-            # we could have \bye in a subfile, and the main file is not detected as tex file
-            contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
-            if contains_bye_somewhere:
-                toplevel_files[f] = tl
-        else:
-            raise PreflightException(f"Unsupported language type {tl_n.language}")
+        contains_documentclass_somewhere = tl_n.generic_walk_document_tree(
+            lambda x: x.contains_documentclass, lambda x, y: x or y
+        )
+        contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
+        if contains_documentclass_somewhere or contains_bye_somewhere:
+            toplevel_files[f] = tl
 
     return toplevel_files
 
