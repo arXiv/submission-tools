@@ -132,8 +132,8 @@ pydantic = "==1.10.*"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "HEAD"
+resolved_reference = "34092629d68cfe561402c2dce1c4301697d518fd"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -339,4 +339,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "05aa77ab754249d6397b193cd4e6787ad7207c420e2ddcc9d41d01a81f17cd97"
+content-hash = "87b09e9e362d1a6f0796a73b18ede4904b9106ebfb50ac9fcac2439dac6d1785"
