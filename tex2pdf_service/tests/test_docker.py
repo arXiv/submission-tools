@@ -5,7 +5,7 @@ import requests
 import subprocess
 import urllib.parse
 import pytest
-from bin.compile_submissions import get_outcome_meta
+from bin.compile_submissions import get_outcome_meta_and_files_info
 import logging
 import json
 
@@ -36,7 +36,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
                         else:
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
+                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
                 else:
                     logging.warning(f"%s: status code %d", url, status_code)
 
