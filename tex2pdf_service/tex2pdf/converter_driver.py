@@ -560,7 +560,7 @@ class RemoteConverterDriver(ConverterDriver):
     service: str
     post_timeout: int
 
-    def __init__(self, service: str, post_timeout: int, work_dir: str, source: str, **kwargs):
+    def __init__(self, service: str, post_timeout: int, work_dir: str, source: str, **kwargs: typing.Any):
         super().__init__(work_dir, source, **kwargs)
         self.service = service
         self.post_timeout = post_timeout
