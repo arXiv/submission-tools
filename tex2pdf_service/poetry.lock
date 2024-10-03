@@ -772,8 +772,8 @@ pydantic = "==1.10.*"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "HEAD"
+resolved_reference = "e665aed7daa77794115fee23e306c5e148e2dcf2"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -1153,8 +1153,8 @@ toml = "^0.10.2"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "HEAD"
+resolved_reference = "e665aed7daa77794115fee23e306c5e148e2dcf2"
 subdirectory = "tex_inspection"
 
 [[package]]
@@ -1359,7 +1359,7 @@ files = []
 develop = false
 
 [package.dependencies]
-preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", branch = "ARXIVCE-2542-use-new-preflight", subdirectory = "preflight_parser"}
+preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser"}
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 tomli_w = "^1.0"
@@ -1367,11 +1367,11 @@ tomli_w = "^1.0"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "HEAD"
+resolved_reference = "e665aed7daa77794115fee23e306c5e148e2dcf2"
 subdirectory = "zerozeroreadme"
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "77933bd0b9d81ba27a6e04ff3ecbac247fb85d7df082aab5689dc28d3a5fc60b"
+content-hash = "8654f6602bc896c175fbf7d94828b2210804256c32baac483ec17a1266b0cf08"
