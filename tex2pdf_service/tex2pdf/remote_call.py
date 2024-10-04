@@ -18,11 +18,10 @@ def get_outcome_meta(outcome_file: str) -> dict:
                 meta_contents = outcome.extractfile(name)
                 if meta_contents:
                     meta.update(json.load(meta_contents))
-
     return meta
 
 
-def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int, post_timeout: int) -> bool:
+def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int, post_timeout: int, auto_detect: bool = False) -> bool:
     """Submit tarball to compilation service."""
     if os.path.exists(outcome_file):
         raise FileExistsError(f"Outcome file {outcome_file} already exists!")
@@ -35,8 +34,11 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
         uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
         while True:
             try:
+                post_url = service + f"?timeout={tex2pdf_timeout}&auto_detect={auto_detect}"
+                logging.debug("POST URL: %s", post_url)
+                logging.debug("uploading = %s", uploading)
                 res = requests.post(
-                    service + f"?timeout={tex2pdf_timeout}",
+                    post_url,
                     files=uploading,
                     timeout=post_timeout,
                     allow_redirects=False,
@@ -51,11 +53,12 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
                     if res.content:
                         with open(outcome_file, "wb") as out:
                             out.write(res.content)
-                        meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
+                        meta = get_outcome_meta(outcome_file)
             except TimeoutError:
                 logging.warning("%s: Connection timed out", tarball)
 
             except Exception as exc:
+                logging.warning("Exception submitting tarball: %s", exc)
                 logging.warning("%s: %s", tarball, str(exc))
             break
 
