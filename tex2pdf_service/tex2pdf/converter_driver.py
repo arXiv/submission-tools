@@ -570,16 +570,14 @@ class RemoteConverterDriver(ConverterDriver):
         logger = get_logger()
         self.t0 = time.perf_counter()
 
-        local_tarball = os.path.join(self.work_dir, self.source)
-        outcome_file = os.path.join(self.work_dir, "outcome.tar.gz")
+        tag = self.tag or os.path.basename(self.source)
 
-        # hard coded post_timeout = 600 as of now
-        # not sure I want to make this another init option
+        local_tarball = os.path.join(self.work_dir, self.source)
+        outcome_file = os.path.join(self.work_dir, f"{tag}-outcome.tar.gz")
+
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
         submit_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect)
         logger.debug("Returned from posting")
         self.outcome = get_outcome_meta(outcome_file)
 
-        # TODO
-        # - discard (is this necessary?) the stuff we have created
         return self.outcome.get("pdf_file")
