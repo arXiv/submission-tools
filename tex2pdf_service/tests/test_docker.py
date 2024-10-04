@@ -184,14 +184,16 @@ def test_remote2023(docker_container) -> None:
     tarball = os.path.join(os.getcwd(), "tests", "fixture", "tarballs", "test1", "test1.tar.gz")
     out_dir = os.path.join(os.getcwd(), "tests", "test-output", "test1-remote")
     url = docker_container + "/convert/"
+    tag = os.path.basename(tarball)
 
     logging.debug("Before instantiating the RemoteConverterDriver")
 
     shutil.rmtree(out_dir, ignore_errors=True)
 
     converter = RemoteConverterDriver(url, 600, out_dir, tarball,
-                                      use_addon_tree=False,
+                                      use_addon_tree=False, tag=tag,
                                       auto_detect=True)
     logging.debug("Calling generate_pdf")
     pdf = converter.generate_pdf()
+    assert os.path.isfile(f"{out_dir}/{tag}-outcome.tar.gz")
     assert pdf == "test1.pdf"
