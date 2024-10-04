@@ -25,6 +25,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest poetry
         poetry install
+        poetry run pip install types-requests
     - name: pytest for tex2pdf
       run: |
         cd tex2pdf_service
