@@ -1,13 +1,16 @@
+import json
+import logging
 import os
+import shutil
+import subprocess
 import tempfile
 import time
-import requests
-import subprocess
 import urllib.parse
+
 import pytest
+import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
-import logging
-import json
+from tex2pdf.converter_driver import RemoteConverterDriver
 
 PORT = 33031
 
@@ -176,3 +179,19 @@ def test_api_preflight(docker_container):
     assert [f["filename"] for f in meta.get("detected_toplevel_files")] == ['fake-file-1.tex', 'fake-file-2.tex', 'fake-file-3.tex']
 
 
+@pytest.mark.integration
+def test_remote2023(docker_container) -> None:
+    tarball = os.path.join(os.getcwd(), "tests", "fixture", "tarballs", "test1", "test1.tar.gz")
+    out_dir = os.path.join(os.getcwd(), "tests", "test-output", "test1-remote")
+    url = docker_container + "/convert/"
+
+    logging.debug("Before instantiating the RemoteConverterDriver")
+
+    shutil.rmtree(out_dir, ignore_errors=True)
+
+    converter = RemoteConverterDriver(url, 600, out_dir, tarball,
+                                      use_addon_tree=False,
+                                      auto_detect=True)
+    logging.debug("Calling generate_pdf")
+    pdf = converter.generate_pdf()
+    assert pdf == "test1.pdf"
