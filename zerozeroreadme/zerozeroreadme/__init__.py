@@ -239,39 +239,43 @@ class ZeroZeroReadMe:
             case ".toml":
                 zzrm = toml.load(filename)
         if zzrm:
-            # print(zzrm)
             self.readme_filename = filename
             self.version = 2
-            for k, v in zzrm.items():
-                if k == "process":
-                    if isinstance(v, dict):
-                        self.process = MainProcessSpec(**v)
-                    else:
-                        raise ParseSyntaxError("Value of process is not a dictionary")
-                elif k == "sources":
-                    if isinstance(v, list):
-                        self.sources: OrderedDict[str, UserFile] = OrderedDict()
-                        for vv in v:
-                            uf = UserFile(**vv)
-                            if uf.filename is None:
-                                raise ParseSyntaxError(f"Missing filename in UserFile: {vv}")
-                            if (
-                                uf.keep_comments is None
-                                and uf.orientation is None
-                                and uf.usage is None
-                                and uf.fontmaps is None
-                            ):
-                                uf.usage = FileUsageType.toplevel
-                            self.sources[uf.filename] = uf
-                    else:
-                        raise ParseSyntaxError(f"Value for sources is not a list[dict]: {type(v)}")
-                elif k == "stamp":
-                    if isinstance(v, bool):
-                        self.stamp = v
-                    else:
-                        self.stamp = string_to_bool(v)
+            self.from_dict(zzrm)
+
+    def from_dict(self, zzrm: dict) -> None:
+        """Initialize a ZZRM from a dictionary."""
+        # print(zzrm)
+        for k, v in zzrm.items():
+            if k == "process":
+                if isinstance(v, dict):
+                    self.process = MainProcessSpec(**v)
                 else:
-                    raise ParseSyntaxError(f"Invalid key for 00README: {k}")
+                    raise ParseSyntaxError("Value of process is not a dictionary")
+            elif k == "sources":
+                if isinstance(v, list):
+                    self.sources: OrderedDict[str, UserFile] = OrderedDict()
+                    for vv in v:
+                        uf = UserFile(**vv)
+                        if uf.filename is None:
+                            raise ParseSyntaxError(f"Missing filename in UserFile: {vv}")
+                        if (
+                            uf.keep_comments is None
+                            and uf.orientation is None
+                            and uf.usage is None
+                            and uf.fontmaps is None
+                        ):
+                            uf.usage = FileUsageType.toplevel
+                        self.sources[uf.filename] = uf
+                else:
+                    raise ParseSyntaxError(f"Value for sources is not a list[dict]: {type(v)}")
+            elif k == "stamp":
+                if isinstance(v, bool):
+                    self.stamp = v
+                else:
+                    self.stamp = string_to_bool(v)
+            else:
+                raise ParseSyntaxError(f"Invalid key for 00README: {k}")
 
     def find_metadata(self, filename: str) -> UserFile:
         """Get an instance of a SourceFileMeta from filename, and create one if it doesn't exist."""
