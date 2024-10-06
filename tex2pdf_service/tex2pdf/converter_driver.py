@@ -562,6 +562,7 @@ class RemoteConverterDriver(ConverterDriver):
 
     def __init__(self, service: str, post_timeout: int, work_dir: str, source: str, **kwargs: typing.Any):
         super().__init__(work_dir, source, **kwargs)
+        self.zzrm: ZeroZeroReadMe | None = None
         self.service = service
         self.post_timeout = post_timeout
 
@@ -577,7 +578,33 @@ class RemoteConverterDriver(ConverterDriver):
 
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
         submit_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect)
-        logger.debug("Returned from posting")
-        self.outcome = get_outcome_meta(outcome_file)
+
+        # unpack the tarball for further processing
+        logger.debug("Unpacking to workdir %s", self.work_dir)
+        unpack_tarball(self.work_dir, outcome_file, {})
+        logger.debug("Unpacking done")
+
+        logger.debug("Getting outcome json")
+        meta = {}
+        for f in os.listdir(self.work_dir):
+            if f.startswith("outcome-") and f.endswith(".json"):
+                with open(os.path.join(self.work_dir, f)) as json_file:
+                    meta.update(json.load(json_file))
+                break
+        self.outcome = meta
+        # logger.debug("Dumping meta %s", meta)
+        logger.debug("Checking for ZZRM")
+
+        # we need to get ZZRM
+        if self.zzrm is None:
+            zzrm_content = meta["zzrm"]["content"]
+            logger.debug("Got zzrm content: %s", zzrm_content)
+            self.zzrm = ZeroZeroReadMe()
+            self.zzrm.from_dict(zzrm_content)
+        else:
+            logger.debug("self.zzrm = %s", self.zzrm)
+
+
+        logger.debug("Directory listing of %s is: %s", self.out_dir, os.listdir(self.out_dir))
 
         return self.outcome.get("pdf_file")
