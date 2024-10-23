@@ -577,7 +577,11 @@ class RemoteConverterDriver(ConverterDriver):
         outcome_file = os.path.join(self.work_dir, f"{tag}-outcome.tar.gz")
 
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
-        submit_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect)
+        success = submit_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect)
+
+        if not success:
+            logger.warning("Couldn't generate PDF")
+            return
 
         # unpack the tarball for further processing
         logger.debug("Unpacking to workdir %s", self.work_dir)
