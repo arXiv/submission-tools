@@ -21,8 +21,8 @@ def get_outcome_meta(outcome_file: str) -> dict:
     return meta
 
 
-def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int, post_timeout: int, auto_detect: bool = False) -> bool:
-    """Submit tarball to compilation service."""
+def service_process_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int, post_timeout: int, auto_detect: bool = False) -> bool:
+    """Submit tarball to compilation service and receive result."""
     if os.path.exists(outcome_file):
         raise FileExistsError(f"Outcome file {outcome_file} already exists!")
     os.makedirs(os.path.dirname(outcome_file), exist_ok=True)

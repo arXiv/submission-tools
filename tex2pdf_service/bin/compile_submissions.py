@@ -34,7 +34,7 @@ from multiprocessing.pool import ThreadPool
 from sqlite3 import Connection
 
 import click
-from tex2pdf.remote_call import submit_tarball
+from tex2pdf.remote_call import service_process_tarball
 from tqdm import tqdm
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
@@ -114,7 +114,7 @@ def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, po
     def local_submit_tarball(tarball: str) -> None:
         outcome_file = tarball_to_outcome_path(tarball)
         try:
-            submit_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout)
+            service_process_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout)
         except FileExistsError:
             logging.info(f"Not recreating already existing {outcome_file}.")
             pass

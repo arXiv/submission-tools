@@ -24,7 +24,7 @@ from tex2pdf import (
 )
 from tex2pdf.doc_converter import combine_documents, strip_to_basename
 from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
-from tex2pdf.remote_call import submit_tarball, get_outcome_meta
+from tex2pdf.remote_call import service_process_tarball, get_outcome_meta
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, chmod_775, unpack_tarball
 from tex2pdf.tex_patching import fix_tex_sources
@@ -577,7 +577,7 @@ class RemoteConverterDriver(ConverterDriver):
         outcome_file = os.path.join(self.work_dir, f"{tag}-outcome.tar.gz")
 
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
-        success = submit_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect)
+        success = service_process_tarball(self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect)
 
         if not success:
             logger.warning("Couldn't generate PDF")
