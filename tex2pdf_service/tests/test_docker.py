@@ -101,7 +101,7 @@ def docker_container(request):
 
     yield url
 
-    if not request.config.getoption('--no-docker-setup'):
+    if not request.config.getoption('--no-docker-setup') and not request.config.getoption('--keep-docker-running'):
         # Stop the container after tests
         with open("tex2pdf.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
@@ -195,5 +195,6 @@ def test_remote2023(docker_container) -> None:
                                       auto_detect=True)
     logging.debug("Calling generate_pdf")
     pdf = converter.generate_pdf()
-    assert os.path.isfile(f"{out_dir}/{tag}-outcome.tar.gz")
+    assert os.path.isfile(f"{out_dir}/outcome-test1.json")
+    assert os.path.isfile(f"{out_dir}/out/test1.pdf")
     assert pdf == "test1.pdf"
