@@ -32,7 +32,8 @@ def service_process_tarball(service: str, tarball: str, outcome_file: str, tex2p
 
     with open(tarball, "rb") as data_fd:
         uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
-        while True:
+        retries = 2
+        for attempt in range(1+retries):
             try:
                 post_url = service + f"?timeout={tex2pdf_timeout}&auto_detect={auto_detect}"
                 logging.debug("POST URL: %s", post_url)
@@ -45,6 +46,7 @@ def service_process_tarball(service: str, tarball: str, outcome_file: str, tex2p
                 )
                 status_code = res.status_code
                 if status_code == 504:
+                    # This is the only place we retry, and at most 3 times in total.
                     logging.warning("Got 504 for %s", service)
                     time.sleep(1)
                     continue
