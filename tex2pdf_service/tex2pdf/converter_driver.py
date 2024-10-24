@@ -581,6 +581,8 @@ class RemoteConverterDriver(ConverterDriver):
 
         if not success:
             logger.warning("Couldn't generate PDF")
+            # ensure we have a zzrm file!
+            self.zzrm = ZeroZeroReadMe()
             return None
 
         # unpack the tarball for further processing
