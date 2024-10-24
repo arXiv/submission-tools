@@ -581,7 +581,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         if not success:
             logger.warning("Couldn't generate PDF")
-            return
+            return None
 
         # unpack the tarball for further processing
         logger.debug("Unpacking to workdir %s", self.work_dir)
