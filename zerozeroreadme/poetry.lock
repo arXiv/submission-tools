@@ -133,7 +133,7 @@ pydantic = "==1.10.*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "ARXIVCE-2614-RemoteConverterDriver"
-resolved_reference = "f479ab790e83c6643bc8adc9aa98b0d5cc241e3d"
+resolved_reference = "2c29e6352d0408ee78b2e7920e2e306acf3d8506"
 subdirectory = "preflight_parser"
 
 [[package]]
