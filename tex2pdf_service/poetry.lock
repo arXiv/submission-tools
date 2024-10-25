@@ -772,8 +772,8 @@ pydantic = "==1.10.*"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "ARXIVCE-2614-RemoteConverterDriver"
+resolved_reference = "e32ced058688a5fd7f9f84f06a4488f9ab65893d"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -1153,8 +1153,8 @@ toml = "^0.10.2"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "ARXIVCE-2614-RemoteConverterDriver"
+resolved_reference = "e32ced058688a5fd7f9f84f06a4488f9ab65893d"
 subdirectory = "tex_inspection"
 
 [[package]]
@@ -1359,7 +1359,7 @@ files = []
 develop = false
 
 [package.dependencies]
-preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", branch = "ARXIVCE-2542-use-new-preflight", subdirectory = "preflight_parser"}
+preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", branch = "ARXIVCE-2614-RemoteConverterDriver", subdirectory = "preflight_parser"}
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 tomli_w = "^1.0"
@@ -1367,11 +1367,11 @@ tomli_w = "^1.0"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "ARXIVCE-2542-use-new-preflight"
-resolved_reference = "eeb2327ef88cb77dcdd4e67099b58efb0effd6f2"
+reference = "ARXIVCE-2614-RemoteConverterDriver"
+resolved_reference = "e32ced058688a5fd7f9f84f06a4488f9ab65893d"
 subdirectory = "zerozeroreadme"
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "0c1af3c635b1a4126ef297582f6ccc758c7c291c42687cf562148b571d7fde19"
+content-hash = "b4ac93154a443f0d5ac66e5b923098afbce15b63a18258187f770d8c28c2a90f"

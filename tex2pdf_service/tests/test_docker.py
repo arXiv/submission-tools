@@ -1,13 +1,16 @@
+import json
+import logging
 import os
+import shutil
+import subprocess
 import tempfile
 import time
-import requests
-import subprocess
 import urllib.parse
+
 import pytest
-from bin.compile_submissions import get_outcome_meta
-import logging
-import json
+import requests
+from bin.compile_submissions import get_outcome_meta_and_files_info
+from tex2pdf.converter_driver import RemoteConverterDriver
 
 PORT = 33031
 
@@ -36,7 +39,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
                         else:
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta(outcome_file)
+                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
                 else:
                     logging.warning(f"%s: status code %d", url, status_code)
 
@@ -98,7 +101,7 @@ def docker_container(request):
 
     yield url
 
-    if not request.config.getoption('--no-docker-setup'):
+    if not request.config.getoption('--no-docker-setup') and not request.config.getoption('--keep-docker-running'):
         # Stop the container after tests
         with open("tex2pdf.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
@@ -176,3 +179,22 @@ def test_api_preflight(docker_container):
     assert [f["filename"] for f in meta.get("detected_toplevel_files")] == ['fake-file-1.tex', 'fake-file-2.tex', 'fake-file-3.tex']
 
 
+@pytest.mark.integration
+def test_remote2023(docker_container) -> None:
+    tarball = os.path.join(os.getcwd(), "tests", "fixture", "tarballs", "test1", "test1.tar.gz")
+    out_dir = os.path.join(os.getcwd(), "tests", "test-output", "test1-remote")
+    url = docker_container + "/convert/"
+    tag = os.path.basename(tarball)
+
+    logging.debug("Before instantiating the RemoteConverterDriver")
+
+    shutil.rmtree(out_dir, ignore_errors=True)
+
+    converter = RemoteConverterDriver(url, 600, out_dir, tarball,
+                                      use_addon_tree=False, tag=tag,
+                                      auto_detect=True)
+    logging.debug("Calling generate_pdf")
+    pdf = converter.generate_pdf()
+    assert os.path.isfile(f"{out_dir}/outcome-test1.json")
+    assert os.path.isfile(f"{out_dir}/out/test1.pdf")
+    assert pdf == "test1.pdf"
