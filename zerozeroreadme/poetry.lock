@@ -130,11 +130,8 @@ chardet = "^5.0"
 pydantic = "==1.10.*"
 
 [package.source]
-type = "git"
-url = "https://github.com/arXiv/submission-tools.git"
-reference = "HEAD"
-resolved_reference = "e116db425f2f80863a6ab73e6b77221fe0bdddae"
-subdirectory = "preflight_parser"
+type = "directory"
+url = "../preflight_parser"
 
 [[package]]
 name = "pydantic"
@@ -339,4 +336,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "87b09e9e362d1a6f0796a73b18ede4904b9106ebfb50ac9fcac2439dac6d1785"
+content-hash = "e6d7857ef06cdff24b135a188383f87628d52ba11d164c23d3ff0588062fb747"

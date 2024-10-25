@@ -770,11 +770,8 @@ chardet = "^5.0"
 pydantic = "==1.10.*"
 
 [package.source]
-type = "git"
-url = "https://github.com/arXiv/submission-tools.git"
-reference = "HEAD"
-resolved_reference = "e116db425f2f80863a6ab73e6b77221fe0bdddae"
-subdirectory = "preflight_parser"
+type = "directory"
+url = "../preflight_parser"
 
 [[package]]
 name = "priority"
@@ -1151,11 +1148,8 @@ ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 
 [package.source]
-type = "git"
-url = "https://github.com/arXiv/submission-tools.git"
-reference = "HEAD"
-resolved_reference = "e116db425f2f80863a6ab73e6b77221fe0bdddae"
-subdirectory = "tex_inspection"
+type = "directory"
+url = "../tex_inspection"
 
 [[package]]
 name = "toml"
@@ -1359,19 +1353,16 @@ files = []
 develop = false
 
 [package.dependencies]
-preflight_parser = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "preflight_parser"}
+preflight_parser = {path = "../preflight_parser"}
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 tomli_w = "^1.0"
 
 [package.source]
-type = "git"
-url = "https://github.com/arXiv/submission-tools.git"
-reference = "HEAD"
-resolved_reference = "e116db425f2f80863a6ab73e6b77221fe0bdddae"
-subdirectory = "zerozeroreadme"
+type = "directory"
+url = "../zerozeroreadme"
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8654f6602bc896c175fbf7d94828b2210804256c32baac483ec17a1266b0cf08"
+content-hash = "ca2c72f3948d429da2360e313d50f731cd99f40d29fbf58be8cd2c2eaf41bb17"
