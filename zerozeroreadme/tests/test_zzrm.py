@@ -2,7 +2,9 @@ import io
 import os
 import unittest
 
+import pytest
 from zerozeroreadme import ZeroZeroReadMe
+from preflight_parser import ParseSyntaxError
 
 
 class Test00README(unittest.TestCase):
@@ -32,6 +34,12 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+
+    def test_zzrm_v2_syntax_error(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_v2_syntax_error")
+        with pytest.raises(ParseSyntaxError) as exc_info:
+            zzrm = ZeroZeroReadMe(dir_path)
+        assert str(exc_info.value).startswith("Validation error on parsing: ")
 
     def test_zzrm_v2_02(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_02")

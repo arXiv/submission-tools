@@ -20,7 +20,7 @@ from preflight_parser import (
     ToplevelFile,
     string_to_bool,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from ruamel.yaml import YAML, MappingNode, ScalarNode
 from ruamel.yaml.representer import RoundTripRepresenter
 
@@ -249,14 +249,20 @@ class ZeroZeroReadMe:
         for k, v in zzrm.items():
             if k == "process":
                 if isinstance(v, dict):
-                    self.process = MainProcessSpec(**v)
+                    try:
+                        self.process = MainProcessSpec(**v)
+                    except ValidationError as e:
+                        raise ParseSyntaxError(f"Validation error on parsing: {e}")
                 else:
                     raise ParseSyntaxError("Value of process is not a dictionary")
             elif k == "sources":
                 if isinstance(v, list):
                     self.sources: OrderedDict[str, UserFile] = OrderedDict()
                     for vv in v:
-                        uf = UserFile(**vv)
+                        try:
+                            uf = UserFile(**vv)
+                        except ValidationError as e:
+                            raise ParseSyntaxError(f"Validation error on parsing: {e}")
                         if uf.filename is None:
                             raise ParseSyntaxError(f"Missing filename in UserFile: {vv}")
                         if (
