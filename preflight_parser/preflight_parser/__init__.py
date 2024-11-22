@@ -1123,6 +1123,8 @@ def deal_with_bibliographies(
         if bbl_file_present:
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=True)
+            # add bbl file to the list of used_other_files
+            nodes[tl_f].used_other_files.append(bbl_file)
             # TODO, maybe remove issues with missing .bib files?
             continue
         # toplevel filename .bbl is missing -> require .bib to be available,
