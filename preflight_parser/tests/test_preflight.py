@@ -144,3 +144,19 @@ class TestPreflight(unittest.TestCase):
             pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
             """{"engine": "tex", "lang": "tex", "output": "dvi", "postp": "dvips_ps2pdf"}""",
         )
+
+    def test_preflight_pdf_only_submission(self):
+        """Test PDF only submission."""
+        dir_path = os.path.join(self.fixture_dir, "single-pdf")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "hello-world.pdf")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "unknown", "lang": "pdf", "output": "unknown", "postp": "none"}""",
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.compiler_string,
+            "pdf_submission"
+        )
