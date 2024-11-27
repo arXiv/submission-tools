@@ -635,3 +635,80 @@ class RemoteConverterDriver(ConverterDriver):
         logger.debug("Directory listing of %s is: %s", self.out_dir, os.listdir(self.out_dir))
 
         return self.outcome.get("pdf_file")
+
+class AutoTeXConverterDriver(ConverterDriver):
+    """Uses autotex for conversion."""
+
+    service: str
+    post_timeout: int
+
+    def generate_pdf(self) -> str|None:
+        """We have the beef."""
+        logger = get_logger()
+        self.t0 = time.perf_counter()
+
+        # step 1: move tarball to /autotex
+        local_tarball = os.path.join(self.in_dir, self.source)
+        # should we do exception handling here? This should work
+        # in the autotex container, and when it raises an exception
+        # we cannot do anything else but reraising it
+        os.rename(local_tarball, os.path.join("/autotex", self.source))
+
+        # step 2: run autotex.pl on the id
+        PATH = "/usr/local/bin:/opt_arxiv/bin:/opt_arxiv/arxiv-perl/bin:/usr/sbin:/usr/bin:/bin:/sbin"
+        # SECRETS or GOOGLE_APPLICATION_CREDENTIALS is not defined at all at this point but
+        # be defensive and squish it anyway.
+        cmdenv = {"SECRETS": "?", "GOOGLE_APPLICATION_CREDENTIALS": "?", "PATH": PATH}
+        # TODO get ArXiVID from source?
+        arxivID = self.source
+        # maybe it is already source
+        worker_args = [ "autotex.pl", "-f", "fInm", "-q", "-W", "/autotex", "-v", "-Z", "-p", arxivID ]
+        with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
+                              cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
+            process_completion = False
+            try:
+                timeout_value = self.time_left()
+                (out, err) = child.communicate(timeout=timeout_value)
+                process_completion = True
+            except subprocess.TimeoutExpired:
+                logger.warning("Process timeout %s", shlex.join(worker_args), extra=extra)
+                child.kill()
+                (out, err) = child.communicate()
+                pass
+            elapse_time = time.perf_counter() - t0
+            timestamp1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            run = {"args": args, "stdout": out, "stderr": err,
+                   "return_code": child.returncode,
+                   "run_env": cmdenv,
+                   "start_time": timestamp0, "end_time": timestamp1,
+                   "elapse_time": elapse_time,
+                   "process_completion": process_completion,
+                   "PATH": PATH}
+            pass
+        extra.update({"run": run})
+        logger.debug(f"Exec result: return code: {run['return_code']}", extra=extra)
+        return run, out, err
+
+
+        # step 3: grab the PDF and the log file
+        # step 4: create outcome json
+
+        self.outcome = {ID_TAG: self.tag, "status": None, "converters": [],
+                        "start_time": str(self.t0),
+                        "timeout": str(self.max_time_budget),
+                        "use_addon_tree": self.use_addon_tree,
+                        "max_tex_files": self.max_tex_files,
+                        "max_appending_files": self.max_appending_files
+                        }
+
+        self._run_tex_commands()
+            pdf_files = self.outcome.get("pdf_files", [])
+            if pdf_files:
+                self._finalize_pdf()
+                self.outcome["status"] = "success"
+            else:
+                self.outcome["status"] = "fail"
+                pass
+            pass
+        return self.outcome.get("pdf_file")
+

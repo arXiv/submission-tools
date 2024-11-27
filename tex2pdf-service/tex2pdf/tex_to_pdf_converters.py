@@ -587,6 +587,59 @@ class PdfLatexConverter(BaseConverter):
 
     pass
 
+class AutoTeXConverter(BaseConverter):
+    """Runs autotex command"""
+    to_pdf_args: typing.List[str]
+    pdfoutput_1_seen: bool
+
+    def __init__(self, conversion_tag: str, **kwargs: typing.Any):
+        super().__init__(conversion_tag, **kwargs)
+        pass
+
+    @classmethod
+    def tex_compiler_name(cls) -> str:
+        """TeX Compiler """
+        return "autotex.pl"
+
+    def _get_autotex_args(self, tex_file: str) -> typing.List[str]:
+        """Return the autotex command line arguments"""
+        # autotex.pl -f fInm -q -W /autotex -v -Z -p 2311.08097
+        args = ["/usr/bin/autotex.pl",
+            "-f", "fInm", "-q", "-W", "/autotex", "-v", "-Z",
+            "-p"]
+        args.append(tex_file)
+        return args
+
+    def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        """Produce PDF
+
+        NOTE: It is important to return the outcome so that you can troubleshoot.
+        Do not exception out.
+        """
+        logger = get_logger()
+
+        # find \pdfoutput=1
+        self.pdfoutput_1_seen = find_pdfoutput_1(tex_file, in_dir)
+
+        # This breaks many packages... f"-output-directory=../{bod}"
+        self.to_pdf_args = self._get_pdflatex_args(tex_file)
+
+        outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "pdf")
+        logger.debug("pdflatex.produce_pdf", extra={ID_TAG: self.conversion_tag, "outcome": outcome})
+        return outcome
+
+    def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        cmd_log = os.path.join(in_dir, f"{self.stem}.log")
+        run = self._to_pdf_run(self.to_pdf_args, self.stem,
+                               step, work_dir, in_dir, out_dir, cmd_log)
+        run = self.check_missing(in_dir, run, "pdf")
+        return run
+
+
+    def converter_name(self) -> str:
+        return "%s: %s" % (self.tex_compiler_name(), shlex.join(self.to_pdf_args))
+
+    pass
 
 # class PdfTexConverter(BaseConverter):
 #     """Runs pdftex command"""
