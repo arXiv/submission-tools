@@ -17,9 +17,11 @@ from pydantic import BaseModel
 from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
 from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
 from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
+from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive, unpack_tarball
 from tex2pdf.fastapi_util import closer
 from tex2pdf.pdf_watermark import Watermark
+
+from preflight_parser import PreflightStatusValues, generate_preflight_response
 
 log_level = os.environ.get("LOGLEVEL", "INFO").upper()
 get_logger().info("Starting: uid=%d gid=%d", os.getuid(), os.getgid())
@@ -192,6 +194,133 @@ async def convert_pdf(incoming: UploadFile,
             else:
                 return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
                                     content={"message": "Preflight v2 data not found"})
+
+        more_files: typing.List[str] = []
+        # if pdf_file:
+        #     more_files.append(pdf_file)
+        out_dir_files = os.listdir(out_dir)
+        outcome_maker = ConversionOutcomeMaker(tempdir, tag)
+        outcome_maker.create_outcome(driver, driver.outcome,
+                                     more_files=more_files,
+                                     outcome_files=out_dir_files)
+
+        content = open(os.path.join(tempdir, outcome_maker.outcome_file), "rb")
+        filename = os.path.basename(outcome_maker.outcome_file)
+        headers = {
+            "Content-Type": "application/gzip",
+            "Content-Disposition": f"attachment; filename={filename}",
+        }
+        return GzipResponse(content, headers=headers,
+                            background=closer(content, filename, log_extra))
+
+@app.post('/',
+          responses={
+              STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}},
+                                     "description": "Conversion result"},
+              STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
+              STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
+          })
+async def simple_convert_pdf(incoming: UploadFile,
+                      use_addon_tree: typing.Annotated[bool,
+                      Query(title="Use addon tree",
+                            description="Determines whether an addon tree is used.")] = USE_ADDON_TREE,
+                      timeout: typing.Annotated[int | None,
+                      Query(title="Time out", description="Time out in seconds.")] = None,
+                      max_tex_files: typing.Annotated[int | None,
+                      Query(title="Max Tex File count",
+                            description=f"Maximum number of TeX files processed in the input. Default is {MAX_TOPLEVEL_TEX_FILES}")] = None,
+                      max_appending_files: typing.Annotated[int | None,
+                      Query(title="Max Extra File count",
+                            description=f"Maximum number of appending files. Default is {MAX_APPENDING_FILES}")] = None,
+                      preflight: typing.Annotated[str | None,
+                      Query(title="Preflight", description="Do preflight check, currently only supports v2")] = None,
+                      watermark_text: str | None = None,
+                      watermark_link: str | None = None,
+                      auto_detect: bool = False) -> Response:
+    """
+    get a tarball, and convert to PDF
+    """
+    filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
+    log_extra = {"source_filename": filename}
+    logger = get_logger()
+    logger.info("%s", incoming.filename)
+    tag = os.path.basename(filename)
+    while True:
+        [stem, ext] = os.path.splitext(tag)
+        if ext in [".gz", ".zip", ".tar"]:
+            tag = stem
+            continue
+        break
+
+    if max_tex_files is None:
+        max_tex_files = MAX_TOPLEVEL_TEX_FILES
+
+    if max_appending_files is None:
+        max_appending_files = MAX_APPENDING_FILES
+
+    with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
+        in_dir, out_dir = prep_tempdir(tempdir)
+        await save_stream(in_dir, incoming, filename, log_extra)
+
+        # deal with preflight
+        if preflight is None:
+            pass
+        elif preflight == "v1" or preflight == "V1":
+            logger.info("Preflight version 1 not supported anymore.")
+            return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                content={"message": "Preflight version 1 not supported anymore."})
+        elif preflight == "v2" or preflight == "V2":
+            local_tarball = os.path.join(in_dir, filename)
+            unpack_tarball(in_dir, local_tarball)
+            return Response(status_code=STATCODE.HTTP_200_OK,
+                            headers={"Content-Type": "application/json"},
+                            content=generate_preflight_response(in_dir, json=True))
+        else:
+            return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                content={"message": f"Invalid preflight version {preflight}."})
+
+        # if we are still here, preflight was not requested but actual
+        # compilation needs to be done
+        timeout_secs = float(MAX_TIME_BUDGET)
+        if timeout is not None:
+            try:
+                timeout_secs = float(timeout)
+            except ValueError:
+                pass
+            pass
+
+        try:
+            simple_run_tex_process(tempdir, filename, use_addon_tree=use_addon_tree, tag=tag,
+                                   watermark=Watermark(watermark_text, watermark_link),
+                                   max_time_budget=timeout_secs,
+                                   max_tex_files=max_tex_files,
+                                   max_appending_files=max_appending_files,
+                                   auto_detect=auto_detect)
+        except RemovedSubmission:
+            logger.info("Archive is marked deleted.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "The source is marked deleted."})
+
+        except ZZRMUnsupportedCompiler:
+            logger.info("ZZRM selected compiler is not supported.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "ZZRM selected compiler is not supported."})
+
+        except ZZRMUnderspecified:
+            logger.info("ZZRM missing or underspecified.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "ZZRM missing or underspecified."})
+
+        except UnsupportedArchive:
+            logger.info("Archive is not supported")
+            return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST,
+                                content={"message": "The archive is unsupported"})
+
+        except Exception as exc:
+            logger.error(f"Exception %s", str(exc), exc_info=True)
+            return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                                content={"message": traceback.format_exc()})
 
         more_files: typing.List[str] = []
         # if pdf_file:
