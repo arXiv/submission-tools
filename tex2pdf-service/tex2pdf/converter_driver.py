@@ -9,6 +9,7 @@ import subprocess
 import time
 import typing
 from enum import Enum
+from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -706,3 +707,118 @@ class RemoteConverterDriver(ConverterDriver):
         logger.debug("Directory listing of %s is: %s", self.out_dir, os.listdir(self.out_dir))
 
         return self.outcome.get("pdf_file")
+
+class AutoTeXConverterDriver(ConverterDriver):
+    """Uses autotex for conversion."""
+
+    def __init__(self, work_dir: str, source: str, tag: str | None = None, max_time_budget: float | None = None):
+        # Default are all already ok
+        super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
+        self.zzrm = ZeroZeroReadMe()
+
+    def generate_pdf(self) -> str|None:
+        """We have the beef."""
+        logger = get_logger()
+        t0 = time.perf_counter()
+
+        # run autotex.pl on the id
+        PATH = "/usr/local/bin:/opt_arxiv/bin:/opt_arxiv/arxiv-perl/bin:/usr/sbin:/usr/bin:/bin:/sbin"
+        # SECRETS or GOOGLE_APPLICATION_CREDENTIALS is not defined at all at this point but
+        # be defensive and squish it anyway.
+        cmdenv = {"SECRETS": "?", "GOOGLE_APPLICATION_CREDENTIALS": "?", "PATH": PATH}
+
+        arxivID = self.tag
+        # maybe it is already source
+        worker_args = [
+            "autotex.pl", "-f", "fInm", "-q",
+            "-S", self.in_dir,  # here the original tarball has been dumped
+            "-W", self.out_dir,  # work_dir/out where we expect files
+                                 # TODO currently autotex.pl DOES NOT HONOR THIS!!!
+            "-v", "-Z", "-p", arxivID ]
+        with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
+                              cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
+            process_completion = False
+            try:
+                (out, err) = child.communicate(timeout=self.max_time_budget)
+                process_completion = True
+            except subprocess.TimeoutExpired:
+                logger.warning("Process timeout %s", shlex.join(worker_args), extra=self.log_extra)
+                child.kill()
+                (out, err) = child.communicate()
+            elapse_time = time.perf_counter() - t0
+            t1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        logger.debug(f"Exec result: return code: {child.returncode}", extra=self.log_extra)
+
+        # files generated
+        # self.in_dir / tex_cache / arXivID.pdf (might have a version!)
+        # self.in_dir / tex_logs / autotex.log (same name, not good)
+        # we need to move them to self.out_dir so that the follow-up packaging
+        # into a tarfile works
+        pdf_files = glob(f"{self.in_dir}/tex_cache/{arxivID}*.pdf")
+        if not pdf_files:
+            pdf_file = None
+        elif len(pdf_files) > 1:
+            raise Exception(f"Multiple PDF files found: {pdf_files}")
+        else:
+            # move the file to self.out_dir
+            pdf_file = os.path.join(self.out_dir, os.path.basename(pdf_files[0]))
+            os.rename(pdf_files[0], pdf_file)
+        # we use glob here, since we will need to rename the autotex.log created
+        # by autotex.pl to arxivID.log *within* autotex.log
+        log_files = glob(f"{self.in_dir}/tex_logs/autotex.log")
+        log: str|bytes|None = None
+        if not log_files:
+            logger.warning(f"No log files found for {arxivID}")
+            log = None
+        else:
+            # log files created by LaTeX are in "font encoding" that is the
+            # encoding used for output. Thus, in most cases T1 encoding which
+            # is similar to latin1, but differs slightly. Let us try to read
+            # in latin1 and if that fails, use bytes
+            # TODO for luatex/xetex we have to review this, since the logfile
+            # encoding will be utf-8.
+            try:
+                with open(log_files[0], encoding="iso-8859-1") as file:
+                    log = file.read()
+            except UnicodeDecodeError:
+                logger.warning(f"Couldn't decode log file {log_files[0]} - trying bytes")
+                with open(log_files[0], "rb") as file:
+                    log = file.read()
+
+        # Create an outcome structure
+        # This is unfortunately not well documented and has severe duplication of entries
+        self.outcome = {
+            ID_TAG: self.tag,
+            "converters": [ {
+                "pdf_file": pdf_file,
+                "runs": [ {
+                    "args": worker_args,
+                    "stdout": out,
+                    "stderr": err,
+                    "return_code": child.returncode,
+                    "run_env": cmdenv,
+                    "start_time": t0, "end_time": t1,
+                    "elapse_time": elapse_time,
+                    "process_completion": process_completion,
+                    "PATH": PATH,
+                    "arxiv_id": arxivID,
+                    "log": log
+                }]
+            } ],
+            "start_time": str(t0),
+            "timeout": str(self.max_time_budget),
+            "total_time": elapse_time,
+            "pdf_files": [ pdf_file ],
+            "pdf_file": pdf_file,
+            "status": "success" if pdf_file else "fail",
+        }
+
+        # we need to get ZZRM
+        if self.zzrm is None:
+            logger.debug("no self.zzrm found, that should not happen")
+            self.zzrm = ZeroZeroReadMe()
+        else:
+            logger.debug("self.zzrm = %s", self.zzrm)
+
+        return self.outcome.get("pdf_file")
+
