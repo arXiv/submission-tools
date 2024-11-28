@@ -13,6 +13,7 @@ from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.service.converter_driver import RemoteConverterDriver
 
 PORT = 33031
+SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
 def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10, json_response: bool = False, api_args: dict= {}) -> None | dict:
     meta = None
@@ -122,8 +123,8 @@ def test_api_hello(docker_container):
 def test_api_smoke(docker_container):
     """00README.XXX is bad, so make sure it does not die or anything."""
     url = docker_container + "/convert"
-    tarball = "tests/fixture/tarballs/test1/test1.tar.gz"
-    outcome = "tests/output/test1.outcome.tar.gz"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test1/test1.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test1.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
 
@@ -131,8 +132,8 @@ def test_api_smoke(docker_container):
 @pytest.mark.integration
 def test_api_test2(docker_container):
     url = docker_container + "/convert"
-    tarball = "tests/fixture/tarballs/test2/test2.tar.gz"
-    outcome = "tests/output/test2.outcome.tar.gz"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
@@ -143,8 +144,8 @@ def test_api_test2(docker_container):
 @pytest.mark.integration
 def test_api_test3(docker_container):
     url = docker_container + "/convert"
-    tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
-    outcome = "tests/output/test3.outcome.tar.gz"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
@@ -157,8 +158,8 @@ def test_api_test3(docker_container):
 @pytest.mark.integration
 def test_api_test4(docker_container):
     url = docker_container + "/convert"
-    tarball = "tests/fixture/tarballs/test4/test4.tar.gz"
-    outcome = "tests/output/test4.outcome.tar.gz"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
@@ -169,8 +170,8 @@ def test_api_test4(docker_container):
 @pytest.mark.integration
 def test_api_preflight(docker_container):
     url = docker_container + "/convert"
-    tarball = "tests/fixture/tarballs/test3/test3.tar.gz"
-    outcome = "tests/output/test3.outcome.tar.gz"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
     assert meta is not None
     print(meta)
@@ -181,8 +182,8 @@ def test_api_preflight(docker_container):
 
 @pytest.mark.integration
 def test_remote2023(docker_container) -> None:
-    tarball = os.path.join(os.getcwd(), "tests", "fixture", "tarballs", "test1", "test1.tar.gz")
-    out_dir = os.path.join(os.getcwd(), "tests", "test-output", "test1-remote")
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test1/test1.tar.gz")
+    out_dir = os.path.join(SELF_DIR, "output/test1-remote")
     url = docker_container + "/convert/"
     tag = os.path.basename(tarball)
 
