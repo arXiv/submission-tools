@@ -15,7 +15,7 @@ class MyPyTest(TestCase):
         if mypy is None:
             raise EnvironmentError("mypy not found in PATH")
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-        result: int = subprocess.call([mypy, "tex2pdf.service"],
+        result: int = subprocess.call([mypy, "tex2pdf/service"],
                                       env=os.environ, cwd=root_dir)
         self.assertEqual(result, 0, 'Expect 0 type errors when running mypy')
 

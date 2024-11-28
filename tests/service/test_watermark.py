@@ -3,8 +3,10 @@ import unittest
 
 from tex2pdf.service.pdf_watermark import add_watermark_text_to_pdf, Watermark
 
-watermark_pdf = "tests/test-output/watermark.pdf"
-in_pdf = "tests/fixture/smoke/Test.pdf"
+SELF_DIR = os.path.abspath(os.path.dirname(__file__))
+
+watermark_pdf = os.path.join(SELF_DIR, "output/watermark.pdf")
+in_pdf = os.path.join(SELF_DIR, "fixture/smoke/Test.pdf")
 
 class MyTestCase(unittest.TestCase):
 
@@ -16,7 +18,7 @@ class MyTestCase(unittest.TestCase):
                                     "Water World is in Orlando, FL.",
                                     "https://en.wikipedia.org/wiki/Waterworld"
                                   ),
-                                  in_pdf, "tests/test-output/Test.pdf"
+                                  in_pdf, os.path.join(SELF_DIR, "output/Test.pdf")
                                  )
 
 if __name__ == '__main__':
