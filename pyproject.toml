@@ -49,7 +49,6 @@ extend-exclude = [
     "pdf_profile",
     "bin",
     "service-various",
-    "conftest.py",
     "tex2pdf/service", # too much work to do for now
 ]
 
