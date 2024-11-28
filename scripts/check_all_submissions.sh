@@ -43,7 +43,7 @@ do_one () {
   rm -rf __tmp__/*
   tar -C __tmp__ -xf $1
   bn=$(basename $1 .tar.gz)
-  (python -m preflight_parser __tmp__ | json_pp) > json/$bn.json 2> json/$bn.log
+  (python -m tex2pdf.preflight_parser __tmp__ | json_pp) > json/$bn.json 2> json/$bn.log
   # remove .log file if it has 0 size
   if ! [ -s json/$bn.log ] ; then
     rm json/$bn.log
