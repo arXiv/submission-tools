@@ -2,7 +2,7 @@
 name = "arxiv-tex2pdf"
 version = "0.1.0"
 description = "Compiling TeX to PDF as a service"
-authors = ["arxiv.org"]
+authors = ["Naoyuki Tai <ntai@arxiv.org>", "Norbert Preining <norbert@arxiv.org>"]
 packages = [
     { include = "tex2pdf" }
 ]
