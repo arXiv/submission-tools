@@ -1,6 +1,6 @@
 import os
 import unittest
-from tex_inspection import find_pdfoutput_1
+from tex2pdf.tex_inspection import find_pdfoutput_1
 
 class TestConverterSelection(unittest.TestCase):
 

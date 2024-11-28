@@ -1,5 +1,5 @@
 import unittest
-from tex_inspection import maybe_banned_tex_file, is_banned_tex
+from tex2pdf.tex_inspection import maybe_banned_tex_file, is_banned_tex
 
 
 class BanTest(unittest.TestCase):
