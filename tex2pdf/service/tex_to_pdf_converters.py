@@ -302,8 +302,12 @@ class BaseConverter:
     pass
 
 
-def select_converter_class(zzrm: ZeroZeroReadMe) -> type[BaseConverter]:
+def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
     """Select converter based on ZZRM."""
+    if zzrm is None:
+        raise ValueError("Compiler is not defined.")
+    if zzrm.process.compiler is None:
+        raise ValueError("Compiler is not defined.")
     process_spec = zzrm.process.compiler.compiler_string
     if process_spec == "etex+dvips_ps2pdf":
         return VanillaTexConverter

@@ -64,7 +64,7 @@ class ConverterDriver:
     converter: BaseConverter | None
     converters: typing.List[type[BaseConverter]]
     tex_files: typing.List[str]
-    zzrm: ZeroZeroReadMe
+    zzrm: ZeroZeroReadMe | None
     t0: float
     max_time_budget: float
     outcome: dict
@@ -108,6 +108,7 @@ class ConverterDriver:
         self.today = None
         self.preflight = preflight
         self.auto_detect = auto_detect
+        self.zzrm = None
         pass
 
     @property
@@ -150,6 +151,8 @@ class ConverterDriver:
                 raise ZZRMUnderspecified("Not ready for compilation and auto-detect disabled")
             logger.debug("Running preflight for input since no 00README present")
             preflight_response = generate_preflight_response(self.in_dir)
+            if isinstance(preflight_response, str):
+                raise Exception("We didn't request a JSON object but received one?")
             self.outcome["preflight_v2"] = preflight_response.to_json()
             logger.debug("Got preflight response: %s", preflight_response)
             if preflight_response.status.key != PreflightStatusValues.success:
@@ -408,6 +411,8 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             else:
                 raise exc
 
+        assert self.zzrm is not None
+
         if self.water.text and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
             temp_name = outcome["pdf_file"] + ".watermarked.pdf"
@@ -485,6 +490,7 @@ class ConversionOutcomeMaker:
             pass
 
         zzrm = converter_driver.zzrm
+        assert zzrm is not None
         zzrm_generated = io.StringIO()
         zzrm.to_yaml(zzrm_generated)
         zzrm_generated.seek(0)
@@ -557,7 +563,6 @@ class RemoteConverterDriver(ConverterDriver):
 
     def __init__(self, service: str, post_timeout: int, work_dir: str, source: str, **kwargs: typing.Any):
         super().__init__(work_dir, source, **kwargs)
-        self.zzrm: ZeroZeroReadMe | None = None
         self.service = service
         self.post_timeout = post_timeout
 
