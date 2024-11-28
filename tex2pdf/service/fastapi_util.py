@@ -5,7 +5,7 @@ FastAPI utilities
 from typing import BinaryIO, TextIO
 from io import BufferedIOBase
 from fastapi import BackgroundTasks
-from tex2pdf.service_logger import get_logger
+from .service_logger import get_logger
 
 
 def close_stream(it: BufferedIOBase | BinaryIO | TextIO, filename: str, extra: dict) -> None:

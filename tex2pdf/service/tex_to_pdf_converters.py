@@ -9,11 +9,11 @@ import time
 import typing
 from abc import abstractmethod
 
-from tex2pdf import file_props, local_exec, file_props_in_dir, \
+from . import file_props, local_exec, file_props_in_dir, \
     MAX_LATEX_RUNS, ID_TAG, MAX_TIME_BUDGET
-from tex2pdf.service_logger import get_logger
-from tex_inspection import find_pdfoutput_1
-from zerozeroreadme import ZeroZeroReadMe
+from .service_logger import get_logger
+from tex2pdf.tex_inspection import find_pdfoutput_1
+from tex2pdf.zerozeroreadme import ZeroZeroReadMe
 from .log_inspection import inspect_log
 
 WITH_SHELL_ESCAPE = False

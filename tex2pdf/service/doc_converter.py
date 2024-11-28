@@ -9,8 +9,8 @@ import typing
 
 from PIL import Image, UnidentifiedImageError
 
-from tex2pdf import graphics_exts
-from tex2pdf.service_logger import get_logger
+from . import graphics_exts
+from .service_logger import get_logger
 
 def convert_image_to_pdf(image_path: str, pdf_path: str) -> str:
     """Convert an image to a PDF."""
@@ -52,7 +52,7 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
             shutil.move(doc_list[0], output_path)
         converted_docs.append(os.path.basename(doc_list[0]))
         return out_filename, converted_docs, failed_docs, addon_outcome
-    
+
     logger = get_logger()
     effective_pdf_list = []
     # first collection list of pdfs to be combined (normal and converted images)
@@ -89,7 +89,7 @@ def combine_documents(doc_list: typing.List[str], out_dir: str, out_filename: st
             shutil.move(effective_pdf_list[0], output_path)
         converted_docs.append(os.path.basename(effective_pdf_list[0]))
         return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs), addon_outcome
-        
+
     # call gs to combine the pdf
     # we cannot use pikepdf (easily) here since it breaks annotations (links)
     gs_cmd = [

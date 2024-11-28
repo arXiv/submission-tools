@@ -14,12 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
-from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
-from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
-from tex2pdf.fastapi_util import closer
-from tex2pdf.pdf_watermark import Watermark
+from . import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
+from .converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
+from .service_logger import get_logger
+from .tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
+from .fastapi_util import closer
+from .pdf_watermark import Watermark
 
 log_level = os.environ.get("LOGLEVEL", "INFO").upper()
 get_logger().info("Starting: uid=%d gid=%d", os.getuid(), os.getgid())

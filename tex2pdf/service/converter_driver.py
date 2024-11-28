@@ -12,8 +12,8 @@ from enum import Enum
 
 from pikepdf import PdfError
 
-from preflight_parser import PreflightStatusValues, generate_preflight_response
-from tex2pdf import (
+from tex2pdf.preflight_parser import PreflightStatusValues, generate_preflight_response
+from . import (
     ID_TAG,
     MAX_TIME_BUDGET,
     catalog_files,
@@ -22,15 +22,15 @@ from tex2pdf import (
     graphics_exts,
     test_file_extent,
 )
-from tex2pdf.doc_converter import combine_documents, strip_to_basename
-from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
-from tex2pdf.remote_call import service_process_tarball, get_outcome_meta
-from tex2pdf.service_logger import get_logger
-from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, chmod_775, unpack_tarball
-from tex2pdf.tex_patching import fix_tex_sources
-from tex2pdf.tex_to_pdf_converters import BaseConverter, select_converter_class
-from tex_inspection import find_unused_toplevel_files, maybe_bbl
-from zerozeroreadme import FileUsageType, ZeroZeroReadMe
+from .doc_converter import combine_documents, strip_to_basename
+from .pdf_watermark import Watermark, add_watermark_text_to_pdf
+from .remote_call import service_process_tarball, get_outcome_meta
+from .service_logger import get_logger
+from .tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, chmod_775, unpack_tarball
+from .tex_patching import fix_tex_sources
+from .tex_to_pdf_converters import BaseConverter, select_converter_class
+from tex2pdf.tex_inspection import find_unused_toplevel_files, maybe_bbl
+from tex2pdf.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = ("PDF %s not in t0. When this happens, there are multiple TeX sources that has "

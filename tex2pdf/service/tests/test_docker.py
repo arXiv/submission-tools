@@ -10,7 +10,7 @@ import urllib.parse
 import pytest
 import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
-from tex2pdf.converter_driver import RemoteConverterDriver
+from tex2pdf.service.converter_driver import RemoteConverterDriver
 
 PORT = 33031
 

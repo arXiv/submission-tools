@@ -34,7 +34,7 @@ from multiprocessing.pool import ThreadPool
 from sqlite3 import Connection
 
 import click
-from tex2pdf.remote_call import service_process_tarball
+from tex2pdf.service.remote_call import service_process_tarball
 from tqdm import tqdm
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')

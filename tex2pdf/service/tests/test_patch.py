@@ -1,6 +1,6 @@
 import os
 import unittest
-from tex2pdf.tex_patching import fix_tex_sources
+from tex2pdf.service.tex_patching import fix_tex_sources
 
 test1 = r"""
 \usepackage{minted}
