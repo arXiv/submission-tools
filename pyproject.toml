@@ -15,6 +15,15 @@ pydantic = "==1.10.*"
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 tomli_w = "^1.0"
+fastapi = "^0.104.1"
+pikepdf = "^8.7.1"
+python-json-logger = "^2.0.7"
+pillow = "^10.4.0"
+python-multipart = "^0.0.6"
+psutil = "^5.9.8"
+hypercorn = {extras = ["h2"], version = "^0.16.0"}
+pymupdf = "^1.24.10"
+requests = "^2.32.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
@@ -22,6 +31,10 @@ pytest = "^8.3.3"
 mypy = "*"
 mypy-extensions = "*"
 types-toml = "^0.10.8.20240310"
+click = "^8.1.7"
+tqdm = "^4.66.2"
+uvicorn = "^0.29.0"
+
 
 [tool.ruff]
 line-length = 120
