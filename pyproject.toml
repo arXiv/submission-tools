@@ -50,10 +50,7 @@ pre-commit = "*"
 [tool.ruff]
 line-length = 120
 extend-exclude = [
-    "tests/preflight_parser",
-    "tests/zerozeroreadme",
-    "tests/tex_inspection",
-    "tests/service",
+    "tests",
     "pdf_profile",
     "bin",
     "service-various",
