@@ -1,5 +1,6 @@
 import os
 import unittest
+
 from tex2pdf.service.tex_patching import fix_tex_sources
 
 TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "output/test-patch")
@@ -22,9 +23,11 @@ first_expected = r"""
 \graphicspath{{foo}{foo/}{bar/}{baz}{baz/}}
 """
 
+
 def read_file(filename) -> str:
-    with open(filename, "r", encoding="utf-8") as fd:
+    with open(filename, encoding="utf-8") as fd:
         return fd.read()
+
 
 class TestTexPatch(unittest.TestCase):
     def setUp(self):
@@ -39,6 +42,5 @@ class TestTexPatch(unittest.TestCase):
         self.assertEqual(first_expected, result)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

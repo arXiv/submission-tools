@@ -3,8 +3,8 @@ import os
 import unittest
 
 import pytest
-from tex2pdf.preflight_parser import ParseSyntaxError
 
+from tex2pdf.preflight_parser import ParseSyntaxError
 from tex2pdf.zerozeroreadme import ZeroZeroReadMe
 
 
@@ -39,7 +39,7 @@ class Test00README(unittest.TestCase):
     def test_zzrm_v2_syntax_error(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_syntax_error")
         with pytest.raises(ParseSyntaxError) as exc_info:
-            zzrm = ZeroZeroReadMe(dir_path)
+            _ = ZeroZeroReadMe(dir_path)
         assert str(exc_info.value).startswith("Validation error on parsing: ")
 
     def test_zzrm_v2_02(self) -> None:

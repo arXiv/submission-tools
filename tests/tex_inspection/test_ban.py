@@ -1,9 +1,9 @@
 import unittest
-from tex2pdf.tex_inspection import maybe_banned_tex_file, is_banned_tex
+
+from tex2pdf.tex_inspection import is_banned_tex, maybe_banned_tex_file
 
 
 class BanTest(unittest.TestCase):
-
     def test_ban_1(self):
         self.assertTrue(maybe_banned_tex_file("sample-foo.tex"))
         self.assertFalse(maybe_banned_tex_file("main.tex"))
@@ -16,9 +16,14 @@ class BanTest(unittest.TestCase):
         pass
 
     def test_ban_3(self):
-        self.assertTrue(is_banned_tex("docsimart.tex",
-        "\\title{Guide to Using SIAM's \\LaTeX\\ Style\\thanks{Submitted to the editors DATE."))
-        self.assertFalse(is_banned_tex("docsimart.text",
-        "\\title{Guide to Using SIAM's \\LaTeX\\ Style\\thanks{Submitted to the editors DATE."))
+        self.assertTrue(
+            is_banned_tex(
+                "docsimart.tex", "\\title{Guide to Using SIAM's \\LaTeX\\ Style\\thanks{Submitted to the editors DATE."
+            )
+        )
+        self.assertFalse(
+            is_banned_tex(
+                "docsimart.text", "\\title{Guide to Using SIAM's \\LaTeX\\ Style\\thanks{Submitted to the editors DATE."
+            )
+        )
         pass
-

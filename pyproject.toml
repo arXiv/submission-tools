@@ -50,7 +50,6 @@ pre-commit = "*"
 [tool.ruff]
 line-length = 120
 extend-exclude = [
-    "tests",
     "pdf_profile",
     "bin",
     "service-various",
@@ -78,12 +77,15 @@ lint.ignore = [
     "D107", # no docstring in __init__
 ]
 
-
 output-format = "grouped"
 
 # Assume Python 3.11
 # Note: helps prevent breaking autofixes from, e.g., pyupgrade
 target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+# ignore all the "missing docstring" checks in the test directory
+"tests/*" = ["D100", "D101", "D102", "D103", "D104"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"

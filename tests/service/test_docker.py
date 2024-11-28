@@ -3,30 +3,38 @@ import logging
 import os
 import shutil
 import subprocess
-import tempfile
 import time
 import urllib.parse
 
 import pytest
 import requests
+
 from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.service.converter_driver import RemoteConverterDriver
 
 PORT = 33031
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
-def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int = 30, post_timeout: int = 10, json_response: bool = False, api_args: dict= {}) -> None | dict:
+
+def submit_tarball(
+    service: str,
+    tarball: str,
+    outcome_file: str,
+    tex2pdf_timeout: int = 30,
+    post_timeout: int = 10,
+    json_response: bool = False,
+    api_args: dict = {},
+) -> None | dict:
     meta = None
-    params_dict = { "timeout": tex2pdf_timeout }
+    params_dict = {"timeout": tex2pdf_timeout}
     params_dict.update(api_args)
     params = urllib.parse.urlencode(params_dict)
     url = f"{service}/?{params}"
     with open(tarball, "rb") as data_fd:
-        uploading = {'incoming': (os.path.basename(tarball), data_fd, 'application/gzip')}
+        uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
         while True:
             try:
-                res = requests.post(url, files=uploading,
-                                    timeout=post_timeout, allow_redirects=False)
+                res = requests.post(url, files=uploading, timeout=post_timeout, allow_redirects=False)
                 status_code = res.status_code
                 if status_code == 504:
                     logging.warning("Got 504 for %s", service)
@@ -43,7 +51,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
                                 out.write(res.content)
                             meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
                 else:
-                    logging.warning(f"%s: status code %d", url, status_code)
+                    logging.warning("%s: status code %d", url, status_code)
 
             except TimeoutError:
                 logging.warning("%s: Connection timed out", tarball)
@@ -54,13 +62,14 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
 
     return meta
 
+
 @pytest.fixture(scope="module")
 def docker_container(request):
-    global PORT
-    PORT = request.config.getoption('--docker-port')
+    global PORT  # noqa: PLW0603
+    PORT = request.config.getoption("--docker-port")
     url = f"http://localhost:{PORT}"
 
-    if not request.config.getoption('--no-docker-setup'):
+    if not request.config.getoption("--no-docker-setup"):
         image_name = "public-tex2pdf-app-2024-2024-07-21"
         container_name = "test-arxiv-tex2pdf"
         dockerport = "8080"
@@ -69,20 +78,31 @@ def docker_container(request):
 
         # Make sure the container is the latest
         args = ["make", "app.docker"]
-        make = subprocess.run(args, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        make = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
         if make.returncode != 0:
             print(make.stdout)
             print(make.stderr)
             pass
 
         # Start the container
-        args = ["docker", "run", '--security-opt', "no-new-privileges=true", "--cpus", "1", "--rm",
-                "-d",
-                "-p", f"{PORT}:{dockerport}",
-                "-e", f"PORT={dockerport}",
-                "--name", container_name,
-                image_name]
-        docker = subprocess.run(args, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        args = [
+            "docker",
+            "run",
+            "--security-opt",
+            "no-new-privileges=true",
+            "--cpus",
+            "1",
+            "--rm",
+            "-d",
+            "-p",
+            f"{PORT}:{dockerport}",
+            "-e",
+            f"PORT={dockerport}",
+            "--name",
+            container_name,
+            image_name,
+        ]
+        docker = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
         if docker.returncode != 0:
             logging.error("tex2pdf container did not start")
             pass
@@ -101,11 +121,12 @@ def docker_container(request):
 
     yield url
 
-    if not request.config.getoption('--no-docker-setup') and not request.config.getoption('--keep-docker-running'):
+    if not request.config.getoption("--no-docker-setup") and not request.config.getoption("--keep-docker-running"):
         # Stop the container after tests
         with open("tex2pdf.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
         subprocess.call(["docker", "kill", container_name])
+
 
 @pytest.mark.integration
 def test_api_hello(docker_container):
@@ -136,9 +157,10 @@ def test_api_test2(docker_container):
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
-    assert meta.get("tex_files") == ['fake-file-2.tex']
+    assert meta.get("tex_files") == ["fake-file-2.tex"]
     # autotex says that the documents are combined alphabetically
-    assert meta.get("documents") == ['out/fake-file-2.pdf']
+    assert meta.get("documents") == ["out/fake-file-2.pdf"]
+
 
 @pytest.mark.integration
 def test_api_test3(docker_container):
@@ -148,10 +170,10 @@ def test_api_test3(docker_container):
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
-    assert meta.get("tex_files") == ['fake-file-2.tex', 'fake-file-1.tex', 'fake-file-3.tex']
-    assert meta.get("pdf_files") == ['fake-file-2.pdf', 'fake-file-1.pdf', 'fake-file-3.pdf']
+    assert meta.get("tex_files") == ["fake-file-2.tex", "fake-file-1.tex", "fake-file-3.tex"]
+    assert meta.get("pdf_files") == ["fake-file-2.pdf", "fake-file-1.pdf", "fake-file-3.pdf"]
     # v2 keeps the order which is what we'd expect
-    assert meta.get("documents") == ['out/fake-file-2.pdf', 'out/fake-file-1.pdf', 'out/fake-file-3.pdf']
+    assert meta.get("documents") == ["out/fake-file-2.pdf", "out/fake-file-1.pdf", "out/fake-file-3.pdf"]
 
 
 @pytest.mark.integration
@@ -162,9 +184,10 @@ def test_api_test4(docker_container):
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
-    assert meta.get("tex_files") == ['main.tex', 'gdp.tex']
+    assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
+
 
 @pytest.mark.integration
 def test_api_preflight(docker_container):
@@ -176,7 +199,11 @@ def test_api_preflight(docker_container):
     print(meta)
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
-    assert [f["filename"] for f in meta.get("detected_toplevel_files")] == ['fake-file-1.tex', 'fake-file-2.tex', 'fake-file-3.tex']
+    assert [f["filename"] for f in meta.get("detected_toplevel_files")] == [
+        "fake-file-1.tex",
+        "fake-file-2.tex",
+        "fake-file-3.tex",
+    ]
 
 
 @pytest.mark.integration
@@ -190,9 +217,7 @@ def test_remote2023(docker_container) -> None:
 
     shutil.rmtree(out_dir, ignore_errors=True)
 
-    converter = RemoteConverterDriver(url, 600, out_dir, tarball,
-                                      use_addon_tree=False, tag=tag,
-                                      auto_detect=True)
+    converter = RemoteConverterDriver(url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True)
     logging.debug("Calling generate_pdf")
     pdf = converter.generate_pdf()
     assert os.path.isfile(f"{out_dir}/outcome-test1.json")

@@ -1,9 +1,10 @@
 import os
 import unittest
+
 from tex2pdf.tex_inspection import find_pdfoutput_1
 
-class TestConverterSelection(unittest.TestCase):
 
+class TestConverterSelection(unittest.TestCase):
     def setUp(self):
         self.fixture_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixture"))
 
@@ -20,5 +21,5 @@ class TestConverterSelection(unittest.TestCase):
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
