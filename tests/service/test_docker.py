@@ -38,6 +38,7 @@ def submit_tarball(service: str, tarball: str, outcome_file: str, tex2pdf_timeou
                         if json_response:
                             return json.loads(res.content)
                         else:
+                            os.makedirs(os.path.dirname(outcome_file), exist_ok=True)
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
                             meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
@@ -58,8 +59,6 @@ def docker_container(request):
     global PORT
     PORT = request.config.getoption('--docker-port')
     url = f"http://localhost:{PORT}"
-
-    os.makedirs("tests/output", exist_ok=True)
 
     if not request.config.getoption('--no-docker-setup'):
         image_name = "public-tex2pdf-app-2024-2024-07-21"

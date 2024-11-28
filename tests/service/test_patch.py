@@ -2,6 +2,8 @@ import os
 import unittest
 from tex2pdf.service.tex_patching import fix_tex_sources
 
+TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "output/test-patch")
+
 test1 = r"""
 \usepackage{minted}
 \usepackage[frozencache]{minted}
@@ -26,14 +28,14 @@ def read_file(filename) -> str:
 
 class TestTexPatch(unittest.TestCase):
     def setUp(self):
-        os.makedirs("tests/test-output", exist_ok=True)
-        with open("tests/test-output/test.tex", "w", encoding="utf-8") as fd:
+        os.makedirs(TEST_DIR, exist_ok=True)
+        with open(os.path.join(TEST_DIR, "test.tex"), "w", encoding="utf-8") as fd:
             fd.write(test1)
         pass
 
     def test_fixer(self):
-        fix_tex_sources("tests/test-output", toplevels=["test.tex"])
-        result = read_file("tests/test-output/test.tex")
+        fix_tex_sources(TEST_DIR, toplevels=["test.tex"])
+        result = read_file(os.path.join(TEST_DIR, "test.tex"))
         self.assertEqual(first_expected, result)
 
 
