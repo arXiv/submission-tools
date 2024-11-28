@@ -8,7 +8,11 @@ from enum import Enum
 
 import toml
 import tomli_w
-from preflight_parser import (
+from pydantic import BaseModel, ValidationError
+from ruamel.yaml import YAML, MappingNode, ScalarNode
+from ruamel.yaml.representer import RoundTripRepresenter
+
+from tex2pdf.preflight_parser import (
     CompilerSpec,
     EngineType,
     LanguageType,
@@ -20,9 +24,6 @@ from preflight_parser import (
     ToplevelFile,
     string_to_bool,
 )
-from pydantic import BaseModel, ValidationError
-from ruamel.yaml import YAML, MappingNode, ScalarNode
-from ruamel.yaml.representer import RoundTripRepresenter
 
 # 00README file extensions - earlier wins
 ZZRM_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
@@ -103,10 +104,11 @@ class ZeroZeroReadMe:
 
     def to_dict(self) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
-        result = OrderedDict()
+        result: OrderedDict[str, typing.Any] = OrderedDict()
         result["process"] = self.process.dict(exclude_none=True, exclude_defaults=True)
         # the zzrm.process.compiler should be the compiler_string, not the actual object
-        result["process"]["compiler"] = self.process.compiler.compiler_string
+        if self.process.compiler is not None:
+            result["process"]["compiler"] = self.process.compiler.compiler_string
         if self.sources.keys():
             result["sources"] = []
             for k, v in self.sources.items():
@@ -345,22 +347,22 @@ class ZeroZeroReadMe:
                 # Couldn't find selected file in list of toplevel files
                 return False
             if self.process.compiler.engine == EngineType.unknown:
-                if found_tlp.process.compiler.engine == EngineType.unknown:
+                if found_tlp.process.compiler is None or found_tlp.process.compiler.engine == EngineType.unknown:
                     self.process.compiler.engine = DEFAULT_ENGINE_TYPE
                 else:
                     self.process.compiler.engine = found_tlp.process.compiler.engine
             if self.process.compiler.lang == LanguageType.unknown:
-                if found_tlp.process.compiler.lang == LanguageType.unknown:
+                if found_tlp.process.compiler is None or found_tlp.process.compiler.lang == LanguageType.unknown:
                     self.process.compiler.lang = DEFAULT_LANGUAGE_TYPE
                 else:
                     self.process.compiler.lang = found_tlp.process.compiler.lang
             if self.process.compiler.output == OutputType.unknown:
-                if found_tlp.process.compiler.output == OutputType.unknown:
+                if found_tlp.process.compiler is None or found_tlp.process.compiler.output == OutputType.unknown:
                     self.process.compiler.output = DEFAULT_OUTPUT_TYPE
                 else:
                     self.process.compiler.output = found_tlp.process.compiler.output
             if self.process.compiler.postp is None or self.process.compiler.postp == PostProcessType.unknown:
-                if found_tlp.process.compiler.postp == PostProcessType.unknown:
+                if found_tlp.process.compiler is None or found_tlp.process.compiler.postp == PostProcessType.unknown:
                     self.process.compiler.postp = DEFAULT_POSTPROCESS_TYPE
                 else:
                     self.process.compiler.postp = found_tlp.process.compiler.postp
@@ -380,7 +382,11 @@ class ZeroZeroReadMe:
     @property
     def is_supported_compiler(self) -> bool:
         """Check that we are ready for compilation and that the selected compiler is supported."""
-        if self.is_ready_for_compilation and self.process.compiler.compiler_string is not None:
+        if (
+            self.is_ready_for_compilation
+            and self.process.compiler is not None
+            and self.process.compiler.compiler_string is not None
+        ):
             return True
         return False
 
