@@ -39,6 +39,7 @@ pytest = "^8.3.3"
 mypy = "*"
 mypy-extensions = "*"
 types-toml = "^0.10.8.20240310"
+types-requests = "^2.32.0"
 click = "^8.1.7"
 tqdm = "^4.66.2"
 uvicorn = "^0.29.0"
@@ -52,6 +53,7 @@ extend-exclude = [
     "tests/preflight_parser",
     "tests/zerozeroreadme",
     "tests/tex_inspection",
+    "tests/service",
     "pdf_profile",
     "bin",
     "service-various",
