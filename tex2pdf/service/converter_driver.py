@@ -10,8 +10,6 @@ import time
 import typing
 from enum import Enum
 
-from pikepdf import PdfError
-
 from tex2pdf.preflight_parser import PreflightStatusValues, generate_preflight_response
 from . import (
     ID_TAG,
@@ -393,9 +391,6 @@ Note that adding a 00README.XXX with a toplevelfile directive will only effect t
             outcome["pdf_file"] = final_pdf
             outcome["used_figures"] = used_gfx
             outcome["unused_figures"] = self.unused_pics()[self.max_appending_files:] + unused_gfx
-        except PdfError as exc:
-            logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
-            pass
         except AssemblingFileNotFound as exc:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass

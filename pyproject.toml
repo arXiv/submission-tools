@@ -15,15 +15,16 @@ pydantic = "==1.10.*"
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
 tomli_w = "^1.0"
-fastapi = "^0.104.1"
-pikepdf = "^8.7.1"
-python-json-logger = "^2.0.7"
-pillow = "^10.4.0"
-python-multipart = "^0.0.6"
-psutil = "^5.9.8"
-hypercorn = {extras = ["h2"], version = "^0.16.0"}
-pymupdf = "^1.24.10"
-requests = "^2.32.0"
+# the following deps are only used in the service
+# and can be installed with
+#   poetry install --extra service
+# or via the requirement.txt line
+#   tex2pdf[service]
+python-multipart = { version = "^0.0.6", optional = true }
+fastapi = { version = "^0.104.1", optional = true }
+hypercorn = { extras = ["h2"], version = "^0.16.0", optional = true }
+pymupdf = { version = "^1.24.10", optional = true }
+requests = { version="^2.32.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
@@ -36,6 +37,8 @@ tqdm = "^4.66.2"
 uvicorn = "^0.29.0"
 pre-commit = "*"
 
+[tool.poetry.extras]
+service = ["hypercorn", "pymupdf", "requests", "python-multipart"]
 
 [tool.ruff]
 line-length = 120
@@ -46,6 +49,7 @@ extend-exclude = [
     "pdf_profile",
     "bin",
     "service-various",
+    "conftest.py",
     "tex2pdf/service", # too much work to do for now
 ]
 
