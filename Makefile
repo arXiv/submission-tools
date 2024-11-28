@@ -13,11 +13,11 @@ TEX2PDF_CPUS := $(shell echo $${TEX2PDF_CPUS:-4})
 TEX2PDF_WORKERS := $(shell echo $${TEX2PDF_WORKERS:-8})
 TEX2PDF_DOCKER_PLATFORM := $(shell echo $${TEX2PDF_DOCKER_PLATFORM:-linux/amd64})
 
-APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -p ${app_port}:${dockerport} -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true" 
+APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -p ${app_port}:${dockerport} -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true"
 
 .PHONY: HELLO app.docker app.run app.stop
 
-default: HELLO venv/lib/python3.11/site-packages/fastapi
+default: HELLO
 
 HELLO:
 	@echo To see the README of this Makefile, type "make help"
@@ -53,7 +53,7 @@ app.docker:
 #-# Command: app.run
 #-#   runs the appliance container with the terminal attached (for test)
 app.run: app.stop
-	${APP_DOCKER_RUN} -it ${app_tag}-${base_tag_version}:latest 
+	${APP_DOCKER_RUN} -it ${app_tag}-${base_tag_version}:latest
 
 #-#
 #-# Command: app.stop

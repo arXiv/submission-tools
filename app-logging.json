@@ -3,7 +3,7 @@
   "disable_existing_loggers": false,
   "formatters": {
     "json": {
-      "class": "tex2pdf.CustomJsonFormatter",
+      "class": "tex2pdf.service.CustomJsonFormatter",
       "format": "%(asctime)s %(name)s %(levelname)s %(message)s %(process)d %(threadName)s"
     }
   },
