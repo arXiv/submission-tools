@@ -2,7 +2,7 @@ import json
 import os
 import unittest
 
-from preflight_parser import PreflightResponse, generate_preflight_response
+from tex2pdf.preflight_parser import PreflightResponse, generate_preflight_response
 
 
 class TestPreflight(unittest.TestCase):

@@ -10,11 +10,15 @@ from collections.abc import Callable
 from enum import Enum
 from itertools import zip_longest
 from pprint import pformat
+from typing import TypeVar
 
 import chardet
 from pydantic import BaseModel, Field, PrivateAttr
 
 MODULE_PATH = os.path.dirname(__file__)
+
+
+T = TypeVar("T")
 
 #
 # CLASSES AND TYPES
@@ -185,7 +189,7 @@ class CompilerSpec(BaseModel):
         },
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: typing.Any) -> None:
         """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
         if len(kwargs) == 1 and "compiler" in kwargs:
             compiler = kwargs["compiler"]
@@ -236,7 +240,7 @@ class CompilerSpec(BaseModel):
                     return self._COMPILER_SELECTION[self.lang][self.output][self.engine]
         return None
 
-    def from_compiler_string(self, compiler: str):
+    def from_compiler_string(self, compiler: str) -> None:
         """Convert compiler string to Language/Output/Engine/PostProcess types."""
         if compiler == "pdf_submission":
             self.lang = LanguageType.pdf
@@ -273,7 +277,7 @@ class MainProcessSpec(BaseModel):
     index: IndexProcessSpec | None = None
     fontmaps: list[str] | None = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: typing.Any) -> None:
         """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
         if "compiler" in kwargs and isinstance(kwargs["compiler"], str):
             compiler = kwargs["compiler"]
@@ -307,7 +311,7 @@ class TeXFileIssue(BaseModel):
     # line: int
     filename: str | None = None
 
-    def __init__(self, key: IssueType, info: str, filename: str | None = None, **kwargs) -> None:
+    def __init__(self, key: IssueType, info: str, filename: str | None = None, **kwargs: typing.Any) -> None:
         """Override __init__ to be able to use positional parameters."""
         super().__init__(key=key, info=info, filename=filename, **kwargs)
 
@@ -533,18 +537,16 @@ class ParsedTeXFile(BaseModel):
         logging.debug(file_incspec)
         self.mentioned_files |= file_incspec
 
-    def generic_walk_document_tree(
-        self, map: Callable[["ParsedTeXFile"], typing.Any], reduce: Callable[[typing.Any, typing.Any], typing.Any]
-    ):
+    def generic_walk_document_tree(self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T]) -> T:
         """Walk the document tree in map/reduce fashion."""
         return self._generic_walk_document_tree(map, reduce, {})
 
     def _generic_walk_document_tree(
         self,
-        map: Callable[["ParsedTeXFile"], typing.Any],
-        reduce: Callable[[typing.Any, typing.Any], typing.Any],
+        map: Callable[["ParsedTeXFile"], T],
+        reduce: Callable[[T, T], T],
         visited: dict[str, bool],
-    ) -> list[typing.Any]:
+    ) -> T:
         """Call a function on any node of a document tree - internal helper."""
         ret = map(self)
         visited[self.filename] = True
@@ -673,7 +675,7 @@ class ParsedTeXFile(BaseModel):
             idx = "issues"
         else:
             raise PreflightException(f"no such file type: {what}")
-        found = getattr(self, idx)
+        found: list[str] = getattr(self, idx)
         visited[self.filename] = True
         for n in self.children:
             if n.filename in visited:
@@ -698,7 +700,7 @@ class PreflightResponse(BaseModel):
     detected_toplevel_files: list[ToplevelFile]
     tex_files: list[ParsedTeXFile]
 
-    def to_json(self, **kwargs) -> str:
+    def to_json(self, **kwargs: typing.Any) -> str:
         """Return a json representation."""
         return self.json(exclude_none=True, exclude_defaults=True, **kwargs)
 
@@ -939,7 +941,7 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     return n
 
 
-def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
+def parse_dir(rundir: str) -> dict[str, ParsedTeXFile] | ToplevelFile:
     """Parse all TeX files in a directory."""
     files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
@@ -1175,7 +1177,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     )
 
 
-def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> PreflightResponse | str:
+def generate_preflight_response(rundir: str, json: bool = False, **kwargs: typing.Any) -> PreflightResponse | str:
     """Parse submission and generated preflight response as dictionary or json."""
     try:
         pfr: PreflightResponse = _generate_preflight_response_dict(rundir)
