@@ -566,19 +566,32 @@ class ParsedTeXFile(BaseModel):
         self.mentioned_files |= file_incspec
 
     def generic_walk_document_tree(
-        self, map: Callable[["ParsedTeXFile"], typing.Any], reduce: Callable[[typing.Any, typing.Any], typing.Any]
+        self,
+        map: Callable[["ParsedTeXFile"], typing.Any],
+        reduce: Callable[[typing.Any, typing.Any], typing.Any],
+        init: typing.Any = None,
     ):
         """Walk the document tree in map/reduce fashion."""
-        return self._generic_walk_document_tree(map, reduce, {})
+        return self._generic_walk_document_tree(map, reduce, {}, init)
 
     def _generic_walk_document_tree(
         self,
         map: Callable[["ParsedTeXFile"], typing.Any],
         reduce: Callable[[typing.Any, typing.Any], typing.Any],
         visited: dict[str, bool],
+        init: typing.Any = None,
     ) -> list[typing.Any]:
         """Call a function on any node of a document tree - internal helper."""
-        ret = map(self)
+        if init is None:
+            logging.debug("generic_walk_document_tree: init is None")
+            ret = map(self)
+            logging.debug("generic_walk_document_tree: init ret to %s", ret)
+        else:
+            logging.debug("generic_walk_document_tree: init is %s", init)
+            selfmap = map(self)
+            logging.debug("generic_walk_document_tree: map self is %s", selfmap)
+            ret = reduce(init, selfmap)
+            logging.debug("generic_walk_document_tree: ret %s = reduce ( init %s , map self %s )", ret, init, selfmap)
         visited[self.filename] = True
         for n in self.children:
             if n.filename not in visited:
@@ -1143,6 +1156,22 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         )
         contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
         if contains_documentclass_somewhere or contains_bye_somewhere:
+            # bubble up graphicspath values
+            # if we find two or more, skip completely - this is not supported since we would need to know
+            # the order, and which images are loaded at what time
+            # Other option would be to make multiple graphicspath additive, which is not what
+            # latex does, but might help?
+            logging.debug("Bubbling up graphicspath to toplevel files")
+            all_graphicspaths = tl_n.generic_walk_document_tree(
+                lambda x: x._graphicspath,
+                lambda x, y: [*x, y] if y is not None else x,  # we cannot use append, needs to be functional!
+                [],
+            )  # Deal with the set of "normal" inclusions
+            if len(all_graphicspaths) > 1:
+                logging.warning("Multiple graphicspath directive detected, skipping all of them!")
+            elif len(all_graphicspaths) == 1:
+                tl_n._graphicspath = all_graphicspaths[0]
+                logging.debug("Set graphicspath of toplevel file %s to %s", tl.filename, tl_n._graphicspath)
             toplevel_files[f] = tl
 
     return toplevel_files
