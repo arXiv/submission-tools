@@ -593,6 +593,7 @@ class ParsedTeXFile(BaseModel):
             ret = reduce(init, selfmap)
             logging.debug("generic_walk_document_tree: ret %s = reduce ( init %s , map self %s )", ret, init, selfmap)
         visited[self.filename] = True
+        logging.debug("generic_walk_document_tree: children = %s", self.children)
         for n in self.children:
             if n.filename not in visited:
                 ret_kid = n._generic_walk_document_tree(map, reduce, visited)
@@ -1005,32 +1006,51 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
     return nodes
 
 
-def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, str]:
+def _collect_included_files(n: ParsedTeXFile) -> str:
+    ret = ""
+    for k, v in n.mentioned_files.items():
+        if isinstance(v.extensions, dict):
+            if n.output_type == OutputType.dvi:  # TODO should we check for dvipdfmx?
+                if n.postprocess == PostProcessType.dvips_ps2pdf:
+                    exts = v.extensions["dvips"]
+                elif n.postprocess == PostProcessType.dvipdfmx:
+                    exts = v.extensions["dvipdfmx"]
+                else:
+                    exts = v.extensions["pdftex"]  # assume pdflatex as default
+            elif n.output_type == OutputType.pdf or n.output_type == OutputType.unknown:  # TODO unify these cases?
+                if n.engine == EngineType.tex:
+                    exts = v.extensions["pdftex"]
+                elif n.engine == EngineType.xetex or n.engine == EngineType.luatex:
+                    exts = v.extensions["xetex"]
+                else:
+                    exts = v.extensions["pdftex"]
+        else:
+            exts = v.extensions
+        ret += f"{k}\n{exts}\n"
+    return ret
+
+
+def kpse_search_files(
+    basedir: str, nodes: dict[str, ParsedTeXFile], toplevel_files: dict[str, ToplevelFile]
+) -> dict[str, str]:
     """Search for files using kpsearch, using the lua script kpse_search.lua."""
     kpse_find_input_data = ""
+    # graphicspath is a setting that applies only to the files within one of the trees
+    # thus, we have to work through all the toplevel files and its sub-nodes
+    # and then a
+    for tl_f, tl_n in toplevel_files.items():
+        top_node = nodes[tl_f]
+        logging.debug("Search files: checking toplevel file %s", top_node.filename)
+        logging.debug("Children of this node: %s", top_node.children)
+        foo = top_node.generic_walk_document_tree(
+            lambda x: (x.filename, _collect_included_files(x)), lambda x, y: {y[0]: y[1]} | x, {}
+        )
+        logging.debug("FOO = %s", foo)
     # that does not work ... _graphicspath is a property of ParsedTeXFile
     # if self._graphicspath:
     #    kpse_find_input_data += f"""#graphicspath={":".join(self._graphicspath)}"""
     for _, n in nodes.items():
-        for k, v in n.mentioned_files.items():
-            if isinstance(v.extensions, dict):
-                if n.output_type == OutputType.dvi:  # TODO should we check for dvipdfmx?
-                    if n.postprocess == PostProcessType.dvips_ps2pdf:
-                        exts = v.extensions["dvips"]
-                    elif n.postprocess == PostProcessType.dvipdfmx:
-                        exts = v.extensions["dvipdfmx"]
-                    else:
-                        exts = v.extensions["pdftex"]  # assume pdflatex as default
-                elif n.output_type == OutputType.pdf or n.output_type == OutputType.unknown:  # TODO unify these cases?
-                    if n.engine == EngineType.tex:
-                        exts = v.extensions["pdftex"]
-                    elif n.engine == EngineType.xetex or n.engine == EngineType.luatex:
-                        exts = v.extensions["xetex"]
-                    else:
-                        exts = v.extensions["pdftex"]
-            else:
-                exts = v.extensions
-            kpse_find_input_data += f"{k}\n{exts}\n"
+        kpse_find_input_data += _collect_included_files(n)
     logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
 
     if not kpse_find_input_data:
@@ -1224,8 +1244,14 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             # determine toplevel files
             toplevel_files = compute_toplevel_files(roots, nodes)
             # search for files with kpse
-            kpse_found = kpse_search_files(rundir, nodes)
+            kpse_found = kpse_search_files(rundir, nodes, toplevel_files)
             # update nodes with information of found kpse
+            # TODO URGENT
+            # We cannot move update_nodes_with_kpse_info here
+            # because the information generated here, in particular node.used_tex_files
+            # is then again used in compute_document_graph!!!!
+            # But the if we want to do the kpse lookup per toplevel file sub-tree
+            # with the respective graphicspath, something needs to change ... .but what ...
             nodes = update_nodes_with_kpse_info(nodes, kpse_found)
             logging.debug("found TeX file nodes: %s", nodes.keys())
             # deal with bibliographies, which is painful
