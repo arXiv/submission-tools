@@ -317,6 +317,7 @@ class ParsedTeXFile(BaseModel):
 
     filename: str
     _data: str = PrivateAttr(default="")
+    _graphicspath: list[str] = PrivateAttr(default=[])
     output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
@@ -418,8 +419,39 @@ class ParsedTeXFile(BaseModel):
         # in the dict due to insertion order.
         # Later one we want to do depth first search for documentclass etc
         # (contemplate whether this is strictly necessary!)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self._data):
+        for f in re.findall(r"^[^%\n]*?\\input\s+([-a-zA-Z0-9._]+)", self._data):
+            logging.debug("%s regex found %s", self.filename, f)
             self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
+        #
+        # deal with finding \graphicspath{ ... }
+        # which is required to detect grpahics files in other directories
+        # format:
+        #    \graphicspath{  {path1/} {path2/} ... }
+        # list of paths in braces, must end in a forward /
+        # The general regexp does not allow braces in braces like { {foobar} }
+        # so we have to treat this differently
+        # we cannot use re.findall or so because we need balanced braces search
+        #
+        # using regex module
+        # data = "...\n\graphicspath{ {bla} }\n\\graphicspath{ {foo} { something/  } { bar } }\nsomerest"
+        # m = regex.search(r"^[^%\n]*?\\graphicspath\s*{(\s*{([^}]*)}\s*)+}",
+        #                  data, regex.MULTILINE | regex.REVERSE)
+        # m.allcaptures()[2] gives the inner list in reverse -> [' bar ', ' something/  ', 'foo']
+        # because this does a "reverse" search so the returned list is also in reverse!
+        # this search the LAST occurrence!
+
+        # doing it with plain re
+        graphicspath_occurrences = re.findall(
+            r"^[^%\n]*?\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", self._data, re.MULTILINE
+        )
+        logging.debug("Found the following graphicspath entries: %s", graphicspath_occurrences)
+        if graphicspath_occurrences:
+            # we found one or more matches, pick the last
+            last_match = graphicspath_occurrences[-1]
+            inside_group = last_match[0]  # this is the match inside the argument braces
+            all_path = re.findall(r"{([^}]*)}", inside_group)
+            self._graphicspath = [d.strip() for d in all_path]
+            logging.debug("Setting graphicspath to %s", self._graphicspath)
         # check for the rest of include commands
         for i in re.findall(ARGS_INCLUDE_REGEX, self._data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
@@ -963,6 +995,9 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
 def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, str]:
     """Search for files using kpsearch, using the lua script kpse_search.lua."""
     kpse_find_input_data = ""
+    # that does not work ... _graphicspath is a property of ParsedTeXFile
+    # if self._graphicspath:
+    #    kpse_find_input_data += f"""#graphicspath={":".join(self._graphicspath)}"""
     for _, n in nodes.items():
         for k, v in n.mentioned_files.items():
             if isinstance(v.extensions, dict):
@@ -1154,16 +1189,16 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             toplevel_files = {}
             status = PreflightStatus(key=PreflightStatusValues.error, info="No TeX files found")
         else:
-            # search for files with kpse
-            kpse_found = kpse_search_files(rundir, nodes)
-            # update nodes with information of found kpse
-            nodes = update_nodes_with_kpse_info(nodes, kpse_found)
-            logging.debug("found TeX file nodes: %s", nodes.keys())
             # create tree
             roots, nodes = compute_document_graph(nodes)
             logging.debug("found root nodes: %s", roots.keys())
             # determine toplevel files
             toplevel_files = compute_toplevel_files(roots, nodes)
+            # search for files with kpse
+            kpse_found = kpse_search_files(rundir, nodes)
+            # update nodes with information of found kpse
+            nodes = update_nodes_with_kpse_info(nodes, kpse_found)
+            logging.debug("found TeX file nodes: %s", nodes.keys())
             # deal with bibliographies, which is painful
             deal_with_bibliographies(rundir, toplevel_files, nodes)
             # TODO check for suspicious status!
