@@ -12,16 +12,20 @@ include = ["LICENSE", "README.md"]
 python = "^3.11"
 chardet = "^5.0"
 pydantic = "==1.10.*"
+ruamel-yaml = "^0.18.5"
+toml = "^0.10.2"
+tomli_w = "^1.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
 pytest = "^8.3.3"
 mypy = "*"
 mypy-extensions = "*"
+types-toml = "^0.10.8.20240310"
 
 [tool.ruff]
 line-length = 120
-extend-exclude = ["tex2pdf/preflight_parser/tests"]
+extend-exclude = ["tex2pdf/preflight_parser/tests", "tex2pdf/zerozeroreadme/tests"]
 
 lint.select = [
     "F", # Pyflakes

@@ -3,8 +3,9 @@ import os
 import unittest
 
 import pytest
-from zerozeroreadme import ZeroZeroReadMe
-from preflight_parser import ParseSyntaxError
+from tex2pdf.preflight_parser import ParseSyntaxError
+
+from tex2pdf.zerozeroreadme import ZeroZeroReadMe
 
 
 class Test00README(unittest.TestCase):
