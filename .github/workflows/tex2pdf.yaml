@@ -19,15 +19,16 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
+    - name: Setup TeX Live
+      uses: teatimeguest/setup-texlive-action@v3
+      with:
+        packages: scheme-basic
     - name: Install dependencies for tex2pdf
       run: |
-        cd tex2pdf_service
         python -m pip install --upgrade pip
         pip install pytest poetry
-        poetry install
-        poetry run pip install types-requests
+        poetry install --extras service
     - name: pytest for tex2pdf
       run: |
-        cd tex2pdf_service
         export PYTHONPATH=$PWD
         poetry run pytest -k "not integration" tests
