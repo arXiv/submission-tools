@@ -133,7 +133,7 @@ pydantic = "==1.10.*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "e116db425f2f80863a6ab73e6b77221fe0bdddae"
+resolved_reference = "630d1504eba4e352e4cd24226bce12f47b24f045"
 subdirectory = "preflight_parser"
 
 [[package]]
