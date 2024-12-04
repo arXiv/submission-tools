@@ -1,7 +1,6 @@
 [tool.ruff]
 line-length = 120
 
-
 lint.select = [
     "F", # Pyflakes
     "D", # pydocstyle
@@ -23,19 +22,18 @@ lint.ignore = [
     "D107", # no docstring in __init__
 ]
 
-
 output-format = "grouped"
+
+extend-exclude = ["tex2pdf-service", "pdf_profile"]
 
 # Assume Python 3.11
 # Note: helps prevent breaking autofixes from, e.g., pyupgrade
 target-version = "py311"
 
+[tool.ruff.lint.per-file-ignores]
+# ignore all the "missing docstring" checks in the test directory
+"tests/*" = ["D100", "D101", "D102", "D103", "D104"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
-
-[tool.black]
-line-length = 120
-
-[tool.pylint]
-max-line-length = 120
 
