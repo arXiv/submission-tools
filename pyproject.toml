@@ -1,60 +1,5 @@
-[tool.poetry]
-name = "arxiv-tex2pdf"
-version = "0.1.0"
-description = "Compiling TeX to PDF as a service"
-authors = ["Naoyuki Tai <ntai@arxiv.org>", "Norbert Preining <norbert@arxiv.org>"]
-packages = [
-    { include = "tex2pdf" }
-]
-include = ["LICENSE", "README.md"]
-
-[tool.poetry.dependencies]
-python = "^3.11"
-chardet = "^5.0"
-pydantic = "==1.10.*"
-ruamel-yaml = "^0.18.5"
-toml = "^0.10.2"
-tomli_w = "^1.0"
-# the following deps are only used in the service
-# and can be installed with
-#   poetry install --extra service
-# or via the requirement.txt line
-#   tex2pdf[service]
-fastapi = { version = "^0.104.1", optional = true }
-hypercorn = { extras = ["h2"], version = "^0.16.0", optional = true }
-pillow = { version = "^10.4.0", optional = true }
-python-json-logger = { version = "^2.0.7", optional = true }
-python-multipart = { version = "^0.0.6", optional = true }
-pymupdf = { version = "^1.24.10", optional = true }
-requests = { version="^2.32.0", optional = true }
-
-# the following list must be kept in sync with the entrie above
-# marked as optional
-[tool.poetry.extras]
-service = [ "fastapi", "hypercorn", "pillow", "python-json-logger", "python-multipart", "pymupdf", "requests", ]
-
-[tool.poetry.group.dev.dependencies]
-ruff = "*"
-pytest = "^8.3.3"
-mypy = "*"
-mypy-extensions = "*"
-types-toml = "^0.10.8.20240310"
-types-requests = "^2.32.0"
-click = "^8.1.7"
-tqdm = "^4.66.2"
-uvicorn = "^0.29.0"
-pre-commit = "*"
-
-
-
 [tool.ruff]
 line-length = 120
-extend-exclude = [
-    "pdf_profile",
-    "bin",
-    "service-various",
-    "tex2pdf/service", # too much work to do for now
-]
 
 lint.select = [
     "F", # Pyflakes
@@ -79,6 +24,8 @@ lint.ignore = [
 
 output-format = "grouped"
 
+extend-exclude = ["tex2pdf-service", "pdf_profile"]
+
 # Assume Python 3.11
 # Note: helps prevent breaking autofixes from, e.g., pyupgrade
 target-version = "py311"
@@ -89,15 +36,4 @@ target-version = "py311"
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
-
-[tool.black]
-line-length = 120
-
-[tool.pylint]
-max-line-length = 120
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
 
