@@ -62,6 +62,8 @@ class LanguageType(str, Enum):
 
     TEX does not allow compiling as latex, e.g., because it contains \bye
     LATEX does not allow compiling as plain tex, e.g., because it contains \documentclass
+    PDF is for PDF only submissions.
+    HTML is for HTML only submissions.
     UNKNOWN allows compilation as either TEX or LATEX.
     """
 
@@ -69,6 +71,7 @@ class LanguageType(str, Enum):
     tex = "tex"
     latex = "latex"
     pdf = "pdf"
+    html = "html"
 
 
 class EngineType(str, Enum):
@@ -212,6 +215,8 @@ class CompilerSpec(BaseModel):
         # first deal with PDF only submissions:
         if self.lang.value == "pdf":
             return "pdf_submission"
+        if self.lang.value == "html":
+            return "html_submission"
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -240,6 +245,12 @@ class CompilerSpec(BaseModel):
         """Convert compiler string to Language/Output/Engine/PostProcess types."""
         if compiler == "pdf_submission":
             self.lang = LanguageType.pdf
+            self.engine = EngineType.unknown
+            self.output = OutputType.unknown
+            self.postp = PostProcessType.none
+            return
+        if compiler == "html_submission":
+            self.lang = LanguageType.html
             self.engine = EngineType.unknown
             self.output = OutputType.unknown
             self.postp = PostProcessType.none
@@ -955,6 +966,9 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
             return ToplevelFile(
                 filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler="pdf_submission"))
             )
+        else:
+            # TODO detect HTML submissions
+            pass
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
     return nodes
