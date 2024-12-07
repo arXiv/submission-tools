@@ -972,8 +972,12 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
                 filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
             )
         else:
-            # TODO detect HTML submissions
-            pass
+            # check for HTML submissions
+            for f in sorted(files):
+                if f.lower().endswith(".html"):
+                    return ToplevelFile(
+                        filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
+                    )
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
     return nodes
