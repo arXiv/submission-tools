@@ -10,6 +10,7 @@ import subprocess
 import time
 import typing
 from enum import Enum
+from pathlib import Path
 
 from tex2pdf_tools.preflight_parser import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -644,14 +645,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         logger = get_logger()
         t0 = time.perf_counter()
 
-        # step 1: move tarball to /autotex
-        local_tarball = os.path.join(self.in_dir, self.source)
-        # should we do exception handling here? This should work
-        # in the autotex container, and when it raises an exception
-        # we cannot do anything else but reraising it
-        os.rename(local_tarball, os.path.join("/autotex", self.source))
-
-        # step 2: run autotex.pl on the id
+        # step 1: run autotex.pl on the id
         PATH = "/usr/local/bin:/opt_arxiv/bin:/opt_arxiv/arxiv-perl/bin:/usr/sbin:/usr/bin:/bin:/sbin"
         # SECRETS or GOOGLE_APPLICATION_CREDENTIALS is not defined at all at this point but
         # be defensive and squish it anyway.
@@ -666,9 +660,14 @@ class AutoTeXConverterDriver(ConverterDriver):
         #     usage();
         #     exit(1);
 
-        arxivID = self.source
+        arxivID = self.tag
         # maybe it is already source
-        worker_args = [ "autotex.pl", "-f", "fInm", "-q", "-W", "/autotex", "-v", "-Z", "-p", arxivID ]
+        worker_args = [
+            "autotex.pl", "-f", "fInm", "-q",
+            "-S", self.in_dir,  # here the original tarball has been dumped
+            "-W", self.out_dir,  # work_dir/out where we expect files
+                                 # TODO currently autotex.pl DOES NOT HONOR THIS!!!
+            "-v", "-Z", "-p", arxivID ]
         with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
                               cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False
@@ -680,7 +679,6 @@ class AutoTeXConverterDriver(ConverterDriver):
                 logger.warning("Process timeout %s", shlex.join(worker_args), extra=self.log_extra)
                 child.kill()
                 (out, err) = child.communicate()
-                pass
             elapse_time = time.perf_counter() - t0
             t1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             run = {"args": worker_args, "stdout": out, "stderr": err,
@@ -690,12 +688,11 @@ class AutoTeXConverterDriver(ConverterDriver):
                    "elapse_time": elapse_time,
                    "process_completion": process_completion,
                    "PATH": PATH}
-            pass
         self.log_extra.update({"run": run})
         logger.debug(f"Exec result: return code: {run['return_code']}", extra=self.log_extra)
 
 
-        # step 3: grab the PDF and the log file
+        # step 3: move all files to self.outdir
         # step 4: create outcome json
 
         self.outcome = {ID_TAG: self.tag, "status": None, "converters": ["autotex"],
