@@ -15,7 +15,7 @@ from starlette.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
 from tex2pdf import MAX_TIME_BUDGET, USE_ADDON_TREE, MAX_TOPLEVEL_TEX_FILES, MAX_APPENDING_FILES
-from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion
+from tex2pdf.converter_driver import ConverterDriver, ConversionOutcomeMaker, PreflightVersion, AutoTeXConverterDriver
 from tex2pdf.service_logger import get_logger
 from tex2pdf.tarball import ZZRMUnsupportedCompiler, ZZRMUnderspecified, save_stream, prep_tempdir, RemovedSubmission, UnsupportedArchive
 from tex2pdf.fastapi_util import closer
@@ -210,6 +210,68 @@ async def convert_pdf(incoming: UploadFile,
         }
         return GzipResponse(content, headers=headers,
                             background=closer(content, filename, log_extra))
+
+@app.post('/autotex/',
+          responses={
+              STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}},
+                                     "description": "Conversion result"},
+              STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
+              STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
+          })
+async def autotex_pdf(incoming: UploadFile,
+                      timeout: typing.Annotated[int | None,
+                        Query(title="Time out", description="Time out in seconds.")] = None,
+                      ) -> Response:
+    """Get a tarball, and convert to PDF using autotex."""
+    filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
+    log_extra = {"source_filename": filename}
+    logger = get_logger()
+    logger.info("%s", incoming.filename)
+    tag = os.path.basename(filename)
+    while True:
+        [stem, ext] = os.path.splitext(tag)
+        if ext in [".gz", ".zip", ".tar"]:
+            tag = stem
+            continue
+        break
+    with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
+        in_dir, out_dir = prep_tempdir(tempdir)
+        await save_stream(in_dir, incoming, filename, log_extra)
+        timeout_secs = float(MAX_TIME_BUDGET)
+        if timeout is not None:
+            try:
+                timeout_secs = float(timeout)
+            except ValueError:
+                pass
+            pass
+        driver = AutoTeXConverterDriver(tempdir, filename, tag=tag, max_time_budget=timeout_secs)
+        try:
+            _pdf_file = driver.generate_pdf()
+        except RemovedSubmission:
+            # TODO how can we detect this???
+            logger.info("Archive is marked deleted.")
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "The source is marked deleted."})
+
+        except Exception as exc:
+            logger.error(f"Exception %s", str(exc), exc_info=True)
+            return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                                content={"message": traceback.format_exc()})
+
+        out_dir_files = os.listdir(out_dir)
+        outcome_maker = ConversionOutcomeMaker(tempdir, tag)
+        outcome_maker.create_outcome(driver, driver.outcome, outcome_files=out_dir_files)
+
+        content = open(os.path.join(tempdir, outcome_maker.outcome_file), "rb")
+        filename = os.path.basename(outcome_maker.outcome_file)
+        headers = {
+            "Content-Type": "application/gzip",
+            "Content-Disposition": f"attachment; filename={filename}",
+        }
+        return GzipResponse(content, headers=headers,
+                            background=closer(content, filename, log_extra))
+
 
 
 @app.get('/texlive/info')
