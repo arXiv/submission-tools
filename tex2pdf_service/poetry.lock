@@ -773,7 +773,7 @@ pydantic = "==1.10.*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "630d1504eba4e352e4cd24226bce12f47b24f045"
+resolved_reference = "da56eb775028f278e76ab5c185f8e140ee2d1c87"
 subdirectory = "preflight_parser"
 
 [[package]]
@@ -1154,7 +1154,7 @@ toml = "^0.10.2"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "630d1504eba4e352e4cd24226bce12f47b24f045"
+resolved_reference = "da56eb775028f278e76ab5c185f8e140ee2d1c87"
 subdirectory = "tex_inspection"
 
 [[package]]
@@ -1368,7 +1368,7 @@ tomli_w = "^1.0"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "630d1504eba4e352e4cd24226bce12f47b24f045"
+resolved_reference = "da56eb775028f278e76ab5c185f8e140ee2d1c87"
 subdirectory = "zerozeroreadme"
 
 [metadata]
