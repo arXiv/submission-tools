@@ -639,13 +639,10 @@ class RemoteConverterDriver(ConverterDriver):
 class AutoTeXConverterDriver(ConverterDriver):
     """Uses autotex for conversion."""
 
-    service: str
-    post_timeout: int
-
     def generate_pdf(self) -> str|None:
         """We have the beef."""
         logger = get_logger()
-        self.t0 = time.perf_counter()
+        t0 = time.perf_counter()
 
         # step 1: move tarball to /autotex
         local_tarball = os.path.join(self.in_dir, self.source)
@@ -660,6 +657,15 @@ class AutoTeXConverterDriver(ConverterDriver):
         # be defensive and squish it anyway.
         cmdenv = {"SECRETS": "?", "GOOGLE_APPLICATION_CREDENTIALS": "?", "PATH": PATH}
         # TODO get ArXiVID from source?
+        # autotex.pl does the following check
+        #   my $paperidregexp = qr/[A-Za-z.-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?|\d*/; # do we allow any integer lenght? \d{7}
+        #   if (!($opt{p} and $opt{p} =~ /^$paperidregexp$/)) {
+        #     warn '*** Error: Improper paper identifier (',
+        #       (defined($opt{p}) ? $opt{p} : 'no -p flag'),
+        # 	") specified ***\n\n";
+        #     usage();
+        #     exit(1);
+
         arxivID = self.source
         # maybe it is already source
         worker_args = [ "autotex.pl", "-f", "fInm", "-q", "-W", "/autotex", "-v", "-Z", "-p", arxivID ]
@@ -671,34 +677,30 @@ class AutoTeXConverterDriver(ConverterDriver):
                 (out, err) = child.communicate(timeout=timeout_value)
                 process_completion = True
             except subprocess.TimeoutExpired:
-                logger.warning("Process timeout %s", shlex.join(worker_args), extra=extra)
+                logger.warning("Process timeout %s", shlex.join(worker_args), extra=self.log_extra)
                 child.kill()
                 (out, err) = child.communicate()
                 pass
             elapse_time = time.perf_counter() - t0
-            timestamp1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            run = {"args": args, "stdout": out, "stderr": err,
+            t1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            run = {"args": worker_args, "stdout": out, "stderr": err,
                    "return_code": child.returncode,
                    "run_env": cmdenv,
-                   "start_time": timestamp0, "end_time": timestamp1,
+                   "start_time": t0, "end_time": t1,
                    "elapse_time": elapse_time,
                    "process_completion": process_completion,
                    "PATH": PATH}
             pass
-        extra.update({"run": run})
-        logger.debug(f"Exec result: return code: {run['return_code']}", extra=extra)
-        return run, out, err
+        self.log_extra.update({"run": run})
+        logger.debug(f"Exec result: return code: {run['return_code']}", extra=self.log_extra)
 
 
         # step 3: grab the PDF and the log file
         # step 4: create outcome json
 
-        self.outcome = {ID_TAG: self.tag, "status": None, "converters": [],
-                        "start_time": str(self.t0),
+        self.outcome = {ID_TAG: self.tag, "status": None, "converters": ["autotex"],
+                        "start_time": str(t0),
                         "timeout": str(self.max_time_budget),
-                        "use_addon_tree": self.use_addon_tree,
-                        "max_tex_files": self.max_tex_files,
-                        "max_appending_files": self.max_appending_files
                         }
 
         self._run_tex_commands()
