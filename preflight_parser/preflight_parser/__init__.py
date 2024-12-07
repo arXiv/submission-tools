@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 MODULE_PATH = os.path.dirname(__file__)
 
+PDF_SUBMISSION_STRING = "pdf_submission"
+HTML_SUBMISSION_STRING = "html_submission"
+
 #
 # CLASSES AND TYPES
 #
@@ -214,9 +217,9 @@ class CompilerSpec(BaseModel):
         """Convert Language/Output/Engine/PostProcess to compiler string."""
         # first deal with PDF only submissions:
         if self.lang.value == "pdf":
-            return "pdf_submission"
+            return PDF_SUBMISSION_STRING
         if self.lang.value == "html":
-            return "html_submission"
+            return HTML_SUBMISSION_STRING
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -234,7 +237,9 @@ class CompilerSpec(BaseModel):
         """Return the TeX compiler to be used."""
         # first deal with PDF only submissions:
         if self.lang.value == "pdf":
-            return "pdf_submission"
+            return PDF_SUBMISSION_STRING
+        if self.lang.value == "html":
+            return HTML_SUBMISSION_STRING
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -243,13 +248,13 @@ class CompilerSpec(BaseModel):
 
     def from_compiler_string(self, compiler: str):
         """Convert compiler string to Language/Output/Engine/PostProcess types."""
-        if compiler == "pdf_submission":
+        if compiler == PDF_SUBMISSION_STRING:
             self.lang = LanguageType.pdf
             self.engine = EngineType.unknown
             self.output = OutputType.unknown
             self.postp = PostProcessType.none
             return
-        if compiler == "html_submission":
+        if compiler == HTML_SUBMISSION_STRING:
             self.lang = LanguageType.html
             self.engine = EngineType.unknown
             self.output = OutputType.unknown
@@ -964,7 +969,7 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
             return ToplevelFile(
-                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler="pdf_submission"))
+                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
             )
         else:
             # TODO detect HTML submissions
