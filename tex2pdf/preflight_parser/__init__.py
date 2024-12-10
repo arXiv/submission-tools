@@ -17,8 +17,10 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 MODULE_PATH = os.path.dirname(__file__)
 
-
 T = TypeVar("T")
+
+PDF_SUBMISSION_STRING = "pdf_submission"
+HTML_SUBMISSION_STRING = "html_submission"
 
 #
 # CLASSES AND TYPES
@@ -66,6 +68,8 @@ class LanguageType(str, Enum):
 
     TEX does not allow compiling as latex, e.g., because it contains \bye
     LATEX does not allow compiling as plain tex, e.g., because it contains \documentclass
+    PDF is for PDF only submissions.
+    HTML is for HTML only submissions.
     UNKNOWN allows compilation as either TEX or LATEX.
     """
 
@@ -73,6 +77,7 @@ class LanguageType(str, Enum):
     tex = "tex"
     latex = "latex"
     pdf = "pdf"
+    html = "html"
 
 
 class EngineType(str, Enum):
@@ -215,7 +220,9 @@ class CompilerSpec(BaseModel):
         """Convert Language/Output/Engine/PostProcess to compiler string."""
         # first deal with PDF only submissions:
         if self.lang.value == "pdf":
-            return "pdf_submission"
+            return PDF_SUBMISSION_STRING
+        if self.lang.value == "html":
+            return HTML_SUBMISSION_STRING
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -233,7 +240,9 @@ class CompilerSpec(BaseModel):
         """Return the TeX compiler to be used."""
         # first deal with PDF only submissions:
         if self.lang.value == "pdf":
-            return "pdf_submission"
+            return PDF_SUBMISSION_STRING
+        if self.lang.value == "html":
+            return HTML_SUBMISSION_STRING
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -242,8 +251,14 @@ class CompilerSpec(BaseModel):
 
     def from_compiler_string(self, compiler: str) -> None:
         """Convert compiler string to Language/Output/Engine/PostProcess types."""
-        if compiler == "pdf_submission":
+        if compiler == PDF_SUBMISSION_STRING:
             self.lang = LanguageType.pdf
+            self.engine = EngineType.unknown
+            self.output = OutputType.unknown
+            self.postp = PostProcessType.none
+            return
+        if compiler == HTML_SUBMISSION_STRING:
+            self.lang = LanguageType.html
             self.engine = EngineType.unknown
             self.output = OutputType.unknown
             self.postp = PostProcessType.none
@@ -955,8 +970,15 @@ def parse_dir(rundir: str) -> dict[str, ParsedTeXFile] | ToplevelFile:
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
             return ToplevelFile(
-                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler="pdf_submission"))
+                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
             )
+        else:
+            # check for HTML submissions
+            for f in sorted(files):
+                if f.lower().endswith(".html"):
+                    return ToplevelFile(
+                        filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
+                    )
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
     return nodes

@@ -157,3 +157,16 @@ class TestPreflight(unittest.TestCase):
             """{"engine": "unknown", "lang": "pdf", "output": "unknown", "postp": "none"}""",
         )
         self.assertEqual(pf.detected_toplevel_files[0].process.compiler.compiler_string, "pdf_submission")
+
+    def test_preflight_html_only_submission(self):
+        """Test HTML only submission."""
+        dir_path = os.path.join(self.fixture_dir, "html_1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "paper.html")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "unknown", "lang": "html", "output": "unknown", "postp": "none"}""",
+        )
+        self.assertEqual(pf.detected_toplevel_files[0].process.compiler.compiler_string, "html_submission")
