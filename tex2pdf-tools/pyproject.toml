@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "arxiv-tex2pdf-tools"
+version = "0.1.0"
+description = "Base tools for arXiv's tex-to-pdf conversion service"
+authors = ["Naoyuki Tai <ntai@arxiv.org>", "Norbert Preining <norbert@arxiv.org>"]
+packages = [
+    { include = "tex2pdf_tools" }
+]
+include = ["LICENSE", "README.md"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+chardet = "^5.0"
+pydantic = "==1.10.*"
+ruamel-yaml = "^0.18.5"
+toml = "^0.10.2"
+tomli_w = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+pytest = "^8.3.3"
+mypy = "*"
+mypy-extensions = "*"
+types-toml = "^0.10.8.20240310"
+click = "^8.1.7"
+tqdm = "^4.66.2"
+pre-commit = "*"
+
+[tool.ruff]
+# Extend the `pyproject.toml` from the toplevel dir
+extend = "../pyproject.toml"
+extend-exclude = ["tests"]
+
+[tool.black]
+line-length = 120
+
+[tool.pylint]
+max-line-length = 120
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
