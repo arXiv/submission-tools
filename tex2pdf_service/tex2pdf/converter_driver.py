@@ -621,6 +621,7 @@ class AutoTeXConverterDriver(ConverterDriver):
 
     def __init__(self, work_dir: str, source: str, tag: str | None = None, max_time_budget: float | None = None):
         # Default are all already ok
+        self.zzrm = ZeroZeroReadMe()
         super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
 
     def generate_pdf(self) -> str|None:
@@ -646,7 +647,9 @@ class AutoTeXConverterDriver(ConverterDriver):
                               cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False
             try:
-                timeout_value = self.time_left()
+                # NEEDS FIX, time_left() not defined TODO
+                #timeout_value = self.time_left()
+                timeout_value = 300
                 (out, err) = child.communicate(timeout=timeout_value)
                 process_completion = True
             except subprocess.TimeoutExpired:
@@ -669,7 +672,7 @@ class AutoTeXConverterDriver(ConverterDriver):
             raise Exception(f"Multiple PDF files found: {pdf_files}")
         else:
             # move the file to self.outdir
-            pdf_file = os.path.join(self.outdir, os.path.basename(pdf_files[0]))
+            pdf_file = os.path.join(self.out_dir, os.path.basename(pdf_files[0]))
             os.rename(pdf_files[0], pdf_file)
         # we use glob here, since we will need to rename the autotex.log created
         # by autotex.pl to arxivID.log *within* autotex.log
