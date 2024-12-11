@@ -668,10 +668,7 @@ class AutoTeXConverterDriver(ConverterDriver):
                               cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False
             try:
-                # NEEDS FIX, time_left() not defined TODO
-                #timeout_value = self.time_left()
-                timeout_value = 300
-                (out, err) = child.communicate(timeout=timeout_value)
+                (out, err) = child.communicate(timeout=self.max_time_budget)
                 process_completion = True
             except subprocess.TimeoutExpired:
                 logger.warning("Process timeout %s", shlex.join(worker_args), extra=self.log_extra)
@@ -692,7 +689,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         elif len(pdf_files) > 1:
             raise Exception(f"Multiple PDF files found: {pdf_files}")
         else:
-            # move the file to self.outdir
+            # move the file to self.out_dir
             pdf_file = os.path.join(self.out_dir, os.path.basename(pdf_files[0]))
             os.rename(pdf_files[0], pdf_file)
         # we use glob here, since we will need to rename the autotex.log created
@@ -702,14 +699,13 @@ class AutoTeXConverterDriver(ConverterDriver):
             logger.warning(f"No log files found for {arxivID}")
             log = None
         else:
-            with open(log_files[0], 'r') as file:
+            with open(log_files[0]) as file:
                 log = file.read()
 
         # Create an outcome structure
         # This is unfortunately not well documented and has severe duplication of entries
         self.outcome = {
             ID_TAG: self.tag,
-            "status": None,
             "converters": [ {
                 "pdf_file": pdf_file,
                 "runs": [ {
