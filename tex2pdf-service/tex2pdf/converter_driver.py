@@ -10,7 +10,7 @@ import subprocess
 import time
 import typing
 from enum import Enum
-from pathlib import Path
+from glob import glob
 
 from tex2pdf_tools.preflight_parser import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -640,25 +640,21 @@ class RemoteConverterDriver(ConverterDriver):
 class AutoTeXConverterDriver(ConverterDriver):
     """Uses autotex for conversion."""
 
+    def __init__(self, work_dir: str, source: str, tag: str | None = None, max_time_budget: float | None = None):
+        # Default are all already ok
+        self.zzrm = ZeroZeroReadMe()
+        super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
+
     def generate_pdf(self) -> str|None:
         """We have the beef."""
         logger = get_logger()
         t0 = time.perf_counter()
 
-        # step 1: run autotex.pl on the id
+        # run autotex.pl on the id
         PATH = "/usr/local/bin:/opt_arxiv/bin:/opt_arxiv/arxiv-perl/bin:/usr/sbin:/usr/bin:/bin:/sbin"
         # SECRETS or GOOGLE_APPLICATION_CREDENTIALS is not defined at all at this point but
         # be defensive and squish it anyway.
         cmdenv = {"SECRETS": "?", "GOOGLE_APPLICATION_CREDENTIALS": "?", "PATH": PATH}
-        # TODO get ArXiVID from source?
-        # autotex.pl does the following check
-        #   my $paperidregexp = qr/[A-Za-z.-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?|\d*/; # do we allow any integer lenght? \d{7}
-        #   if (!($opt{p} and $opt{p} =~ /^$paperidregexp$/)) {
-        #     warn '*** Error: Improper paper identifier (',
-        #       (defined($opt{p}) ? $opt{p} : 'no -p flag'),
-        # 	") specified ***\n\n";
-        #     usage();
-        #     exit(1);
 
         arxivID = self.tag
         # maybe it is already source
@@ -672,7 +668,9 @@ class AutoTeXConverterDriver(ConverterDriver):
                               cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
             process_completion = False
             try:
-                timeout_value = self.time_left()
+                # NEEDS FIX, time_left() not defined TODO
+                #timeout_value = self.time_left()
+                timeout_value = 300
                 (out, err) = child.communicate(timeout=timeout_value)
                 process_completion = True
             except subprocess.TimeoutExpired:
@@ -681,33 +679,59 @@ class AutoTeXConverterDriver(ConverterDriver):
                 (out, err) = child.communicate()
             elapse_time = time.perf_counter() - t0
             t1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            run = {"args": worker_args, "stdout": out, "stderr": err,
-                   "return_code": child.returncode,
-                   "run_env": cmdenv,
-                   "start_time": t0, "end_time": t1,
-                   "elapse_time": elapse_time,
-                   "process_completion": process_completion,
-                   "PATH": PATH}
-        self.log_extra.update({"run": run})
-        logger.debug(f"Exec result: return code: {run['return_code']}", extra=self.log_extra)
+        logger.debug(f"Exec result: return code: {child.returncode}", extra=self.log_extra)
 
+        # files generated
+        # self.in_dir / tex_cache / arXivID.pdf (might have a version!)
+        # self.in_dir / tex_logs / autotex.log (same name, not good)
+        # we need to move them to self.out_dir so that the follow-up packaging
+        # into a tarfile works
+        pdf_files = glob(f"{self.in_dir}/tex_cache/{arxivID}*.pdf")
+        if not pdf_files:
+            pdf_file = None
+        elif len(pdf_files) > 1:
+            raise Exception(f"Multiple PDF files found: {pdf_files}")
+        else:
+            # move the file to self.outdir
+            pdf_file = os.path.join(self.out_dir, os.path.basename(pdf_files[0]))
+            os.rename(pdf_files[0], pdf_file)
+        # we use glob here, since we will need to rename the autotex.log created
+        # by autotex.pl to arxivID.log *within* autotex.log
+        log_files = glob(f"{self.in_dir}/tex_logs/autotex.log")
+        if not log_files:
+            logger.warning(f"No log files found for {arxivID}")
+            log = None
+        else:
+            with open(log_files[0], 'r') as file:
+                log = file.read()
 
-        # step 3: move all files to self.outdir
-        # step 4: create outcome json
-
-        self.outcome = {ID_TAG: self.tag, "status": None, "converters": ["autotex"],
-                        "start_time": str(t0),
-                        "timeout": str(self.max_time_budget),
-                        }
-
-        self._run_tex_commands()
-            pdf_files = self.outcome.get("pdf_files", [])
-            if pdf_files:
-                self._finalize_pdf()
-                self.outcome["status"] = "success"
-            else:
-                self.outcome["status"] = "fail"
-                pass
-            pass
+        # Create an outcome structure
+        # This is unfortunately not well documented and has severe duplication of entries
+        self.outcome = {
+            ID_TAG: self.tag,
+            "status": None,
+            "converters": [ {
+                "pdf_file": pdf_file,
+                "runs": [ {
+                    "args": worker_args,
+                    "stdout": out,
+                    "stderr": err,
+                    "return_code": child.returncode,
+                    "run_env": cmdenv,
+                    "start_time": t0, "end_time": t1,
+                    "elapse_time": elapse_time,
+                    "process_completion": process_completion,
+                    "PATH": PATH,
+                    "arxiv_id": arxivID,
+                    "log": log
+                }]
+            } ],
+            "start_time": str(t0),
+            "timeout": str(self.max_time_budget),
+            "total_time": elapse_time,
+            "pdf_files": [ pdf_file ],
+            "pdf_file": pdf_file,
+            "status": "success" if pdf_file else "fail",
+        }
         return self.outcome.get("pdf_file")
 
