@@ -713,6 +713,7 @@ class PreflightResponse(BaseModel):
     status: PreflightStatus
     detected_toplevel_files: list[ToplevelFile]
     tex_files: list[ParsedTeXFile]
+    ancillary_files: list[str]
 
     def to_json(self, **kwargs) -> str:
         """Return a json representation."""
@@ -955,12 +956,14 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     return n
 
 
-def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
+def parse_dir(rundir) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str]]:
     """Parse all TeX files in a directory."""
     files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
     n = len(rundir) + 1
     files = [f[n:] for f in files if os.path.isfile(f)]
+    # ancillary files
+    anc_files = [t for t in files if t.startswith("anc/")]
     # files = os.listdir(rundir)
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
@@ -970,17 +973,17 @@ def parse_dir(rundir) -> dict[str, ParsedTeXFile] | ToplevelFile:
             # PDF only submission, only one PDF file, nothing else
             return ToplevelFile(
                 filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
-            )
+            ), anc_files
         else:
             # check for HTML submissions
             for f in sorted(files):
                 if f.lower().endswith(".html"):
                     return ToplevelFile(
                         filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
-                    )
+                    ), anc_files
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
-    return nodes
+    return nodes, anc_files
 
 
 def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, str]:
@@ -1161,10 +1164,13 @@ def deal_with_bibliographies(
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     """Parse submission and generated preflight response as dictionary."""
     # parse files
-    n: dict[str, ParsedTeXFile] | ToplevelFile = parse_dir(rundir)
+    n: dict[str, ParsedTeXFile] | ToplevelFile
+    anc_files: list[str]
     nodes: dict[str, ParsedTeXFile]
     roots: dict[str, ParsedTeXFile]
     toplevel_files: dict[str, ToplevelFile]
+
+    n, anc_files = parse_dir(rundir)
     if isinstance(n, ToplevelFile):
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
@@ -1195,6 +1201,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         status=status,
         detected_toplevel_files=[tl for tl in toplevel_files.values()],
         tex_files=[n for n in nodes.values()],
+        ancillary_files=anc_files,
     )
 
 
@@ -1207,6 +1214,7 @@ def generate_preflight_response(rundir: str, json: bool = False, **kwargs) -> Pr
             status=PreflightStatus(key=PreflightStatusValues.error, info=str(e)),
             detected_toplevel_files=[],
             tex_files=[],
+            ancillary_files=[],
         )
     if json:
         return pfr.to_json(**kwargs)
