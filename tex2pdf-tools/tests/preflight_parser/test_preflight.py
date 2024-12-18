@@ -173,3 +173,16 @@ class TestPreflight(unittest.TestCase):
             pf.detected_toplevel_files[0].process.compiler.compiler_string,
             "html_submission"
         )
+
+    def test_anc_files_submission(self):
+        """Test submission with ancillary files."""
+        dir_path = os.path.join(self.fixture_dir, "anc_files_1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
+        )
+        self.assertEqual(len(pf.ancillary_files), 2)
+
