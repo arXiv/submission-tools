@@ -585,7 +585,7 @@ class ParsedTeXFile(BaseModel):
         self.mentioned_files |= file_incspec
 
     def generic_walk_document_tree(
-        self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T], init: [T, T]
+        self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T], init: T | None
     ) -> T:
         """Walk the document tree in map/reduce fashion."""
         return self._generic_walk_document_tree(map, reduce, {}, init)
@@ -595,7 +595,7 @@ class ParsedTeXFile(BaseModel):
         map: Callable[["ParsedTeXFile"], T],
         reduce: Callable[[T, T], T],
         visited: dict[str, bool],
-        init: [T, T] | None = None,
+        init: T | None = None,
     ) -> T:
         """Call a function on any node of a document tree - internal helper."""
         if init is None:
