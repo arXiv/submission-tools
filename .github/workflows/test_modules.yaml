@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: tex_inspection library
+name: Submission Tools Test
 
 on:
   push:
@@ -23,33 +23,14 @@ jobs:
       uses: teatimeguest/setup-texlive-action@v3
       with:
         packages: scheme-basic
-    - name: Install dependencies for tex_inspection
+    - name: Install dependencies for tools
       run: |
-        cd tex_inspection
+        cd tex2pdf-tools
         python -m pip install --upgrade pip
         pip install pytest poetry
         poetry install
-    - name: pytest for tex_inspection
+    - name: pytest for tools
       run: |
-        cd tex_inspection
+        cd tex2pdf-tools
         export PYTHONPATH=$PWD
         poetry run pytest tests
-    - name: Install dependencies for preflight_parser
-      run: |
-        cd preflight_parser
-        poetry install
-    - name: pytest for preflight_parser
-      run: |
-        cd preflight_parser
-        export PYTHONPATH=$PWD
-        poetry run pytest tests
-    - name: Install dependencies for zerozeroreadme
-      run: |
-        cd zerozeroreadme
-        poetry install
-    - name: pytest for zerozeroreadme
-      run: |
-        cd zerozeroreadme
-        export PYTHONPATH=$PWD
-        poetry run pytest tests
-      
