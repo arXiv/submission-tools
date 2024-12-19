@@ -39,8 +39,8 @@ tomli_w = "^1.0"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "triple-package"
-resolved_reference = "ef1b2b61e6bf01107a2fcfa99bf2cec3ec6c7ac9"
+reference = "HEAD"
+resolved_reference = "9f9d3f8da719c556d59286d825bf4979d9aea0b0"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -1294,4 +1294,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "2ab45dc5affb456f18c0a3939bc1e409b1540d3e438ac3b5ab91a63f69d5412b"
+content-hash = "f3f4c8a132c96116b34e2a6bf52cb431a6b08604f33dec9d63abf64cfabe1814"
