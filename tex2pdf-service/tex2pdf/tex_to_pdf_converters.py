@@ -587,65 +587,6 @@ class PdfLatexConverter(BaseConverter):
 
     pass
 
-class AutoTeXConverter(BaseConverter):
-    """Runs autotex command"""
-    _args: typing.List[str]
-
-    def __init__(self, conversion_tag: str, **kwargs: typing.Any):
-        super().__init__(conversion_tag, **kwargs)
-        self._args = ["/usr/bin/autotex.pl",
-                      "-f", "fInm", "-q", "-W", "/autotex", "-v", "-Z",
-                      "-p"]
-        pass
-
-    @classmethod
-    def tex_compiler_name(cls) -> str:
-        """TeX Compiler """
-        return "autotex.pl"
-
-    def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
-
-        NOTE: It is important to return the outcome so that you can troubleshoot.
-        Do not exception out.
-        """
-        logger = get_logger()
-
-        # Stem: the filename of the tex file without the extension
-        stem = os.path.splitext(tex_file)[0]
-        self.stem = stem
-        stem_pdf = f"{stem}.pdf"
-        # pdf_filename = os.path.join(in_dir, stem_pdf)
-        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
-
-        # tex run
-        step = "tex_to_dvi_run"
-        run, out, err = self._exec_cmd(self._args, in_dir, work_dir, extra={"step": step})
-        dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
-        self._check_cmd_run(run, dvi_filename)
-        latex_log_file = os.path.join(in_dir, f"{stem}.log")
-        self.fetch_log(latex_log_file)
-        if self.log:
-            run["log"] = self.log
-        artifact = "dvi"
-        self._report_run(run, out, err, step, in_dir, work_dir, artifact, dvi_filename)
-        run = self.check_missing(in_dir, run, artifact)
-        dvi_size = run["dvi"]["size"]
-        if not dvi_size:
-            outcome.update({"status": "fail", "step": step,
-                            "reason": "failed to create pdf", "runs": self.runs})
-            return outcome
-
-        return outcome
-
-    def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """plain tex is not latex."""
-        raise ImplementationError("_latexen_run() not implemented")
-
-    def converter_name(self) -> str:
-        return "%s: %s" % (self.tex_compiler_name(), shlex.join(self._args))
-
-    pass
 
 # class PdfTexConverter(BaseConverter):
 #     """Runs pdftex command"""
