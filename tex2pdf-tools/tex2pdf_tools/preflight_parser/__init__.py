@@ -1290,22 +1290,6 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
         else:
             tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=False)
 
-        # bbl_file = tl_f.rstrip(".tex").rstrip(".TEX") + ".bbl"
-        # bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
-        # if bbl_file_present:
-        #     # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
-        #     tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=True)
-        #     # add bbl file to the list of used_other_files
-        #     nodes[tl_f].used_other_files.append(bbl_file)
-        #     # TODO, maybe remove issues with missing .bib files?
-        #     continue
-        # # toplevel filename .bbl is missing -> require .bib to be available,
-        # top_node = nodes[tl_f]
-        # all_bib = top_node.recursive_collect_files(FileType.bib)
-        # if all_bib:
-        #     # TODO detect biber usage!
-        #     tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
-
 
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     """Parse submission and generated preflight response as dictionary."""
