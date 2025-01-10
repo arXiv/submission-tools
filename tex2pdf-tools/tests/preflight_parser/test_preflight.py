@@ -186,3 +186,20 @@ class TestPreflight(unittest.TestCase):
         )
         self.assertEqual(len(pf.ancillary_files), 2)
 
+    def test_index_biblio_1(self):
+        """Test index and bibliographies."""
+        dir_path = os.path.join(self.fixture_dir, "index_test_1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        print(pf.detected_toplevel_files[0].process.json)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.index.json(exclude_none=True, exclude_defaults=True),
+            """{"pre_generated": true}"""
+        )
+
+
