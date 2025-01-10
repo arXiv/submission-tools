@@ -939,6 +939,7 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
     \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
     \s*({[^}]*})?\s*(?:%.*\n)?        # second argument with braces
     \s*({[^}]*})?                     # third argument with braces
+    \s*\W                             # any non-word character terminating the command
 """
 
 
