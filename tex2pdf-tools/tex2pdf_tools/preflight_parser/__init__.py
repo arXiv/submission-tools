@@ -462,6 +462,10 @@ class ParsedTeXFile(BaseModel):
             include_extra_argument = inc[3]
         else:
             include_extra_argument = "{}"
+        if inc[4]:
+            include_extra2_argument = inc[4]
+        else:
+            include_extra2_argument = "{}"
 
         # check for syntactic correctness of arguments/options
         assert (
@@ -473,11 +477,14 @@ class ParsedTeXFile(BaseModel):
         assert include_argument.endswith("}")
         assert include_extra_argument.startswith("{")
         assert include_extra_argument.endswith("}")
+        assert include_extra2_argument.startswith("{")
+        assert include_extra2_argument.endswith("}")
 
         # drop [] and {} around options/arguments
         include_options = include_options[1:-1]
         include_argument = include_argument[1:-1]
         include_extra_argument = include_extra_argument[1:-1]
+        include_extra2_argument = include_extra2_argument[1:-1]
 
         file_incspec: dict[str, IncludeSpec] = {}
 
@@ -890,9 +897,10 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
         tcbincludegraphics|
         asyinclude                       # asy
     )\s*(?:%.*\n)?
-    (\[[^]]*\])?\s*(?:%.*\n)?    # optional arguments
-    ({[^}]*})\s*(?:%.*\n)?         # actual argument with braces
-    ({[^}]*})?                           # second argument with braces
+    \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
+    \s*({[^}]*})\s*(?:%.*\n)?         # actual argument with braces
+    \s*({[^}]*})?\s*(?:%.*\n)?        # second argument with braces
+    \s*({[^}]*})?
 """
 
 
