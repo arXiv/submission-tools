@@ -1,3 +1,20 @@
+Dealing with index files
+-------------------------
+Search for lines
+  \newindex{tag}{raw_extension}{compiled_extension}{Whatever title}
+The
+  \index
+command might generate <MAINFILE>.<raw_extension> and authors may
+submit the compiled (running makeindex) <MAINFILE>.<compiled_extension>
+
+Actual usage is induced by
+  \printindex[tag]
+
+Fallback for default
+  \makeindex -> \newindex{default}{idx}{ind}{Index}
+  \printindex -> used <default> as tag
+
+
 2401.00660
 ----------
 defaults to pdflatex, so .eps files are not found :-(
