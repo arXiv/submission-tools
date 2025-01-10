@@ -532,10 +532,6 @@ class ParsedTeXFile(BaseModel):
                     file_incspec[f] = incdef
                 else:
                     file_incspec[f"{f}.bib"] = incdef
-                # at the same time, generate an entry for the bbl file
-                file_incspec["<MAIN>.bbl"] = IncludeSpec(
-                    cmd="bibliography", source="core", type=FileType.bbl, extensions=".bbl"
-                )
         elif incdef.cmd == "makeindex":  # \makeindex -> \newindex{default}{idx}{ind}{Index}
             logging.debug("makeindex found")
             # encode the information of index definition into the filename
@@ -1210,6 +1206,7 @@ def deal_with_bibliographies(
 ) -> None:
     """Check for inclusion of bib files and presence .bbl files."""
     for tl_f, tl_n in toplevel_files.items():
+        node = nodes[tl_f]
         bbl_file = tl_f.rstrip(".tex").rstrip(".TEX") + ".bbl"
         bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
         if bbl_file_present:
@@ -1220,8 +1217,7 @@ def deal_with_bibliographies(
             # TODO, maybe remove issues with missing .bib files?
             continue
         # toplevel filename .bbl is missing -> require .bib to be available,
-        top_node = nodes[tl_f]
-        all_bib = top_node.recursive_collect_files(FileType.bib)
+        all_bib = node.recursive_collect_files(FileType.bib)
         if all_bib:
             # TODO detect biber usage!
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
@@ -1261,19 +1257,37 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
             else:
                 logging.debug("Found index definition for %s: %s", tag, defined_indices[tag])
             idx_ext, ind_ext = defined_indices[tag]
-            ind_file = tl_f.rstrip(".tex").rstrip(".TEX") + "." + ind_ext
+            jobname = tl_f.rstrip(".tex").rstrip(".TEX")
+            idx_file = jobname + "." + idx_ext
+            ind_file = jobname + "." + ind_ext
+            # remove the <MAIN>.... entry from this node, see below for more comments
+            idx_file_pattern = f"<MAIN>.<{tag}>.<{idx_ext}>.<{ind_ext}>"
+            if idx_file_pattern in nodes[tl_f].used_idx_files:
+                nodes[tl_f].used_idx_files.remove(idx_file_pattern)
+            nodes[tl_f].used_idx_files.append(idx_file)
             ind_file_present = os.path.isfile(f"{rundir}/{ind_file}")
             if ind_file_present:
-                found_all_indices |= True
+                found_all_indices &= True
                 # try to remove the <MAIN>.<tag> entry from this node, but
                 # we do NOT remove it if it appears in some included file, too much work
                 if f"<MAIN>.<{tag}>" in nodes[tl_f].used_ind_files:
                     nodes[tl_f].used_ind_files.remove(f"<MAIN>.<{tag}>")
                 nodes[tl_f].used_ind_files.append(ind_file)
             else:
-                found_all_indices |= False
+                found_all_indices &= False
 
-            # tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=True)
+        # remove unused index entries
+        for tag, val in defined_indices.items():
+            if tag not in all_ind:
+                idx_ext, ind_ext = val
+                idx_file_pattern = f"<MAIN>.<{tag}>.<{idx_ext}>.<{ind_ext}>"
+                if idx_file_pattern in nodes[tl_f].used_idx_files:
+                    nodes[tl_f].used_idx_files.remove(idx_file_pattern)
+
+        if found_all_indices:
+            tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=True)
+        else:
+            tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=False)
 
         # bbl_file = tl_f.rstrip(".tex").rstrip(".TEX") + ".bbl"
         # bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
