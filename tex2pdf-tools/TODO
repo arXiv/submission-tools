@@ -1,3 +1,0 @@
-- single_tex_3 and single_tex_4 are **strange** and tests seem to fail
-- pytest did pick up an old version of preflight parser ... why???
-- more unit tests for index/biblio
