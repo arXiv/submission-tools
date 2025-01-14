@@ -211,4 +211,16 @@ class TestPreflight(unittest.TestCase):
                 self.assertEqual(tf.used_ind_files, ["ms.and", "ms.bnd"])
                 self.assertEqual(tf.used_other_files, ["ms.bbl"])
 
+    def test_index_biblio_2(self):
+        """Test index and bibliographies - missing index definition."""
+        dir_path = os.path.join(self.fixture_dir, "index_test_2")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        for tf in pf.detected_toplevel_files:
+            if tf.filename == "ms.tex":
+                self.assertEqual(len(tf.issues), 1)
+                self.assertEqual(tf.issues[0].info, "index definition for tag-b not found")
+
+
 

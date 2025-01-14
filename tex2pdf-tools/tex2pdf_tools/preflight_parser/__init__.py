@@ -318,6 +318,7 @@ class IssueType(str, Enum):
     include_command_with_macro = "include_command_with_macro"
     contents_decode_error = "contents_decode_error"
     issue_in_subfile = "issue_in_subfile"
+    index_definition_missing = "index_definition_missing"
     other = "other"
 
 
@@ -1253,7 +1254,9 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
             # check that all used indices are defined
             if tag not in defined_indices:
                 logging.error("Missing index definition for %s", tag)
-                # TODO add issue!!!
+                tl_n.issues.append(
+                    TeXFileIssue(IssueType.index_definition_missing, f"index definition for {tag} not found")
+                )
                 continue
             else:
                 logging.debug("Found index definition for %s: %s", tag, defined_indices[tag])
