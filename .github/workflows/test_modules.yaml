@@ -21,8 +21,12 @@ jobs:
         python-version: "3.11"
     - name: Setup TeX Live
       uses: teatimeguest/setup-texlive-action@v3
-      with:
-        packages: scheme-small
+      with: # install extra packages we use in the test files
+        packages: |
+          scheme-basic
+          index
+          lipsum
+          amsmath
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools

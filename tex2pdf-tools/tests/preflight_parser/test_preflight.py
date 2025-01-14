@@ -89,13 +89,18 @@ class TestPreflight(unittest.TestCase):
         pf: PreflightResponse = generate_preflight_response(dir_path)
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 8)
-        self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
-            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
-        )
         found = False
         for tf in pf.detected_toplevel_files:
-            # print(f"===> {tf.filename}")
+            if tf.filename == "main.tex":
+                self.assertEqual(
+                    tf.process.compiler.json(exclude_none=True, exclude_defaults=True),
+                    """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
+                )
+                found = True
+                break
+        self.assertTrue(found)
+        found = False
+        for tf in pf.detected_toplevel_files:
             if tf.filename == "plain-main.tex":
                 self.assertEqual(
                     tf.process.compiler.json(exclude_none=True, exclude_defaults=True),
