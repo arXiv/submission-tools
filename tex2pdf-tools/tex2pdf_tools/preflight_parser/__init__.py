@@ -47,7 +47,10 @@ class FileType(str, Enum):
     """Classification of files."""
 
     tex = "tex"
-    bib = "bib"
+    bib = "bib"  # source bibliography
+    idx = "idx"  # source index, but can have arbitrary extensions!
+    bbl = "bbl"  # generated bibliography
+    ind = "ind"  # generated index, but can have arbitrary extensions!
     other = "other"
 
 
@@ -315,6 +318,7 @@ class IssueType(str, Enum):
     include_command_with_macro = "include_command_with_macro"
     contents_decode_error = "contents_decode_error"
     issue_in_subfile = "issue_in_subfile"
+    index_definition_missing = "index_definition_missing"
     other = "other"
 
 
@@ -344,6 +348,9 @@ class ParsedTeXFile(BaseModel):
     contains_bye: bool = False
     used_tex_files: list[str] = []
     used_bib_files: list[str] = []
+    used_idx_files: list[str] = []
+    used_bbl_files: list[str] = []
+    used_ind_files: list[str] = []
     used_other_files: list[str] = []
     used_system_files: list[str] = Field(exclude=True, default=[])
     mentioned_files: dict[str, IncludeSpec] = Field(exclude=True, default={})
@@ -450,18 +457,26 @@ class ParsedTeXFile(BaseModel):
         # every inc has four matching groups
         # inc[0] ... command
         # inc[1] ... options (if present)
-        # inc[2] ... first argumetn
+        # inc[2] ... first argument
         # inc[3] ... second argument (if present)
+        # inc[4] ... third argument (if present)
         include_command = inc[0]
         if inc[1]:
             include_options = inc[1]
         else:
             include_options = "[]"
-        include_argument = inc[2]
+        if inc[2]:
+            include_argument = inc[2]
+        else:
+            include_argument = "{}"
         if inc[3]:
             include_extra_argument = inc[3]
         else:
             include_extra_argument = "{}"
+        if inc[4]:
+            include_extra2_argument = inc[4]
+        else:
+            include_extra2_argument = "{}"
 
         # check for syntactic correctness of arguments/options
         assert (
@@ -473,11 +488,14 @@ class ParsedTeXFile(BaseModel):
         assert include_argument.endswith("}")
         assert include_extra_argument.startswith("{")
         assert include_extra_argument.endswith("}")
+        assert include_extra2_argument.startswith("{")
+        assert include_extra2_argument.endswith("}")
 
         # drop [] and {} around options/arguments
         include_options = include_options[1:-1]
         include_argument = include_argument[1:-1]
         include_extra_argument = include_extra_argument[1:-1]
+        include_extra2_argument = include_extra2_argument[1:-1]
 
         file_incspec: dict[str, IncludeSpec] = {}
 
@@ -515,6 +533,22 @@ class ParsedTeXFile(BaseModel):
                     file_incspec[f] = incdef
                 else:
                     file_incspec[f"{f}.bib"] = incdef
+        elif incdef.cmd == "makeindex":  # \makeindex -> \newindex{default}{idx}{ind}{Index}
+            logging.debug("makeindex found")
+            # encode the information of index definition into the filename
+            file_incspec["<MAIN>.<default>.<idx>.<ind>"] = incdef
+        elif incdef.cmd == "newindex":  # \newindex{tag}{raw_extension}{compiled_extension}{Whatever title}
+            logging.debug(f"newindex found with tag {include_extra_argument} and {include_extra2_argument}")
+            # encode the information of index definition into the filename
+            file_incspec[f"<MAIN>.<{include_argument}>.<{include_extra_argument}>.<{include_extra2_argument}>"] = incdef
+        elif incdef.cmd == "printindex":  # \printindex[tag] (default is <default> for tag
+            logging.debug(f"printindex found with tag {include_options}")
+            if include_options == "":
+                tag = "default"
+            else:
+                tag = include_options
+            # encode the information of index usage tag into the filename
+            file_incspec[f"<MAIN>.<{tag}>"] = incdef
         elif incdef.cmd == "usepackage" or incdef.cmd == "RequirePackage":
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
@@ -682,6 +716,12 @@ class ParsedTeXFile(BaseModel):
         """Recursively collect all tex/bib/other files."""
         if what == FileType.bib:
             idx = "used_bib_files"
+        elif what == FileType.bbl:
+            idx = "used_bbl_files"
+        elif what == FileType.ind:
+            idx = "used_ind_files"
+        elif what == FileType.idx:
+            idx = "used_idx_files"
         elif what == FileType.tex:
             idx = "used_tex_files"
         elif what == FileType.other:
@@ -849,6 +889,9 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="tcbuselibrary", source="tcolorbox", type=FileType.tex, extensions="code.tex"),
     IncludeSpec(cmd="tcbincludegraphics", source="tcolorbos", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="asyinclude", source="asy", type=FileType.other, extensions="asy"),
+    IncludeSpec(cmd="newindex", source="index", type=FileType.idx),
+    IncludeSpec(cmd="makeindex", source="index", type=FileType.idx),
+    IncludeSpec(cmd="printindex", source="index", type=FileType.ind),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
@@ -888,11 +931,16 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
         usepgflibrary|
         tcbuselibrary|                   # tcolorbox
         tcbincludegraphics|
-        asyinclude                       # asy
+        asyinclude|                      # asy
+        newindex|                        # index
+        makeindex|
+        printindex
     )\s*(?:%.*\n)?
-    (\[[^]]*\])?\s*(?:%.*\n)?    # optional arguments
-    ({[^}]*})\s*(?:%.*\n)?         # actual argument with braces
-    ({[^}]*})?                           # second argument with braces
+    \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
+    \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
+    \s*({[^}]*})?\s*(?:%.*\n)?        # second argument with braces
+    \s*({[^}]*})?                     # third argument with braces
+    (?=\s*\W)                         # any non-word character terminating the command
 """
 
 
@@ -992,6 +1040,10 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
     kpse_find_input_data = ""
     for _, n in nodes.items():
         for k, v in n.mentioned_files.items():
+            # we don't know the \jobname by now, so we cannot search for index files
+            # (.idx/.ind/etc)
+            if k.startswith("<MAIN>."):
+                continue
             if isinstance(v.extensions, dict):
                 if n.output_type == OutputType.dvi:  # TODO should we check for dvipdfmx?
                     if n.postprocess == PostProcessType.dvips_ps2pdf:
@@ -1039,6 +1091,11 @@ def update_nodes_with_kpse_info(
         for f in n.mentioned_files:
             if f in kpse_found:
                 found = kpse_found[f]
+            elif f.startswith("<MAIN>."):
+                # deal with index idx/ind files that are based on jobname
+                # and aren't found.
+                logging.debug("keeping \jobname file %s", f)
+                found = f
             else:
                 logging.error("kpse_found not containing =%s=", f)
                 break
@@ -1055,6 +1112,12 @@ def update_nodes_with_kpse_info(
                 n.used_tex_files.append(found)
             elif n.mentioned_files[f].type == FileType.bib:
                 n.used_bib_files.append(found)
+            elif n.mentioned_files[f].type == FileType.bbl:
+                n.used_bbl_files.append(found)
+            elif n.mentioned_files[f].type == FileType.ind:
+                n.used_ind_files.append(found)
+            elif n.mentioned_files[f].type == FileType.idx:
+                n.used_idx_files.append(found)
             elif n.mentioned_files[f].type == FileType.other:
                 n.used_other_files.append(found)
             else:
@@ -1145,6 +1208,7 @@ def deal_with_bibliographies(
 ) -> None:
     """Check for inclusion of bib files and presence .bbl files."""
     for tl_f, tl_n in toplevel_files.items():
+        node = nodes[tl_f]
         bbl_file = tl_f.rstrip(".tex").rstrip(".TEX") + ".bbl"
         bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
         if bbl_file_present:
@@ -1155,11 +1219,79 @@ def deal_with_bibliographies(
             # TODO, maybe remove issues with missing .bib files?
             continue
         # toplevel filename .bbl is missing -> require .bib to be available,
-        top_node = nodes[tl_f]
-        all_bib = top_node.recursive_collect_files(FileType.bib)
+        all_bib = node.recursive_collect_files(FileType.bib)
         if all_bib:
             # TODO detect biber usage!
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
+
+
+def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
+    """Check for inclusion of idx files and presence .ind files."""
+    for tl_f, tl_n in toplevel_files.items():
+        node = nodes[tl_f]
+        # first collect the *defined* indices which contain the tag name:
+        #          "used_ind_files" : [
+        #             "<MAIN>.<tag1>",
+        #             "<MAIN>.<tag2>"
+        #          ],
+        #          "used_idx_files": [
+        #             "<MAIN>.<tag1>.<idx_ext>.<ind_ext>",
+        #             ....
+        #          ]
+        all_ind = [fn[8:-1] for fn in node.recursive_collect_files(FileType.ind)]
+        all_idx = [fn[7:] for fn in node.recursive_collect_files(FileType.idx)]
+        defined_indices = {}
+        for idxdef in all_idx:
+            tag, idx_ext, ind_ext = idxdef.split(".")
+            tag = tag[1:-1]
+            idx_ext = idx_ext[1:-1]
+            ind_ext = ind_ext[1:-1]
+            defined_indices[tag] = (idx_ext, ind_ext)
+        logging.debug("Found globally used indices: %s", all_ind)
+        logging.debug("Found globally defined indices: %s", defined_indices)
+        found_all_indices = True
+        for tag in all_ind:
+            # check that all used indices are defined
+            if tag not in defined_indices:
+                logging.error("Missing index definition for %s", tag)
+                tl_n.issues.append(
+                    TeXFileIssue(IssueType.index_definition_missing, f"index definition for {tag} not found")
+                )
+                continue
+            else:
+                logging.debug("Found index definition for %s: %s", tag, defined_indices[tag])
+            idx_ext, ind_ext = defined_indices[tag]
+            jobname = tl_f.rstrip(".tex").rstrip(".TEX")
+            idx_file = jobname + "." + idx_ext
+            ind_file = jobname + "." + ind_ext
+            # remove the <MAIN>.... entry from this node, see below for more comments
+            idx_file_pattern = f"<MAIN>.<{tag}>.<{idx_ext}>.<{ind_ext}>"
+            if idx_file_pattern in nodes[tl_f].used_idx_files:
+                nodes[tl_f].used_idx_files.remove(idx_file_pattern)
+            nodes[tl_f].used_idx_files.append(idx_file)
+            ind_file_present = os.path.isfile(f"{rundir}/{ind_file}")
+            if ind_file_present:
+                found_all_indices &= True
+                # try to remove the <MAIN>.<tag> entry from this node, but
+                # we do NOT remove it if it appears in some included file, too much work
+                if f"<MAIN>.<{tag}>" in nodes[tl_f].used_ind_files:
+                    nodes[tl_f].used_ind_files.remove(f"<MAIN>.<{tag}>")
+                nodes[tl_f].used_ind_files.append(ind_file)
+            else:
+                found_all_indices &= False
+
+        # remove unused index entries
+        for tag, val in defined_indices.items():
+            if tag not in all_ind:
+                idx_ext, ind_ext = val
+                idx_file_pattern = f"<MAIN>.<{tag}>.<{idx_ext}>.<{ind_ext}>"
+                if idx_file_pattern in nodes[tl_f].used_idx_files:
+                    nodes[tl_f].used_idx_files.remove(idx_file_pattern)
+
+        if found_all_indices:
+            tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=True)
+        else:
+            tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=False)
 
 
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
@@ -1196,6 +1328,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             toplevel_files = compute_toplevel_files(roots, nodes)
             # deal with bibliographies, which is painful
             deal_with_bibliographies(rundir, toplevel_files, nodes)
+            deal_with_indices(rundir, toplevel_files, nodes)
             # TODO check for suspicious status!
             status = PreflightStatus(key=PreflightStatusValues.success)
     return PreflightResponse(
