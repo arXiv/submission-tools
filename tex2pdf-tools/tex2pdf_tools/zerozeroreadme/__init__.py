@@ -105,14 +105,14 @@ class ZeroZeroReadMe:
     def to_dict(self) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
         result: OrderedDict[str, typing.Any] = OrderedDict()
-        result["process"] = self.process.dict(exclude_none=True, exclude_defaults=True)
+        result["process"] = self.process.model_dump(exclude_none=True, exclude_defaults=True)
         # the zzrm.process.compiler should be the compiler_string, not the actual object
         if self.process.compiler is not None:
             result["process"]["compiler"] = self.process.compiler.compiler_string
         if self.sources.keys():
             result["sources"] = []
             for k, v in self.sources.items():
-                result["sources"].append(v.dict(exclude_none=True, exclude_defaults=True))
+                result["sources"].append(v.model_dump(exclude_none=True, exclude_defaults=True))
         if self.stamp is not None:
             result["stamp"] = self.stamp
         if self.nohyperref is not None:

@@ -13,7 +13,7 @@ from pprint import pformat
 from typing import TypeVar
 
 import chardet
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -339,7 +339,7 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    _data: str = PrivateAttr(default="")
+    _data: str = ""
     output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
@@ -758,7 +758,7 @@ class PreflightResponse(BaseModel):
 
     def to_json(self, **kwargs: typing.Any) -> str:
         """Return a json representation."""
-        return self.json(exclude_none=True, exclude_defaults=True, **kwargs)
+        return self.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
 
 
 #
@@ -1094,7 +1094,7 @@ def update_nodes_with_kpse_info(
             elif f.startswith("<MAIN>."):
                 # deal with index idx/ind files that are based on jobname
                 # and aren't found.
-                logging.debug("keeping \jobname file %s", f)
+                logging.debug(r"keeping \jobname file %s", f)
                 found = f
             else:
                 logging.error("kpse_found not containing =%s=", f)
