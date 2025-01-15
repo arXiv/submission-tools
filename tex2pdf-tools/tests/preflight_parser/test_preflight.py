@@ -89,13 +89,18 @@ class TestPreflight(unittest.TestCase):
         pf: PreflightResponse = generate_preflight_response(dir_path)
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 8)
-        self.assertEqual(
-            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
-            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
-        )
         found = False
         for tf in pf.detected_toplevel_files:
-            print(f"===> {tf.filename}")
+            if tf.filename == "main.tex":
+                self.assertEqual(
+                    tf.process.compiler.json(exclude_none=True, exclude_defaults=True),
+                    """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
+                )
+                found = True
+                break
+        self.assertTrue(found)
+        found = False
+        for tf in pf.detected_toplevel_files:
             if tf.filename == "plain-main.tex":
                 self.assertEqual(
                     tf.process.compiler.json(exclude_none=True, exclude_defaults=True),
@@ -185,4 +190,42 @@ class TestPreflight(unittest.TestCase):
             """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
         )
         self.assertEqual(len(pf.ancillary_files), 2)
+
+    def test_index_biblio_1(self):
+        """Test index and bibliographies."""
+        dir_path = os.path.join(self.fixture_dir, "index_test_1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.json(exclude_none=True, exclude_defaults=True),
+            """{"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}""",
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.index.json(exclude_none=True, exclude_defaults=True),
+            """{"pre_generated": true}"""
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.bibliography.json(exclude_none=True, exclude_defaults=True),
+            """{"pre_generated": true}"""
+        )
+        for tf in pf.tex_files:
+            if tf.filename == "ms.tex":
+                self.assertEqual(tf.used_tex_files, ["the-rest.tex"])
+                self.assertEqual(tf.used_idx_files, ["ms.adx", "ms.bdx"])
+                self.assertEqual(tf.used_ind_files, ["ms.and", "ms.bnd"])
+                self.assertEqual(tf.used_other_files, ["ms.bbl"])
+
+    def test_index_biblio_2(self):
+        """Test index and bibliographies - missing index definition."""
+        dir_path = os.path.join(self.fixture_dir, "index_test_2")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        for tf in pf.detected_toplevel_files:
+            if tf.filename == "ms.tex":
+                self.assertEqual(len(tf.issues), 1)
+                self.assertEqual(tf.issues[0].info, "index definition for tag-b not found")
+
+
 

@@ -9,6 +9,7 @@ from tex2pdf_tools.preflight_parser import (
     IncludeSpec,
     IndexCompiler,
     IndexProcessSpec,
+    MainProcessSpec,
     PreflightStatus,
     PreflightStatusValues,
 )
@@ -122,4 +123,16 @@ class TestBaseModels(unittest.TestCase):
                 exclude_none=True, exclude_defaults=True
             ),
             """{"engine": "unknown", "lang": "pdf", "output": "unknown", "postp": "none"}""",
+        )
+
+    def test_main_process_spec_1(self):
+        """Test MainProcessSpec initialized from dict of data."""
+        self.assertEqual(
+            MainProcessSpec(
+                compiler=CompilerSpec(engine="tex", lang="latex", output="pdf", postp="none"),
+                bibliography=BibProcessSpec(processor=BibCompiler.bibtex, pre_generated=True),
+                index=IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True),
+                fontmaps=[]
+            ).json(exclude_none=True, exclude_defaults=True),
+            """{"compiler": {"engine": "tex", "lang": "latex", "output": "pdf", "postp": "none"}, "bibliography": {"processor": "bibtex", "pre_generated": true}, "index": {"processor": "makeindex", "pre_generated": true}, "fontmaps": []}"""
         )
