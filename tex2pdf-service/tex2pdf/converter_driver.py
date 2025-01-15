@@ -642,8 +642,8 @@ class AutoTeXConverterDriver(ConverterDriver):
 
     def __init__(self, work_dir: str, source: str, tag: str | None = None, max_time_budget: float | None = None):
         # Default are all already ok
-        self.zzrm = ZeroZeroReadMe()
         super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
+        self.zzrm = ZeroZeroReadMe()
 
     def generate_pdf(self) -> str|None:
         """We have the beef."""
@@ -729,5 +729,13 @@ class AutoTeXConverterDriver(ConverterDriver):
             "pdf_file": pdf_file,
             "status": "success" if pdf_file else "fail",
         }
+
+        # we need to get ZZRM
+        if self.zzrm is None:
+            logger.debug("no self.zzrm found, that should not happen")
+            self.zzrm = ZeroZeroReadMe()
+        else:
+            logger.debug("self.zzrm = %s", self.zzrm)
+
         return self.outcome.get("pdf_file")
 
