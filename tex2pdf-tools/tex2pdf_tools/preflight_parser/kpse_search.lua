@@ -1,3 +1,36 @@
+--
+-- kpse_search.lua
+--
+-- Public domain.
+--
+-- Usage:
+--   texlua kpse_search.lua [-mark-sys-files] <directory>
+--
+-- Change into the given directory, then read file names and extensions
+-- from stding and try to resolve them via kpse, reporting the findings.
+--
+-- Input format:
+-- Input comes in two line units. The first line contains the filename
+-- to look up. It *can* have an extension, but does not need to have.
+-- The second line contains a list of extensions to be tested in case
+-- the <filename> itself cannot be found using kpse
+--
+--   filename
+--   ext1 ...
+--   ...
+--
+-- Output format:
+-- Output comes again in two line units. The first line is the same as
+-- the first line of the input, the second line lists the found file, or
+-- is empty if not found.
+--
+-- The option -mark-sys-files can be used to prefix found files with
+--   SYSTEM:
+-- if they come from the respective TeX installation, and not from the
+-- input directory.
+--
+-- TODO:
+-- - make set_program_name configurable
 
 local kpse = kpse or require 'kpse'
 local lfs = lfs or require 'lfs'
