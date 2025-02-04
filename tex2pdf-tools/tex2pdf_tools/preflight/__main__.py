@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import sys
+import typing
 
 from . import PreflightParser, generate_preflight_response
 
@@ -63,7 +64,10 @@ elif args.command == "report":
     pp = PreflightParser(args.preflight_file)
 
     if args.summary:
-        summary_data = {"Top Level Files": pp.list_top_level_files(), "TeX Files": pp.list_tex_files()}
+        summary_data: dict[str, typing.Any] = {
+            "Top Level Files": pp.list_top_level_files(),
+            "TeX Files": pp.list_tex_files(),
+        }
 
         if args.details:
             # Include detailed issues
