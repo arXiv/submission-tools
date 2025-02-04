@@ -12,7 +12,7 @@ from pydantic import BaseModel, ValidationError
 from ruamel.yaml import YAML, MappingNode, ScalarNode
 from ruamel.yaml.representer import RoundTripRepresenter
 
-from tex2pdf_tools.preflight_parser import (
+from tex2pdf_tools.preflight import (
     CompilerSpec,
     EngineType,
     LanguageType,
