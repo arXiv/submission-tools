@@ -15,9 +15,9 @@ from typing import TypeVar
 import chardet
 from pydantic import BaseModel, Field, PrivateAttr
 
-from .report import PreflightParser
+from .report import PreflightReport
 
-__all__ = ["PreflightParser", "PreflightResponse", "generate_preflight_response"]
+__all__ = ["PreflightReport", "PreflightResponse", "generate_preflight_response"]
 
 MODULE_PATH = os.path.dirname(__file__)
 

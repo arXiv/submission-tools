@@ -4,7 +4,7 @@ import json
 import typing
 
 
-class PreflightParser:
+class PreflightReport:
     """Abstraction class on top of PreflightResponse."""
 
     def __init__(self, preflight_file: str) -> None:

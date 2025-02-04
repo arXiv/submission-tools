@@ -6,7 +6,7 @@ import logging
 import sys
 import typing
 
-from . import PreflightParser, generate_preflight_response
+from . import PreflightReport, generate_preflight_response
 
 parser = argparse.ArgumentParser(
     description="""
@@ -61,7 +61,7 @@ if args.command == "parse":
     print(generate_preflight_response(args.dir, json=True))
 elif args.command == "report":
     top_level_files = args.top_level_files if args.top_level_files else []
-    pp = PreflightParser(args.preflight_file)
+    pp = PreflightReport(args.preflight_file)
 
     if args.summary:
         summary_data: dict[str, typing.Any] = {
