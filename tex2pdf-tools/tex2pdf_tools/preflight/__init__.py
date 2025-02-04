@@ -15,9 +15,8 @@ from typing import TypeVar
 import chardet
 from pydantic import BaseModel, Field, PrivateAttr
 
-from .report import PreflightReport
-
-__all__ = ["PreflightReport", "PreflightResponse", "generate_preflight_response"]
+# tell ruff to not complain, I don't want to add __all__ entries
+from .report import PreflightReport  # noqa
 
 MODULE_PATH = os.path.dirname(__file__)
 
