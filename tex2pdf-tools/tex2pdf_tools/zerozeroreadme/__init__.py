@@ -18,7 +18,6 @@ from tex2pdf_tools.preflight_parser import (
     LanguageType,
     MainProcessSpec,
     OutputType,
-    ParseSyntaxError,
     PostProcessType,
     PreflightResponse,
     ToplevelFile,
@@ -56,6 +55,48 @@ def strip_to_basename(path: str, extent: None | str = None) -> str:
     if extent is None:
         return os.path.basename(path)
     return os.path.splitext(os.path.basename(path))[0] + extent
+
+
+class ZZRMException(Exception):
+    """General exception when dealing with ZZRM files."""
+
+    pass
+
+
+class ZZRMFileNotFoundError(ZZRMException):
+    """Error when a needed file is not found."""
+
+    pass
+
+
+class ZZRMUnsupportedFileError(ZZRMException):
+    """Error when an unsupported files (name, extension) is detected."""
+
+    pass
+
+
+class ZZRMUnsupportedVersion(ZZRMException):
+    """Error when an unsupported ZZRM version is detected."""
+
+    pass
+
+
+class ZZRMMultipleFilesError(ZZRMException):
+    """Error when multiple ZZRM files of the same version are found."""
+
+    pass
+
+
+class ZZRMKeyError(ZZRMException):
+    """Error when an unknown key is found in ZZRM v1."""
+
+    pass
+
+
+class ZZRMParseError(ZZRMException):
+    """Error when parsing a ZZRM from a dictionary."""
+
+    pass
 
 
 class FileUsageType(str, Enum):
@@ -110,7 +151,7 @@ class ZeroZeroReadMe:
         elif os.path.isfile(dir_or_file):
             self.init_from_file(dir_or_file)
         else:
-            raise FileNotFoundError(f"File {dir_or_file} not found")
+            raise ZZRMFileNotFoundError(f"File {dir_or_file} not found")
 
     def to_dict(self) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
@@ -138,17 +179,17 @@ class ZeroZeroReadMe:
           ZZRM_V1_EXTS or ZZRM_V2_EXTS are accepted.
 
         Raises:
-            * ValueError if file name is not recognized.
+            * ZZRMUnsupportedFileError if file name is not recognized.
         """
         stem, ext = os.path.splitext(os.path.basename(file))
         if stem.lower() != "00readme":
-            raise ValueError(f"File {file} must start with 00readme (case-insensitive)")
+            raise ZZRMUnsupportedFileError(f"File {file} must start with 00readme (case-insensitive)")
         if ext.lower() in ZZRM_V1_EXTS:
             self._fetch_00readme_data(file, 1)
         elif ext.lower() in ZZRM_V2_EXTS:
             self._fetch_00readme_data(file, 2)
         else:
-            raise NotImplementedError(f"Unsupported file extension {ext}")
+            raise ZZRMUnsupportedFileError(f"Unsupported file extension {ext}")
 
     def init_from_dir(self, in_dir: str) -> None:
         """
@@ -163,7 +204,7 @@ class ZeroZeroReadMe:
             in_dir {str} -- Directory to load the 00README file from.
 
         Raises:
-            ValueError: if multiple ZZRMs of the same level are detected.
+            ZZRMMultipleFilesError: if multiple ZZRMs of the same level are detected.
         """
         files = sorted(os.listdir(in_dir))
 
@@ -185,13 +226,13 @@ class ZeroZeroReadMe:
                 continue
 
         if len(zzrms_v2) > 1:
-            raise ValueError("Only one v2 00readme directives file is allowed.")
+            raise ZZRMMultipleFilesError("Only one v2 00readme directives file is allowed.")
         elif len(zzrms_v2) > 0:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v2[0]), 2)
             return
 
         if len(zzrms_v1) > 1:
-            raise ValueError("Only one v1 00readme directives file is allowed.")
+            raise ZZRMMultipleFilesError("Only one v1 00readme directives file is allowed.")
         elif len(zzrms_v1) > 0:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v1[0]), 1)
             return
@@ -215,7 +256,7 @@ class ZeroZeroReadMe:
             _, ext = os.path.splitext(filename)
             self._fetch_00readme_v2(read_data, ext)
         else:
-            raise NotImplementedError(f"Unknown version {version}")
+            raise ZZRMUnsupportedVersion(f"Unknown version {version}")
 
     def _fetch_00readme_v1(self, data: str) -> None:
         """Read and parse 00README.XXX file."""
@@ -260,7 +301,7 @@ class ZeroZeroReadMe:
                     # since we added it to the global options
                     userfile = None  # type: ignore
                 else:
-                    raise KeyError(keyword)
+                    raise ZZRMKeyError(keyword)
                 if userfile is not None:
                     # no keys were set, the file is treated as a toplevel file
                     if (
@@ -302,9 +343,9 @@ class ZeroZeroReadMe:
                     try:
                         self.process = MainProcessSpec(**v)
                     except ValidationError as e:
-                        raise ParseSyntaxError(f"Validation error on parsing: {e}")
+                        raise ZZRMParseError(f"Validation error on parsing: {e}")
                 else:
-                    raise ParseSyntaxError("Value of process is not a dictionary")
+                    raise ZZRMParseError("Value of process is not a dictionary")
             elif k == "sources":
                 if isinstance(v, list):
                     self.sources: OrderedDict[str, UserFile] = OrderedDict()
@@ -312,9 +353,9 @@ class ZeroZeroReadMe:
                         try:
                             uf = UserFile(**vv)
                         except ValidationError as e:
-                            raise ParseSyntaxError(f"Validation error on parsing: {e}")
+                            raise ZZRMParseError(f"Validation error on parsing: {e}")
                         if uf.filename is None:
-                            raise ParseSyntaxError(f"Missing filename in UserFile: {vv}")
+                            raise ZZRMParseError(f"Missing filename in UserFile: {vv}")
                         if (
                             uf.keep_comments is None
                             and uf.orientation is None
@@ -324,14 +365,14 @@ class ZeroZeroReadMe:
                             uf.usage = FileUsageType.toplevel
                         self.sources[uf.filename] = uf
                 else:
-                    raise ParseSyntaxError(f"Value for sources is not a list[dict]: {type(v)}")
+                    raise ZZRMParseError(f"Value for sources is not a list[dict]: {type(v)}")
             elif k == "stamp":
                 if isinstance(v, bool):
                     self.stamp = v
                 else:
                     self.stamp = string_to_bool(v)
             else:
-                raise ParseSyntaxError(f"Invalid key for 00README: {k}")
+                raise ZZRMParseError(f"Invalid key for 00README: {k}")
 
     def find_metadata(self, filename: str) -> UserFile:
         """Get an instance of a SourceFileMeta from filename, and create one if it doesn't exist."""
