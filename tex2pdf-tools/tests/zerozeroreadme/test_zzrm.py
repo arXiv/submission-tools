@@ -4,8 +4,7 @@ import unittest
 
 import pytest
 
-from tex2pdf_tools.preflight_parser import ParseSyntaxError
-from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
+from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError, ZZRMParseError
 
 
 class Test00README(unittest.TestCase):
@@ -17,6 +16,16 @@ class Test00README(unittest.TestCase):
     def test_zzrm_v1_01(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v1_01")
         zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(["fake-file-2.tex", "fake-file-5.tex"], zzrm.toplevels)
+        self.assertEqual(set(["fake-file-1.tex"]), zzrm.includes)
+        self.assertEqual(set(["fake-file-3.TEX"]), zzrm.ignores)
+        self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
+        self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
+        self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
+
+    def test_zzrm_v1_01_from_file(self) -> None:
+        file_path = os.path.join(self.fixture_dir, "zzrm_v1_01", "00README.XXX")
+        zzrm = ZeroZeroReadMe(file_path)
         self.assertEqual(["fake-file-2.tex", "fake-file-5.tex"], zzrm.toplevels)
         self.assertEqual(set(["fake-file-1.tex"]), zzrm.includes)
         self.assertEqual(set(["fake-file-3.TEX"]), zzrm.ignores)
@@ -38,7 +47,7 @@ class Test00README(unittest.TestCase):
 
     def test_zzrm_v2_syntax_error(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_syntax_error")
-        with pytest.raises(ParseSyntaxError) as exc_info:
+        with pytest.raises(ZZRMParseError) as exc_info:
             _ = ZeroZeroReadMe(dir_path)
         assert str(exc_info.value).startswith("Validation error on parsing: ")
 
@@ -77,6 +86,11 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+
+    def test_zzrm_v2_05(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_v2_05")
+        with pytest.raises(ZZRMMultipleFilesError):
+            _ = ZeroZeroReadMe(dir_path)
 
     def test_zzrm_out_yaml(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v1_01")
