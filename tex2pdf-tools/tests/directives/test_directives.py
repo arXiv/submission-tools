@@ -92,9 +92,9 @@ class TestDirectiveManager(unittest.TestCase):
         mock_listdir.return_value = ['00readme.yaml', '00readme.json', 'otherfile.txt']
         manager = DirectiveManager("dummy_dir")
         with self.assertRaises(ValueError) as context:
+            manager.get_active_directives_file()
             manager.v2_exists()
-        self.assertEqual(str(context.exception), 'More than one v2 00readme '
-                                                 'directives file is not allowed.')
+        self.assertEqual(str(context.exception), 'Only one v2 00readme directives file is allowed.')
 
 
     @patch('tex2pdf_tools.directives.os.listdir')
@@ -196,7 +196,7 @@ class TestDirectiveManager(unittest.TestCase):
         mock_listdir.return_value = ['00readme.json', '00readme.yaml',
                                      '00README.XXX']
         manager = DirectiveManager("dummy_dir")
-        error_str = 'More than one v2 00readme directives file is not allowed.'
+        error_str = 'Only one v2 00readme directives file is allowed.'
         #self.assertFalse(manager.can_make_active('00README.XXX'), 'No longer option for active')
         with self.assertRaises(ValueError) as context:
             manager.can_make_active('00README.XXX')
@@ -204,6 +204,7 @@ class TestDirectiveManager(unittest.TestCase):
         self.assertTrue(manager.v1_exists())
         self.assertTrue(manager.is_v1_file('00README.XXX'))
         with self.assertRaises(ValueError) as context:
+            manager.get_active_directives_file()
             manager.v2_exists()
         self.assertEqual(str(context.exception), error_str)
         self.assertFalse(manager.is_v2_file('00README.XXX'))
@@ -216,9 +217,11 @@ class TestDirectiveManager(unittest.TestCase):
         self.assertTrue(manager.v1_exists())
         self.assertFalse(manager.is_v1_file('00readme.yaml'))
         with self.assertRaises(ValueError) as context:
+            manager.get_active_directives_file()
             manager.v2_exists()
         self.assertTrue(manager.is_v2_file('00readme.yaml'))
         with self.assertRaises(ValueError) as context:
+            manager.get_active_directives_file()
             manager.is_active_directives_file('00readme.yaml')
 
 
