@@ -7,7 +7,7 @@ from typing import ClassVar
 import toml
 import yaml
 
-from ..preflight import PreflightParser
+from ..preflight import PreflightReport
 from ..zerozeroreadme import ZeroZeroReadMe
 
 # Recognized directives file extensions (formats)
@@ -72,8 +72,8 @@ class DirectiveManager:
             return None
 
         if self.preflight_module is None:
-            # import fro preflight  # Importing preflight only when needed
-            self.preflight_module = PreflightParser(preflight_file)  # Save preflight module in the object
+            # import from preflight  # Importing preflight only when needed
+            self.preflight_module = PreflightReport(preflight_file)  # Save preflight module in the object
 
         try:
             top_level_files = []
@@ -91,7 +91,7 @@ class DirectiveManager:
 
         return hierarchy
 
-    def list_directives_files(self) -> list:
+    def list_directives_files(self) -> list[str]:
         """
         List all directives files in the root directory.
 
@@ -106,7 +106,8 @@ class DirectiveManager:
         files = sorted(os.listdir(self.src_dir))
         return [filename for filename in files if self.is_directives_file(filename)]
 
-    def is_directives_file(self, filename: str) -> bool:
+    @staticmethod
+    def is_directives_file(filename: str) -> bool:
         """
         Check if a file is a directives file.
 
@@ -140,7 +141,8 @@ class DirectiveManager:
         v1_files = [f for f in self.directives_files if self.is_v1_file(f)]
         return v1_files[0] if v1_files else None
 
-    def is_v2_file(self, filename: str) -> bool:
+    @staticmethod
+    def is_v2_file(filename: str) -> bool:
         """
         Check if a file is a v2 directives file.
 
@@ -153,7 +155,8 @@ class DirectiveManager:
         name, ext = os.path.splitext(filename)
         return name.lower() == "00readme" and ext.lower() in [".yaml", ".yml", ".json", ".toml"]
 
-    def is_v1_file(self, filename: str) -> bool:
+    @staticmethod
+    def is_v1_file(filename: str) -> bool:
         """
         Check if a file is a v1 directives file.
 
