@@ -128,22 +128,14 @@ class UserFile(BaseModel):
 class ZeroZeroReadMe:
     """Representation of 00README.json file."""
 
-    readme: list[str] | None
-    readme_filename: str | None
-    version: int
-    process: MainProcessSpec
-    sources: OrderedDict[str, UserFile]
-    stamp: bool | None
-    nohyperref: bool | None
-
     def __init__(self, dir_or_file: str | None = None, version: int = 1):
-        self.version = version  # classic 00README.XXX is v1, dict i/o is v2.
-        self.readme_filename = None
-        self.readme = None
-        self.process = MainProcessSpec(compiler="pdflatex")
-        self.sources = OrderedDict()
-        self.stamp = True
-        self.nohyperref = None
+        self.version: int = version  # classic 00README.XXX is v1, dict i/o is v2.
+        self.readme_filename: str | None = None
+        self.readme: list[str] | None = None
+        self.process: MainProcessSpec = MainProcessSpec(compiler="pdflatex")
+        self.sources: OrderedDict[str, UserFile] = OrderedDict()
+        self.stamp: bool | None = True
+        self.nohyperref: bool | None = None
         if dir_or_file is None:
             return
         elif os.path.isdir(dir_or_file):
@@ -348,7 +340,7 @@ class ZeroZeroReadMe:
                     raise ZZRMParseError("Value of process is not a dictionary")
             elif k == "sources":
                 if isinstance(v, list):
-                    self.sources: OrderedDict[str, UserFile] = OrderedDict()
+                    self.sources = OrderedDict()
                     for vv in v:
                         try:
                             uf = UserFile(**vv)
