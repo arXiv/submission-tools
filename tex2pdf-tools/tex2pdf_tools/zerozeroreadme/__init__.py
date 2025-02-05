@@ -25,8 +25,12 @@ from tex2pdf_tools.preflight_parser import (
     string_to_bool,
 )
 
-# 00README file extensions - earlier wins
-ZZRM_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
+# 00README extensions
+ZZRM_V1_EXTS: list[str] = [".xxx"]
+ZZRM_V2_EXTS: list[str] = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml"]
+ZZRM_EXTS: list[str] = ZZRM_V2_EXTS + ZZRM_V1_EXTS
+DEFAULT_EXT = ".json"
+DEFAULT_FORMAT = "json"
 
 # We default to pdflatex
 DEFAULT_ENGINE_TYPE: EngineType = EngineType.tex
@@ -91,7 +95,7 @@ class ZeroZeroReadMe:
     stamp: bool | None
     nohyperref: bool | None
 
-    def __init__(self, in_dir: str | None = None, version: int = 1):
+    def __init__(self, dir_or_file: str | None = None, version: int = 1):
         self.version = version  # classic 00README.XXX is v1, dict i/o is v2.
         self.readme_filename = None
         self.readme = None
@@ -99,8 +103,14 @@ class ZeroZeroReadMe:
         self.sources = OrderedDict()
         self.stamp = True
         self.nohyperref = None
-        if in_dir:
-            self.intern_00readme(in_dir)
+        if dir_or_file is None:
+            return
+        elif os.path.isdir(dir_or_file):
+            self.init_from_dir(dir_or_file)
+        elif os.path.isfile(dir_or_file):
+            self.init_from_file(dir_or_file)
+        else:
+            raise FileNotFoundError(f"File {dir_or_file} not found")
 
     def to_dict(self) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
@@ -119,57 +129,99 @@ class ZeroZeroReadMe:
             result["nohyperref"] = self.nohyperref
         return result
 
-    def intern_00readme(self, in_dir: str) -> None:
-        """Read 00README.XXX v1 format and populate values."""
-        # If there are 00README.XXX and 00readme.xxx, 00README.XXX is used.
+    def init_from_file(self, file: str) -> None:
+        """
+        Load a 00README file.
+
+        POLICY:
+        * only files named 00readme.EXT with EXT in either
+          ZZRM_V1_EXTS or ZZRM_V2_EXTS are accepted.
+
+        Raises:
+            * ValueError if file name is not recognized.
+        """
+        stem, ext = os.path.splitext(os.path.basename(file))
+        if stem.lower() != "00readme":
+            raise ValueError(f"File {file} must start with 00readme (case-insensitive)")
+        if ext.lower() in ZZRM_V1_EXTS:
+            self._fetch_00readme_data(file, 1)
+        elif ext.lower() in ZZRM_V2_EXTS:
+            self._fetch_00readme_data(file, 2)
+        else:
+            raise NotImplementedError(f"Unsupported file extension {ext}")
+
+    def init_from_dir(self, in_dir: str) -> None:
+        """
+        Load the appropriate 00README file from a directory.
+
+        POLICY:
+        * only one ZZRM v2 is allowed, if multiple are detected, an exception will be raised.
+        * only one ZZRM v1 is allowed, if multiple are detected, an exception will be raised.
+        * if ZZRM v1 and ZZRM v2 is present, ZZRM v2 will be loaded.
+
+        Arguments:
+            in_dir {str} -- Directory to load the 00README file from.
+
+        Raises:
+            ValueError: if multiple ZZRMs of the same level are detected.
+        """
         files = sorted(os.listdir(in_dir))
 
-        zzrms: list[tuple[str, str, str]] = []
+        zzrms_v1: list[str] = []
+        zzrms_v2: list[str] = []
         for filename in files:
             if filename[0] > "0":  # Should I use ord()?
                 break
             (stem, ext) = os.path.splitext(filename)
             if stem.lower() != "00readme":
                 continue
-            zzrms.append((stem, ext, filename))
-
-        def ext_order(zz: tuple[str, str, str]) -> int:
-            try:
-                return ZZRM_EXTS.index(zz[1])
-            except ValueError:
-                pass
-            return len(ZZRM_EXTS) + 1000  # Any positive integer would work
-
-        if len(zzrms) > 0:
-            if len(zzrms) > 1:
-                zzrm = sorted([zz for zz in zzrms if zz[1] in ZZRM_EXTS], key=ext_order)[0]
+            if ext.lower() in ZZRM_V1_EXTS:
+                zzrms_v1.append(filename)
+            elif ext.lower() in ZZRM_V2_EXTS:
+                zzrms_v2.append(filename)
             else:
-                zzrm = zzrms[0]
-            stem, ext, filename = zzrm
-            match ext.lower():
-                case ".xxx":
-                    self.fetch_00readme(os.path.join(in_dir, filename))
-                case ".yml" | ".yaml" | ".json" | ".jsn" | ".ndjson" | ".toml":
-                    self.fetch_00readme_v2(os.path.join(in_dir, filename))
+                # ignore files that are named 00readme.SOMETHING but don't match
+                # the correct extensions
+                continue
 
-            # TODO determine compilation defaults
-            # this is by now not possible, since we cannot do the AutoTeX thing
-            # it needs the change that compiling old submissions are sent
-            # to the autotex/tex2pdf container
+        if len(zzrms_v2) > 1:
+            raise ValueError("Only one v2 00readme directives file is allowed.")
+        elif len(zzrms_v2) > 0:
+            self._fetch_00readme_data(os.path.join(in_dir, zzrms_v2[0]), 2)
+            return
 
-    def fetch_00readme(self, filename: str) -> None:
-        """Read and parse 00README.XXX file."""
-        self.readme_filename = filename
+        if len(zzrms_v1) > 1:
+            raise ValueError("Only one v1 00readme directives file is allowed.")
+        elif len(zzrms_v1) > 0:
+            self._fetch_00readme_data(os.path.join(in_dir, zzrms_v1[0]), 1)
+            return
+
+    def _fetch_00readme_data(self, filename: str, version: int) -> None:
+        read_data: str | None = None
         for enc in ["utf-8", "iso-8859-1"]:
             try:
                 with open(filename, encoding=enc) as src:
-                    self.readme = src.readlines()
-                break
+                    read_data = src.read()
+                    break
             except Exception:
                 continue
-        if self.readme is None:
+        if read_data is None:
             return
 
+        self.readme_filename = filename
+        if version == 1:
+            self._fetch_00readme_v1(read_data)
+        elif version == 2:
+            _, ext = os.path.splitext(filename)
+            self._fetch_00readme_v2(read_data, ext)
+        else:
+            raise NotImplementedError(f"Unknown version {version}")
+
+    def _fetch_00readme_v1(self, data: str) -> None:
+        """Read and parse 00README.XXX file."""
+        self.readme = data.split("\n")
+
+        self.version = 1
         for line in self.readme:
             idioms = [idiom for idiom in line.strip().split(" ") if idiom]
             if len(idioms) == 2:
@@ -226,22 +278,18 @@ class ZeroZeroReadMe:
                 elif idioms[0] == "nohyperref":
                     self.nohyperref = True
 
-    def fetch_00readme_v2(self, filename: str) -> None:
+    def _fetch_00readme_v2(self, data: str, ext: str) -> None:
         """Read and parse 00README.XXX file, v2."""
-        stem, ext = os.path.splitext(filename)
         zzrm = None
         match ext:
             case ".yml" | ".yaml":
                 loader = YAML()
-                with open(filename, "rb") as fd:
-                    zzrm = loader.load(fd)
+                zzrm = loader.load(data)
             case ".json" | ".jsn" | ".ndjson":
-                with open(filename, "rb") as fd:
-                    zzrm = json.load(fd)
+                zzrm = json.loads(data)
             case ".toml":
-                zzrm = toml.load(filename)
+                zzrm = toml.loads(data)
         if zzrm:
-            self.readme_filename = filename
             self.version = 2
             self.from_dict(zzrm)
 
