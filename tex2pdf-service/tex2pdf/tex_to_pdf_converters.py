@@ -99,7 +99,11 @@ class BaseConverter:
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
     ) -> dict:
-        stem = os.path.splitext(tex_file)[0]
+        # Stem: the filename of the tex file without the extension
+        # we need to ensure that if the tex_file is called subdir/foobar.tex
+        # then the stem is only "foobar" since compilation runs in the root
+        # and the generated pdf/dvi/log files are NOT generated in the subdir
+        stem = os.path.splitext(os.path.basename(tex_file))[0]
         self.stem = stem
         stem_pdf = f"{stem}.pdf"
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
@@ -682,7 +686,10 @@ class VanillaTexConverter(BaseDviConverter):
         logger = get_logger()
 
         # Stem: the filename of the tex file without the extension
-        stem = os.path.splitext(tex_file)[0]
+        # we need to ensure that if the tex_file is called subdir/foobar.tex
+        # then the stem is only "foobar" since compilation runs in the root
+        # and the generated pdf/dvi/log files are NOT generated in the subdir
+        stem = os.path.splitext(os.path.basename(tex_file))[0]
         self.stem = stem
         stem_pdf = f"{stem}.pdf"
         # pdf_filename = os.path.join(in_dir, stem_pdf)
