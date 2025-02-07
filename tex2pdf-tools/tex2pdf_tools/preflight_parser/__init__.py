@@ -346,6 +346,7 @@ class ParsedTeXFile(BaseModel):
     postprocess: PostProcessType = PostProcessType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
+    hyperref_found: bool | None = None
     used_tex_files: list[str] = []
     used_bib_files: list[str] = []
     used_idx_files: list[str] = []
@@ -554,6 +555,8 @@ class ParsedTeXFile(BaseModel):
             for f in include_argument.split(","):
                 fn = f.strip()
                 fn = fn if fn.endswith(".sty") else f"{fn}.sty"
+                if fn == "hyperref.sty":
+                    self.hyperref_found = True
                 file_incspec[fn] = incdef
         else:
             if isinstance(incdef.file_argument, int):
@@ -745,6 +748,7 @@ class ToplevelFile(BaseModel):
 
     filename: str
     process: MainProcessSpec
+    hyperref_found: bool | None = None
     issues: list[TeXFileIssue] = []
 
 
@@ -1192,6 +1196,11 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             if nr_issues > 0:
                 issues.append(TeXFileIssue(IssueType.issue_in_subfile, str(nr_issues), filename=fn))
         tl.issues = issues
+
+        # check for hyperref
+        hyperref_found = tl_n.generic_walk_document_tree(lambda x: x.hyperref_found, lambda x, y: x or y)
+        # we want True/False, but hyperref_found could contain None
+        tl.hyperref_found = True if hyperref_found else False
         # it is not enough to be a latex file and a root file to be a toplevel file
         # we need to have documentclass being found in one of the include files
         contains_documentclass_somewhere = tl_n.generic_walk_document_tree(
