@@ -1,7 +1,7 @@
 # submission-tools
 
 arXiv submission related tool repository, mainly collection `tex2pdf` with
-its subpackages (`preflight_parser`, `zerozeroreadme`, `tex_inspection`, and `service`)
+its subpackages (`preflight`, `zerozeroreadme`, `tex_inspection`, and `service`)
 and the `pdf_profile` package.
 
 # PDF Profile
@@ -16,7 +16,7 @@ A library that inspects the arXiv submission
 
 # Preflight Parser
 
-Package: `tex2pdf.preflight_parser`
+Package: `tex2pdf.preflight`
 
 Full specification: [GenPDF Preflight & 00README Spec Proposal](https://docs.google.com/document/d/1X1ZVvNX75GtFqejcOI1AHb7PkRbkT-syJlpsU4v_-o4/edit?usp=sharing)
 
