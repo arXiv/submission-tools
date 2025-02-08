@@ -61,7 +61,7 @@ class AtomicStrings:
 
 
 class AtomicStringSet:
-    """Atomic integer increment/decrement variable"""
+    """Atomic string set. You can atomically add new string to the set."""
 
     _value: set[str]
 
