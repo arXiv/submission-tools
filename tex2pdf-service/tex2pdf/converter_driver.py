@@ -11,9 +11,9 @@ import time
 import typing
 from enum import Enum
 
-from tex2pdf_tools.preflight_parser import PreflightStatusValues, generate_preflight_response
+from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
-from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
+from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyError
 
 from . import (
     ID_TAG,
@@ -137,7 +137,7 @@ class ConverterDriver:
         self._unpack_tarball()
         try:
             self.zzrm = ZeroZeroReadMe(self.in_dir)
-        except KeyError:
+        except ZZRMKeyError:
             self.zzrm = ZeroZeroReadMe(None)
             logger.warning("Input directory %s contains an invalid 00README file, and ignored", self.in_dir)
             pass
