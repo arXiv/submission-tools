@@ -2,7 +2,7 @@ import json
 import os
 import unittest
 
-from tex2pdf_tools.preflight_parser import PreflightResponse, generate_preflight_response
+from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
 
 
 class TestPreflight(unittest.TestCase):
@@ -227,5 +227,14 @@ class TestPreflight(unittest.TestCase):
                 self.assertEqual(len(tf.issues), 1)
                 self.assertEqual(tf.issues[0].info, "index definition for tag-b not found")
 
+    def test_preflight_no_hyperref(self):
+        dir_path = os.path.join(self.fixture_dir, "single_tex_1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(pf.detected_toplevel_files[0].hyperref_found, False)
 
-
+    def test_preflight_with_hyperref(self):
+        dir_path = os.path.join(self.fixture_dir, "use_hyperref")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(pf.detected_toplevel_files[0].hyperref_found, True)

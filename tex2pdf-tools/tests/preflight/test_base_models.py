@@ -1,6 +1,6 @@
 import unittest
 
-from tex2pdf_tools.preflight_parser import (
+from tex2pdf_tools.preflight import (
     TEX_EXTENSIONS,
     BibCompiler,
     BibProcessSpec,
