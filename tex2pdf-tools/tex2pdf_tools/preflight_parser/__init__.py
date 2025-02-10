@@ -851,6 +851,7 @@ INCLUDE_COMMANDS = [
         take_options=False,
         multi_args=False,
     ),
+    IncludeSpec(cmd="includestandalone", source="standalone", type=FileType.tex, extensions=TEX_EXTENSIONS),
     IncludeSpec(cmd="includesvg", source="svg", type=FileType.other, extensions="svg"),
     IncludeSpec(cmd="includepdf", source="pdfpages", type=FileType.other, extensions="pdf"),
     IncludeSpec(cmd="epsfbox", source="epsf", type=FileType.other, extensions=EPS_EXTENSIONS),
@@ -917,7 +918,7 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
         includegraphics|                 # graphic[sx]
         epsfig|                          # epsfig
         import|                          # import \import{prefix}{file} searches prefix/file
-        # includestandalone|               # standalone TODO complicated!
+        includestandalone|               # standalone \includestandalone[〈options〉]{〈file〉}
         subfile|                         # subfiles
         subfileinclude|
         includesvg|                      # svg
