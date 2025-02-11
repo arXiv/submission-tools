@@ -50,8 +50,8 @@ tomli_w = "^1.0"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "pydantic2"
-resolved_reference = "3a79103ddc79f16a62ab04bd667504df25bf310f"
+reference = "HEAD"
+resolved_reference = "f30e4356a0667f1a4e9a89257749e56102630f7d"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -1378,4 +1378,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "53f74249afaadd28d30453c869445309e9a46dce86654ed39633d5c9808a32ae"
+content-hash = "f3f4c8a132c96116b34e2a6bf52cb431a6b08604f33dec9d63abf64cfabe1814"
