@@ -13,7 +13,7 @@ from pprint import pformat
 from typing import TypeVar
 
 import chardet
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
@@ -342,7 +342,7 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    _data: str = PrivateAttr(default="")
+    _data: str = ""
     output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
     engine: EngineType = EngineType.unknown
@@ -765,7 +765,7 @@ class PreflightResponse(BaseModel):
 
     def to_json(self, **kwargs: typing.Any) -> str:
         """Return a json representation."""
-        return self.json(exclude_none=True, exclude_defaults=True, **kwargs)
+        return self.model_dump_json(exclude_none=True, exclude_defaults=True, **kwargs)
 
 
 #
