@@ -189,6 +189,15 @@ def test_api_test4(docker_container):
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
 
+@pytest.mark.integration
+def test_api_test_anc_ignore(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-anc-ignore.outcome.tar.gz")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    assert meta is not None
+    assert meta.get("status") == "fail"
+
 
 @pytest.mark.integration
 def test_api_preflight(docker_container):
@@ -197,7 +206,6 @@ def test_api_preflight(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
     assert meta is not None
-    print(meta)
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
     assert [f["filename"] for f in meta.get("detected_toplevel_files")] == [
