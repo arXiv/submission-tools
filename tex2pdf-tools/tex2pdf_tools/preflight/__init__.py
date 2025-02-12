@@ -1015,12 +1015,14 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
 
 def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str]]:
     """Parse all TeX files in a directory."""
-    files = glob.glob(f"{rundir}/**/*", recursive=True)
+    glob_files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
     n = len(rundir) + 1
-    files = [f[n:] for f in files if os.path.isfile(f)]
+    all_files = [f[n:] for f in glob_files if os.path.isfile(f)]
+    # we will not analyze ancillary files
+    files = [f for f in all_files if not f.startswith("anc/")]
     # ancillary files
-    anc_files = [t for t in files if t.startswith("anc/")]
+    anc_files = [t for t in all_files if t.startswith("anc/")]
     # files = os.listdir(rundir)
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
@@ -1086,7 +1088,12 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
     # read back the output information
     kpse_found = {}
     for fname, found in zip_longest(*[iter(p.stdout.splitlines())] * 2, fillvalue=""):
-        kpse_found[fname] = found[2:] if found.startswith("./") else found
+        if found.startswith("./anc/"):
+            # ignore ancillary files in the return, they should be marked
+            # as not existing
+            kpse_found[fname] = ""
+        else:
+            kpse_found[fname] = found[2:] if found.startswith("./") else found
 
     return kpse_found
 
