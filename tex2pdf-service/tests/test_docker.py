@@ -196,7 +196,7 @@ def test_api_test_anc_ignore(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test-anc-ignore.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
     assert meta is not None
-    assert meta.get("status").get("key") == "fail"
+    assert meta.get("status") == "fail"
 
 
 @pytest.mark.integration
