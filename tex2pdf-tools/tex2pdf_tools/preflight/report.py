@@ -79,7 +79,7 @@ class PreflightReport:
         return list(used_files)
 
     def build_hierarchy(
-        self, specified_top_level_files: list[str] | None = None, include_all_files: bool = False
+            self, specified_top_level_files: list[str] | None = None, include_all_files: bool = False
     ) -> dict[str, typing.Any]:
         """Create the hierarchy response."""
 
@@ -114,7 +114,7 @@ class PreflightReport:
         top_level_files = specified_top_level_files if specified_top_level_files else self.list_top_level_files()
 
         for top_level_file in top_level_files:
-	    visited = set()  # Reset visited for each top-level file
+            visited = set()  # Reset visited for each top-level file
             updates = build_tree(top_level_file, visited, used_files)
             if updates:
                 hierarchy.update(updates)
