@@ -114,6 +114,7 @@ class PreflightReport:
         top_level_files = specified_top_level_files if specified_top_level_files else self.list_top_level_files()
 
         for top_level_file in top_level_files:
+	    visited = set()  # Reset visited for each top-level file
             updates = build_tree(top_level_file, visited, used_files)
             if updates:
                 hierarchy.update(updates)
