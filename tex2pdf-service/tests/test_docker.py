@@ -232,3 +232,16 @@ def test_remote2023(docker_container) -> None:
     assert os.path.isfile(f"{out_dir}/outcome-test1.json")
     assert os.path.isfile(f"{out_dir}/out/test1.pdf")
     assert pdf == "test1.pdf"
+
+
+@pytest.mark.integration
+def test_remote2023_anc_ignore(docker_container) -> None:
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
+    out_dir = os.path.join(SELF_DIR, "output/test-anc-ignore-remote")
+    url = docker_container + "/convert/"
+    tag = os.path.basename(tarball)
+    shutil.rmtree(out_dir, ignore_errors=True)
+    converter = RemoteConverterDriver(url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True, hide_anc_dir=True)
+    pdf = converter.generate_pdf()
+    assert pdf is None
+    assert os.path.isfile(f"{out_dir}/test-anc-ignore.tar.gz-outcome.tar.gz")
