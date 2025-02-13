@@ -225,8 +225,9 @@ class ConverterDriver:
             # Deal with ignoring of anc directory, if requested
             if self.hide_anc_dir:
                 ancdir = f"{self.in_dir}/anc"
-                target: str|None = f"{self.in_dir}/_anc"
+                target: str|None = None
                 if os.path.isdir(ancdir):
+                    target = f"{self.in_dir}/_anc"
                     assert target is not None  # placate stupid mypy
                     if os.path.isdir(target):
                         # we need to find a way to rename it

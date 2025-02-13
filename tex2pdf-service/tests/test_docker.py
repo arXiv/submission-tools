@@ -198,6 +198,17 @@ def test_api_test_anc_ignore(docker_container):
     assert meta is not None
     assert meta.get("status") == "fail"
 
+@pytest.mark.integration
+def test_api_test_anc_ignore_no_ancfiles(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test4.pdf"
+    assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
+    assert len(meta.get("converters", [])) == 2
+    assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
 
 @pytest.mark.integration
 def test_api_preflight(docker_container):
