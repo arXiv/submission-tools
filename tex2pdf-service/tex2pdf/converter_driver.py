@@ -133,6 +133,31 @@ class ConverterDriver:
         """The converter driver log."""
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
 
+    def _find_anc_rename_directory(self) -> str | None:
+        ancdir = f"{self.in_dir}/anc"
+        target: str|None = None
+        if os.path.isdir(ancdir):
+            target = f"{self.in_dir}/_anc"
+            assert target is not None  # placate stupid mypy
+            if os.path.isdir(target):
+                # we need to find a way to rename it
+                new_target = None
+                for i in range(10):
+                    try_target = f"{target}_{random.getrandbits(32)}"
+                    if os.path.isdir(try_target):
+                        continue
+                    else:
+                        new_target = try_target
+                        break
+                if not new_target:
+                    # No way that this can happen, 10 times random strings
+                    # and all those directories are present ...???
+                    target = None
+                else:
+                    target = new_target
+        return target
+
+
     def generate_pdf(self) -> str | None:
         """We have the beef."""
         logger = get_logger()
@@ -225,36 +250,21 @@ class ConverterDriver:
             # Deal with ignoring of anc directory, if requested
             if self.hide_anc_dir:
                 ancdir = f"{self.in_dir}/anc"
-                target: str|None = None
-                if os.path.isdir(ancdir):
-                    target = f"{self.in_dir}/_anc"
-                    assert target is not None  # placate stupid mypy
-                    if os.path.isdir(target):
-                        # we need to find a way to rename it
-                        new_target = None
-                        for i in range(10):
-                            try_target = f"{target}_{random.getrandbits(32)}"
-                            if os.path.isdir(try_target):
-                                continue
-                            else:
-                                new_target = try_target
-                                break
-                        if not new_target:
-                            # No way that this can happen, 10 times random strings
-                            # and all those directories are present ...???
-                            target = None
-                        else:
-                            target = new_target
-                    # we should have a target now that works
-                    if target is None:
-                        logger.warning("Cannot find target to rename anc directory, strange!")
-                    else:
-                        logger.debug("Renaming anc directory %s to %s", ancdir, target)
-                        os.rename(ancdir, target)
-            self._run_tex_commands()
-            if self.hide_anc_dir and target is not None:
-                logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
-                os.rename(target, ancdir)
+                target: str|None = self._find_anc_rename_directory()
+                # we should have a target now that works
+                if target is None:
+                    logger.warning("Cannot find target to rename anc directory, strange!")
+                else:
+                    logger.debug("Renaming anc directory %s to %s", ancdir, target)
+                    os.rename(ancdir, target)
+            try:
+                # run TeX under try and have a finally to rename the anc directory back
+                # in case some exception happens in the TeX processing
+                self._run_tex_commands()
+            finally:
+                if self.hide_anc_dir and target is not None:
+                    logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
+                    os.rename(target, ancdir)
             pdf_files = self.outcome.get("pdf_files", [])
             if pdf_files:
                 self._finalize_pdf()
