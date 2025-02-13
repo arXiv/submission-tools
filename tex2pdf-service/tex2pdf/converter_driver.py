@@ -133,8 +133,7 @@ class ConverterDriver:
         """The converter driver log."""
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
 
-    def _find_anc_rename_directory(self) -> str | None:
-        ancdir = f"{self.in_dir}/anc"
+    def _find_anc_rename_directory(self, ancdir: str) -> tuple[str,str] | None:
         target: str|None = None
         if os.path.isdir(ancdir):
             target = f"{self.in_dir}/_anc"
@@ -250,7 +249,7 @@ class ConverterDriver:
             # Deal with ignoring of anc directory, if requested
             if self.hide_anc_dir:
                 ancdir = f"{self.in_dir}/anc"
-                target: str|None = self._find_anc_rename_directory()
+                target: str|None = self._find_anc_rename_directory(ancdir)
                 # we should have a target now that works
                 if target is None:
                     logger.warning("Cannot find target to rename anc directory, strange!")
