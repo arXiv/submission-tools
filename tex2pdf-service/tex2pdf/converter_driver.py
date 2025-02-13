@@ -133,7 +133,7 @@ class ConverterDriver:
         """The converter driver log."""
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
 
-    def _find_anc_rename_directory(self, ancdir: str) -> tuple[str,str] | None:
+    def _find_anc_rename_directory(self, ancdir: str) -> str | None:
         target: str|None = None
         if os.path.isdir(ancdir):
             target = f"{self.in_dir}/_anc"
