@@ -343,12 +343,11 @@ class ParsedTeXFile(BaseModel):
 
     filename: str
     _data: str = ""
-    output_type: OutputType = OutputType.unknown
     language: LanguageType = LanguageType.unknown
-    engine: EngineType = EngineType.unknown
-    postprocess: PostProcessType = PostProcessType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
+    contains_pdfoutput_true: bool = False
+    contains_pdfoutput_false: bool = False
     hyperref_found: bool | None = None
     used_tex_files: list[str] = []
     used_bib_files: list[str] = []
@@ -368,66 +367,26 @@ class ParsedTeXFile(BaseModel):
         # certain values, switch to either TEX or LATEX only
         # we check for \bye first, so that if a file contains both
         # \documentclass and \bye (which is a syntax error!)
-        language = LanguageType.unknown
+        self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
-            language = LanguageType.latex
+            self.language = LanguageType.latex
         if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
-            language = LanguageType.latex
+            self.language = LanguageType.latex
         if re.search(r"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
-            language = LanguageType.tex
+            self.language = LanguageType.tex
             self.contains_bye = True
         if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
             self.contains_documentclass = True
-            if language == LanguageType.tex:
+            if self.language == LanguageType.tex:
                 self.issues.append(
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
-            language = LanguageType.latex
-        self.language = language
+            self.language = LanguageType.latex
 
-    def detect_engine(self) -> None:
-        """If possible, update the engine type based on the content of the file."""
-        self.engine = EngineType.unknown
-
-    def detect_postprocess(self) -> None:
-        """If possible, update the postprocess type based on the content of the file."""
-        if self.output_type == OutputType.dvi:
-            self.postprocess = PostProcessType.dvips_ps2pdf
-        elif self.output_type == OutputType.pdf:
-            self.postprocess = PostProcessType.none
-        elif self.output_type == OutputType.unknown:
-            self.postprocess = PostProcessType.unknown
-        else:
-            raise PreflightException(f"unknown output type {self.output_type}")
-
-    def detect_output_type(self) -> None:
-        """If possible, update the output type based on the content of the file."""
-        pdftex_exts = IMAGE_EXTENSIONS["pdftex"].split()
-        dvips_exts = IMAGE_EXTENSIONS["dvips"].split()
-        for f in self.mentioned_files:
-            _, ext = os.path.splitext(f)
-            if ext.startswith("."):
-                ext = ext[1:]
-            found_pdf = ext in pdftex_exts
-            found_eps = ext in dvips_exts
-            if (
-                (found_pdf and found_eps)
-                or (self.output_type == OutputType.pdf and found_eps)
-                or (self.output_type == OutputType.dvi and found_pdf)
-            ):
-                self.output_type = OutputType.unknown
-                self.issues.append(
-                    TeXFileIssue(
-                        IssueType.conflicting_image_types, "images of formats that cannot be loaded at the same time"
-                    )
-                )
-            else:
-                if found_pdf:
-                    self.output_type = OutputType.pdf
-                elif found_eps:
-                    self.output_type = OutputType.dvi
-                else:
-                    self.output_type = OutputType.unknown
+        if re.search(r"^[^%]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
+            self.contains_pdfoutput_true = True
+        if re.search(r"^[^%]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
+            self.contains_pdfoutput_false = True
 
     def update_engine_based_on_system_files(self) -> None:
         """Check in the list of used systemfiles for indications a specific compiler needs to be used."""
@@ -636,19 +595,14 @@ class ParsedTeXFile(BaseModel):
     # TODO rewrite using _generic_walk_document_tree
     def find_entry_in_subgraph(
         self,
-    ) -> tuple[LanguageType, OutputType, EngineType, PostProcessType, list[TeXFileIssue]]:
+    ) -> tuple[LanguageType, list[TeXFileIssue]]:
         """Walk a subgraph to search for properties."""
         return self._find_entry_in_subgraph({})
 
-    def _find_entry_in_subgraph(
-        self, visited: dict[str, bool]
-    ) -> tuple[LanguageType, OutputType, EngineType, PostProcessType, list[TeXFileIssue]]:
+    def _find_entry_in_subgraph(self, visited: dict[str, bool]) -> tuple[LanguageType, list[TeXFileIssue]]:
         """Walk a subgraph to search for properties."""
         issues = []
         found_language: LanguageType = self.language
-        found_output: OutputType = self.output_type
-        found_engine: EngineType = self.engine
-        found_postprocess: PostProcessType = self.postprocess
         logging.debug("find_entry_in_subgraph: %s", self.filename)
         for n in self.children:
             if n.filename in visited:
@@ -656,7 +610,7 @@ class ParsedTeXFile(BaseModel):
                 continue
             logging.debug("find_entry_in_subgraph: recursively calling into %s", n.filename)
             visited[n.filename] = True
-            kid_language, kid_output, kid_engine, kid_postprocess, kid_issues = n._find_entry_in_subgraph(visited)
+            kid_language, kid_issues = n._find_entry_in_subgraph(visited)
             if found_language == LanguageType.unknown:
                 found_language = kid_language
             elif found_language == LanguageType.tex:
@@ -675,43 +629,9 @@ class ParsedTeXFile(BaseModel):
             else:
                 raise PreflightException(f"Unknown LanguageType {found_language}")
 
-            if found_output == OutputType.unknown:
-                found_output = kid_output
-            elif kid_output == OutputType.unknown:
-                # keep found_output
-                pass
-            elif kid_output != found_output:
-                issues.append(
-                    TeXFileIssue(IssueType.conflicting_output_type, "conflicting output types of main and subfiles")
-                )
-
-            if found_engine == EngineType.unknown:
-                found_engine = kid_engine
-            elif kid_engine == EngineType.unknown:
-                # keep found_compiler
-                pass
-            elif kid_engine != found_engine:
-                # TODO maybe order engines? tex < luatex ???
-                issues.append(
-                    TeXFileIssue(IssueType.conflicting_engine_type, "conflicting engine types of main and subfiles")
-                )
-
-            if found_postprocess == PostProcessType.unknown:
-                found_postprocess = kid_postprocess
-            elif kid_postprocess == PostProcessType.unknown:
-                # keep found_compiler
-                pass
-            elif kid_postprocess != found_postprocess:
-                # TODO maybe order engines? tex < luatex ???
-                issues.append(
-                    TeXFileIssue(
-                        IssueType.conflicting_postprocess_type, "conflicting postprocess types of main and subfiles"
-                    )
-                )
-
             issues.extend(kid_issues)
 
-        return found_language, found_output, found_engine, found_postprocess, issues
+        return found_language, issues
 
     # TODO rewrite using _generic_walk_document_tree
     def recursive_collect_files(self, what: FileType | str) -> list[str]:
@@ -776,10 +696,11 @@ TEX_EXTENSIONS = "tex"
 EPS_EXTENSIONS = "eps ps eps.gz ps.gz mps"
 
 # upper/lower case uses case folding!!!!
+# TODO: check whether luatex actually support mps without shell-escape
 IMAGE_EXTENSIONS = {
     "pdftex": "pdf png jpg mps jpeg jbig2 jb2",
+    "luatex": "pdf png jpg mps jpeg jbig2 jb2",
     "dvips": "eps ps eps.gz ps.gz eps.Z mps",
-    "xetex": "pdf ai png jpg jpeg jp2 jpf bmp ps eps mps",
     "dvipdfmx": "pdf ai png jpg jpeg jp2 jpf bmp ps eps mps",
 }
 
@@ -951,8 +872,76 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
     (?=\s*\W)                         # any non-word character terminating the command
 """
 
+# All possible CompilerSpecs
+# tex / dvi
+COMPILER: dict[str, CompilerSpec] = dict()
+COMPILER["tex"] = CompilerSpec(
+    engine=EngineType.tex, output=OutputType.dvi, postp=PostProcessType.dvips_ps2pdf, lang=LanguageType.tex
+)
+COMPILER["dviluatex"] = CompilerSpec(
+    engine=EngineType.luatex, output=OutputType.dvi, postp=PostProcessType.dvips_ps2pdf, lang=LanguageType.tex
+)
+COMPILER["ptex"] = CompilerSpec(
+    engine=EngineType.ptex, output=OutputType.dvi, postp=PostProcessType.dvipdfmx, lang=LanguageType.tex
+)
+COMPILER["uptex"] = CompilerSpec(
+    engine=EngineType.uptex, output=OutputType.dvi, postp=PostProcessType.dvipdfmx, lang=LanguageType.tex
+)
 
-SUPPORTED_PIPELINES: list[str] = ["etex+dvips_ps2pdf", "latex+dvips_ps2pdf", "pdflatex"]
+# tex / pdf
+COMPILER["pdftex"] = CompilerSpec(
+    engine=EngineType.tex, output=OutputType.pdf, postp=PostProcessType.none, lang=LanguageType.tex
+)
+COMPILER["luatex"] = CompilerSpec(
+    engine=EngineType.luatex, output=OutputType.pdf, postp=PostProcessType.none, lang=LanguageType.tex
+)
+COMPILER["xetex"] = CompilerSpec(
+    engine=EngineType.xetex, output=OutputType.pdf, postp=PostProcessType.none, lang=LanguageType.tex
+)
+
+# latex / dvi
+COMPILER["latex"] = CompilerSpec(
+    engine=EngineType.tex, output=OutputType.dvi, postp=PostProcessType.dvips_ps2pdf, lang=LanguageType.latex
+)
+COMPILER["dvilualatex"] = CompilerSpec(
+    engine=EngineType.luatex, output=OutputType.dvi, postp=PostProcessType.dvips_ps2pdf, lang=LanguageType.latex
+)
+COMPILER["platex"] = CompilerSpec(
+    engine=EngineType.ptex, output=OutputType.dvi, postp=PostProcessType.dvipdfmx, lang=LanguageType.latex
+)
+COMPILER["uplatex"] = CompilerSpec(
+    engine=EngineType.uptex, output=OutputType.dvi, postp=PostProcessType.dvipdfmx, lang=LanguageType.latex
+)
+
+# latex / pdf
+COMPILER["pdflatex"] = CompilerSpec(
+    engine=EngineType.tex, output=OutputType.pdf, postp=PostProcessType.none, lang=LanguageType.latex
+)
+COMPILER["lualatex"] = CompilerSpec(
+    engine=EngineType.luatex, output=OutputType.pdf, postp=PostProcessType.none, lang=LanguageType.latex
+)
+COMPILER["xelatex"] = CompilerSpec(
+    engine=EngineType.xetex, output=OutputType.pdf, postp=PostProcessType.none, lang=LanguageType.latex
+)
+
+ALL_COMPILERS = list(COMPILER.values())
+ALL_COMPILERS_STR = [c.compiler_string for c in ALL_COMPILERS]
+DVI_COMPILERS = [c for c in ALL_COMPILERS if c.output == OutputType.dvi]
+DVI_COMPILERS_STR = [c.compiler_string for c in DVI_COMPILERS]
+PDF_COMPILERS = [c for c in ALL_COMPILERS if c.output == OutputType.pdf]
+PDF_COMPILERS_STR = [c.compiler_string for c in PDF_COMPILERS]
+TEX_COMPILERS = [c for c in ALL_COMPILERS if c.lang == LanguageType.tex]
+TEX_COMPILERS_STR = [c.compiler_string for c in TEX_COMPILERS]
+LATEX_COMPILERS = [c for c in ALL_COMPILERS if c.lang == LanguageType.latex]
+LATEX_COMPILERS_STR = [c.compiler_string for c in LATEX_COMPILERS]
+FONTSPEC_ALLOWED_COMPILERS = [c for c in ALL_COMPILERS if c.engine == EngineType.luatex or c.engine == EngineType.xetex]
+FONTSPEC_ALLOWED_COMPILERS_STR = [c.compiler_string for c in FONTSPEC_ALLOWED_COMPILERS]
+# check that we can represent all defined compilers as strings
+for c in ALL_COMPILERS:
+    assert c.compiler_string is not None
+# the following order also gives the preference!
+SUPPORTED_COMPILERS: list[CompilerSpec] = [COMPILER["pdflatex"], COMPILER["latex"], COMPILER["tex"]]
+SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
 
 
 #
@@ -999,16 +988,7 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     n.detect_included_files()
     logging.debug("parse_file: starting detect_language")
     n.detect_language()
-    logging.debug("parse_file: starting detect_engine")
-    n.detect_engine()
-    logging.debug("parse_file: starting detect_postprocess")
-    n.detect_postprocess()
-    logging.debug("parse_file: starting detect_output_type")
-    n.detect_output_type()
     logging.debug("parse_file: finished parsing")
-
-    # if re.search(r"^[^%]*\\pdfoutput\s*=\s*1", data, re.MULTILINE):
-    #    n.process.compiler = TODO
 
     return n
 
@@ -1045,9 +1025,18 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     return nodes, anc_files
 
 
+def _merge(a: list[T], b: list[T]) -> list[T]:
+    return a + [e_b for e_b in b if e_b not in a]
+
+
 def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, str]:
     """Search for files using kpsearch, using the lua script kpse_search.lua."""
     kpse_find_input_data = ""
+    extss: list[str] = IMAGE_EXTENSIONS["pdftex"].split()
+    extss = _merge(extss, IMAGE_EXTENSIONS["dvips"].split())
+    extss = _merge(extss, IMAGE_EXTENSIONS["dvipdfmx"].split())
+    extss = _merge(extss, IMAGE_EXTENSIONS["luatex"].split())
+    all_image_exts: str = " ".join(extss)
     for _, n in nodes.items():
         for k, v in n.mentioned_files.items():
             # we don't know the \jobname by now, so we cannot search for index files
@@ -1055,20 +1044,9 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
             if k.startswith("<MAIN>."):
                 continue
             if isinstance(v.extensions, dict):
-                if n.output_type == OutputType.dvi:  # TODO should we check for dvipdfmx?
-                    if n.postprocess == PostProcessType.dvips_ps2pdf:
-                        exts = v.extensions["dvips"]
-                    elif n.postprocess == PostProcessType.dvipdfmx:
-                        exts = v.extensions["dvipdfmx"]
-                    else:
-                        exts = v.extensions["pdftex"]  # assume pdflatex as default
-                elif n.output_type == OutputType.pdf or n.output_type == OutputType.unknown:  # TODO unify these cases?
-                    if n.engine == EngineType.tex:
-                        exts = v.extensions["pdftex"]
-                    elif n.engine == EngineType.xetex or n.engine == EngineType.luatex:
-                        exts = v.extensions["xetex"]
-                    else:
-                        exts = v.extensions["pdftex"]
+                exts = all_image_exts
+            elif v.extensions is None:
+                exts = ""
             else:
                 exts = v.extensions
             kpse_find_input_data += f"{k}\n{exts}\n"
@@ -1095,6 +1073,7 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
         else:
             kpse_found[fname] = found[2:] if found.startswith("./") else found
 
+    logging.debug("kpse_found return ====%s===", kpse_found)
     return kpse_found
 
 
@@ -1137,7 +1116,9 @@ def update_nodes_with_kpse_info(
                 n.used_other_files.append(found)
             else:
                 raise PreflightException(f"Unknown file type {n.mentioned_files[f].type} for file {f}")
-        n.update_engine_based_on_system_files()
+        # n.update_engine_based_on_system_files()
+        # n.update_compiler_data()
+        # logging.debug("update_nodes_with_kpse_info: %s engine set to %s", n.filename, n.engine)
     return nodes
 
 
@@ -1173,40 +1154,8 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         # don't consider sty/cls/clo as toplevel, even if they are not used
         if f.endswith(".sty") or f.endswith(".cls") or f.endswith(".clo"):
             continue
-        found_language, found_output, found_engine, found_postprocess, issues = n.find_entry_in_subgraph()
-        engine: EngineType = EngineType.tex if found_engine == EngineType.unknown else found_engine
-        lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
-        output: OutputType
-        if lang == LanguageType.tex:
-            output = OutputType.dvi if found_output == OutputType.unknown else found_output
-        elif lang == LanguageType.latex:
-            output = OutputType.pdf if found_output == OutputType.unknown else found_output
-        else:
-            raise PreflightException(f"Unsupported language type {lang}")
-        postprocess: PostProcessType
-        if output == OutputType.dvi:
-            postprocess = (
-                PostProcessType.dvips_ps2pdf if found_postprocess == PostProcessType.unknown else found_postprocess
-            )
-        elif output == OutputType.pdf:
-            postprocess = PostProcessType.none if found_postprocess == PostProcessType.unknown else found_postprocess
-        tl = ToplevelFile(
-            filename=n.filename,
-            process=MainProcessSpec(compiler=CompilerSpec(engine=engine, output=output, lang=lang, postp=postprocess)),
-        )
-        compiler: str | None = None if tl.process.compiler is None else tl.process.compiler.compiler_string
-        if compiler is None:
-            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
-        elif compiler not in SUPPORTED_PIPELINES:
-            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, f"compiler {compiler} not supported"))
-
-        # count issues in sub files
+        tl = ToplevelFile(filename=n.filename, process=MainProcessSpec())
         tl_n = nodes[f]
-        for fn, nr_issues in tl_n.walk_document_tree(lambda n: [tuple((n.filename, len(n.issues)))]):
-            if nr_issues > 0:
-                issues.append(TeXFileIssue(IssueType.issue_in_subfile, str(nr_issues), filename=fn))
-        tl.issues = issues
-
         # check for hyperref
         hyperref_found = tl_n.generic_walk_document_tree(lambda x: x.hyperref_found, lambda x, y: x or y)
         # we want True/False, but hyperref_found could contain None
@@ -1221,6 +1170,122 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
             toplevel_files[f] = tl
 
     return toplevel_files
+
+
+def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
+    """Guess the compilation parameters from the accumulated information."""
+    for f, tl in toplevel_files.items():
+        tl_n = nodes[f]
+
+        # CompilerSpec is not hashable, so we cannot directly use it as set elements
+        candidate_compilers = set(ALL_COMPILERS_STR)
+
+        found_language, issues = tl_n.find_entry_in_subgraph()
+
+        contains_pdfoutput_true = tl_n.generic_walk_document_tree(
+            lambda x: x.contains_pdfoutput_true, lambda x, y: x or y
+        )
+        contains_pdfoutput_false = tl_n.generic_walk_document_tree(
+            lambda x: x.contains_pdfoutput_false, lambda x, y: x or y
+        )
+
+        if contains_pdfoutput_true and contains_pdfoutput_false:
+            tl.issues.append(TeXFileIssue(IssueType.conflicting_output_type, "pdfoutput set to 0 and 1"))
+            # we assume by default pdf output
+            candidate_compilers.difference_update(DVI_COMPILERS_STR)
+        elif contains_pdfoutput_true:
+            candidate_compilers.difference_update(DVI_COMPILERS_STR)
+        elif contains_pdfoutput_false:
+            candidate_compilers.difference_update(PDF_COMPILERS_STR)
+
+        # check for fontspec.sty to determine xetex/luatex
+        for fn in tl_n.used_system_files + tl_n.used_tex_files:
+            if fn.endswith("/fontspec.sty"):
+                candidate_compilers.intersection_update(FONTSPEC_ALLOWED_COMPILERS_STR)
+
+        # check all other files
+        all_other = tl_n.recursive_collect_files(FileType.other)
+        pdftex_exts = set(IMAGE_EXTENSIONS["pdftex"].split())
+        dvips_exts = set(IMAGE_EXTENSIONS["dvips"].split())
+        luatex_exts = set(IMAGE_EXTENSIONS["luatex"].split())
+        dvipdfmx_exts = set(IMAGE_EXTENSIONS["dvipdfmx"].split())
+        driver_paths = {"pdftex", "dvips", "dvipdfmx", "luatex"}
+        for fn in all_other:
+            _, ext = os.path.splitext(fn)
+            f_ext = ext[1:].lower()
+            if f_ext not in pdftex_exts:
+                driver_paths.discard("pdftex")
+            if f_ext not in dvips_exts:
+                driver_paths.discard("dvips")
+            if f_ext not in dvipdfmx_exts:
+                driver_paths.discard("dvipdfmx")
+            if f_ext not in luatex_exts:
+                driver_paths.discard("luatex")
+        if not driver_paths:
+            issues.append(TeXFileIssue(IssueType.conflicting_engine_type, "included images force conflicting engines"))
+
+        if "luatex" not in driver_paths:
+            candidate_compilers.difference_update(
+                set([c.compiler_string for c in ALL_COMPILERS if c.engine == EngineType.luatex])
+            )
+        if "dvipdfmx" not in driver_paths:
+            candidate_compilers.difference_update(
+                set(
+                    [
+                        c.compiler_string
+                        for c in ALL_COMPILERS
+                        if c.postp == PostProcessType.dvipdfmx or c.engine == EngineType.xetex
+                    ]
+                )
+            )
+        if "dvips" not in driver_paths:
+            candidate_compilers.difference_update(
+                set([c.compiler_string for c in ALL_COMPILERS if c.postp == PostProcessType.dvips_ps2pdf])
+            )
+        if "pdftex" not in driver_paths:
+            candidate_compilers.difference_update(
+                set(
+                    [
+                        c.compiler_string
+                        for c in ALL_COMPILERS
+                        if c.engine == EngineType.tex and c.output == OutputType.pdf
+                    ]
+                )
+            )
+
+        lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
+
+        candidate_compilers.intersection_update(TEX_COMPILERS_STR if lang == LanguageType.tex else LATEX_COMPILERS_STR)
+
+        possible_compiler_strings = list(candidate_compilers)
+        supported_compiler_strings = candidate_compilers.intersection(set(SUPPORTED_COMPILERS_STR))
+
+        if not possible_compiler_strings:
+            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
+        elif not supported_compiler_strings:
+            issues.append(
+                TeXFileIssue(
+                    IssueType.unsupported_compiler_type, f"compiler(s) {possible_compiler_strings} not supported"
+                )
+            )
+
+        # if there are multiple supported compilers, search for the first
+        # according to the order in SUPPORTED_COMPILERS
+        selected_compiler_string: str = ""
+        for cs in SUPPORTED_COMPILERS_STR:
+            if cs in supported_compiler_strings and cs is not None:
+                selected_compiler_string = cs
+                break
+
+        assert selected_compiler_string != ""
+
+        tl.process.compiler = CompilerSpec(compiler=selected_compiler_string)
+
+        # count issues in sub files
+        for fn, nr_issues in tl_n.walk_document_tree(lambda n: [tuple((n.filename, len(n.issues)))]):
+            if nr_issues > 0:
+                issues.append(TeXFileIssue(IssueType.issue_in_subfile, str(nr_issues), filename=fn))
+        tl.issues = issues
 
 
 def deal_with_bibliographies(
@@ -1346,6 +1411,8 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             logging.debug("found root nodes: %s", roots.keys())
             # determine toplevel files
             toplevel_files = compute_toplevel_files(roots, nodes)
+            # determine compilation settings
+            guess_compilation_parameters(toplevel_files, nodes)
             # deal with bibliographies, which is painful
             deal_with_bibliographies(rundir, toplevel_files, nodes)
             deal_with_indices(rundir, toplevel_files, nodes)
