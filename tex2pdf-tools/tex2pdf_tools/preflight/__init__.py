@@ -1277,9 +1277,8 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                 selected_compiler_string = cs
                 break
 
-        assert selected_compiler_string != ""
-
-        tl.process.compiler = CompilerSpec(compiler=selected_compiler_string)
+        if selected_compiler_string:
+            tl.process.compiler = CompilerSpec(compiler=selected_compiler_string)
 
         # count issues in sub files
         for fn, nr_issues in tl_n.walk_document_tree(lambda n: [tuple((n.filename, len(n.issues)))]):
