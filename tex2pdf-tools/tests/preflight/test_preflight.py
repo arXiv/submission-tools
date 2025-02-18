@@ -238,3 +238,15 @@ class TestPreflight(unittest.TestCase):
         pf: PreflightResponse = generate_preflight_response(dir_path)
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(pf.detected_toplevel_files[0].hyperref_found, True)
+
+    def test_eps_dvips(self):
+        """Test dvips_ps2pdf selection when eps are included."""
+        dir_path = os.path.join(self.fixture_dir, "eps-test")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "main.tex")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
+        )
