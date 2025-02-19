@@ -549,7 +549,15 @@ class ParsedTeXFile(BaseModel):
                 raise PreflightException(f"Unexpected type of file_argument: {type(incdef.file_argument)}")
 
         logging.debug(file_incspec)
-        self.mentioned_files |= file_incspec
+        # clean up the actual file argument
+        # the filearg could be very strange stuff, like when \includegraphics is redefined
+        # \def\includegraphics{....}
+        # in the case of agutexSI2019.cls, the .... even includes a \n
+        file_incspec_cleaned: dict[str, IncludeSpec] = {}
+        for k, v in file_incspec.items():
+            k_cleaned = k.encode("unicode_escape").decode("utf-8")
+        file_incspec_cleaned[k_cleaned] = v
+        self.mentioned_files |= file_incspec_cleaned
 
     def generic_walk_document_tree(self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T]) -> T:
         """Walk the document tree in map/reduce fashion."""
