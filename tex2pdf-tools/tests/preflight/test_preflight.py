@@ -163,6 +163,25 @@ class TestPreflight(unittest.TestCase):
         )
         self.assertEqual(pf.detected_toplevel_files[0].process.compiler.compiler_string, "pdf_submission")
 
+    def test_preflight_multi_pdf_only_submission(self):
+        """Test PDF only submission."""
+        dir_path = os.path.join(self.fixture_dir, "multi-pdf")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 2)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "foo.pdf")
+        self.assertEqual(pf.detected_toplevel_files[1].filename, "hello-world.pdf")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"unknown","lang":"pdf","output":"unknown","postp":"none"}""",
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[1].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"unknown","lang":"pdf","output":"unknown","postp":"none"}""",
+        )
+        self.assertEqual(pf.detected_toplevel_files[0].process.compiler.compiler_string, "pdf_submission")
+        self.assertEqual(pf.detected_toplevel_files[1].process.compiler.compiler_string, "pdf_submission")
+
     def test_preflight_html_only_submission(self):
         """Test HTML only submission."""
         dir_path = os.path.join(self.fixture_dir, "html_1")
@@ -176,6 +195,31 @@ class TestPreflight(unittest.TestCase):
         )
         self.assertEqual(
             pf.detected_toplevel_files[0].process.compiler.compiler_string,
+            "html_submission"
+        )
+
+    def test_preflight_multi_html_only_submission(self):
+        """Test HTML only submission."""
+        dir_path = os.path.join(self.fixture_dir, "html_multi")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 2)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "another.html")
+        self.assertEqual(pf.detected_toplevel_files[1].filename, "paper.html")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"unknown","lang":"html","output":"unknown","postp":"none"}""",
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[1].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"unknown","lang":"html","output":"unknown","postp":"none"}""",
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.compiler_string,
+            "html_submission"
+        )
+        self.assertEqual(
+            pf.detected_toplevel_files[1].process.compiler.compiler_string,
             "html_submission"
         )
 

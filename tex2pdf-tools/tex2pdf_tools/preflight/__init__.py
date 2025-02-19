@@ -10,7 +10,7 @@ from collections.abc import Callable
 from enum import Enum
 from itertools import zip_longest
 from pprint import pformat
-from typing import TypeVar
+from typing import TypeVar, cast
 
 import chardet
 from pydantic import BaseModel, Field
@@ -993,7 +993,7 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     return n
 
 
-def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str]]:
+def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | dict[str, ToplevelFile], list[str]]:
     """Parse all TeX files in a directory."""
     glob_files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
@@ -1007,19 +1007,36 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
     if not tex_files:
-        # we didn't find any tex file, check for a single PDF file
-        if len(files) == 1 and files[0].lower().endswith(".pdf"):
-            # PDF only submission, only one PDF file, nothing else
-            return ToplevelFile(
-                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
-            ), anc_files
-        else:
-            # check for HTML submissions
+        ret: dict[str, ToplevelFile] = {}
+        # we didn't find any tex file, check for a PDF only submission
+        only_pdf: bool | None = None
+        for f in sorted(files):
+            if f.lower().endswith(".pdf"):
+                if only_pdf is None:
+                    only_pdf = True
+                # if it was True or False already, we can leave it
+
+            else:
+                only_pdf = False
+                break
+        if only_pdf:
             for f in sorted(files):
-                if f.lower().endswith(".html"):
-                    return ToplevelFile(
-                        filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
-                    ), anc_files
+                ret[f] = ToplevelFile(
+                    filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
+                )
+            return ret, anc_files
+        # if we are still here, then it is not a PDF only submission.
+        # Check for the presence of HTML files
+        has_html: bool | None = None
+        for f in sorted(files):
+            if f.lower().endswith(".html"):
+                has_html = True
+                ret[f] = ToplevelFile(
+                    filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
+                )
+        if has_html:
+            return ret, anc_files
+
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
     return nodes, anc_files
@@ -1381,20 +1398,22 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     """Parse submission and generated preflight response as dictionary."""
     # parse files
-    n: dict[str, ParsedTeXFile] | ToplevelFile
+    n: dict[str, ParsedTeXFile] | dict[str, ToplevelFile]
     anc_files: list[str]
     nodes: dict[str, ParsedTeXFile]
     roots: dict[str, ParsedTeXFile]
     toplevel_files: dict[str, ToplevelFile]
 
     n, anc_files = parse_dir(rundir)
-    if isinstance(n, ToplevelFile):
-        # pdf only submission, we received the toplevel file already
-        toplevel_files = {n.filename: n}
+    # we cannot do isinstance(n, dict[str, ToplevelFile), so we check that
+    # the first (or any) value is a ToplevelFile
+    if n and isinstance(list(n.values())[0], ToplevelFile):  # noqa
+        # pdf or html submission, we received the toplevel file already
+        toplevel_files = cast(dict[str, ToplevelFile], n)  # mypy cannot deduce this
         nodes = {}
         status = PreflightStatus(key=PreflightStatusValues.success)
     else:
-        nodes = n
+        nodes = cast(dict[str, ParsedTeXFile], n)  # mypy cannot deduce this
         if nodes == {}:
             roots = {}
             toplevel_files = {}
