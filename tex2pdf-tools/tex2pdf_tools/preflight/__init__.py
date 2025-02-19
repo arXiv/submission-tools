@@ -1293,7 +1293,7 @@ def deal_with_bibliographies(
     """Check for inclusion of bib files and presence .bbl files."""
     for tl_f, tl_n in toplevel_files.items():
         node = nodes[tl_f]
-        bbl_file = tl_f.rstrip(".tex").rstrip(".TEX") + ".bbl"
+        bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
         bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
         if bbl_file_present:
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
@@ -1345,7 +1345,7 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
             else:
                 logging.debug("Found index definition for %s: %s", tag, defined_indices[tag])
             idx_ext, ind_ext = defined_indices[tag]
-            jobname = tl_f.rstrip(".tex").rstrip(".TEX")
+            jobname = tl_f.removesuffix(".tex").removesuffix(".TEX")
             idx_file = jobname + "." + idx_ext
             ind_file = jobname + "." + ind_ext
             # remove the <MAIN>.... entry from this node, see below for more comments
