@@ -189,6 +189,26 @@ def test_api_test4(docker_container):
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
 
+@pytest.mark.integration
+def test_api_test_anc_ignore(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-anc-ignore.outcome.tar.gz")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    assert meta is not None
+    assert meta.get("status") == "fail"
+
+@pytest.mark.integration
+def test_api_test_anc_ignore_no_ancfiles(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
+    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test4.pdf"
+    assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
+    assert len(meta.get("converters", [])) == 2
+    assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
 
 @pytest.mark.integration
 def test_api_preflight(docker_container):
@@ -197,7 +217,6 @@ def test_api_preflight(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
     meta = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
     assert meta is not None
-    print(meta)
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
     assert [f["filename"] for f in meta.get("detected_toplevel_files")] == [
@@ -224,3 +243,16 @@ def test_remote2023(docker_container) -> None:
     assert os.path.isfile(f"{out_dir}/outcome-test1.json")
     assert os.path.isfile(f"{out_dir}/out/test1.pdf")
     assert pdf == "test1.pdf"
+
+
+@pytest.mark.integration
+def test_remote2023_anc_ignore(docker_container) -> None:
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
+    out_dir = os.path.join(SELF_DIR, "output/test-anc-ignore-remote")
+    url = docker_container + "/convert/"
+    tag = os.path.basename(tarball)
+    shutil.rmtree(out_dir, ignore_errors=True)
+    converter = RemoteConverterDriver(url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True, hide_anc_dir=True)
+    pdf = converter.generate_pdf()
+    assert pdf is None
+    assert os.path.isfile(f"{out_dir}/test-anc-ignore.tar.gz-outcome.tar.gz")

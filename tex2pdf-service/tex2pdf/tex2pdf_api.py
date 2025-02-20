@@ -124,6 +124,7 @@ async def convert_pdf(
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
+    hide_anc_dir: bool = False,
 ) -> Response:
     """
     get a tarball, and convert to PDF
@@ -186,6 +187,7 @@ async def convert_pdf(
             max_appending_files=max_appending_files,
             preflight=preflight_version,
             auto_detect=auto_detect,
+            hide_anc_dir=hide_anc_dir,
         )
         try:
             _pdf_file = driver.generate_pdf()

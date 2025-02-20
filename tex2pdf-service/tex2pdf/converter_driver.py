@@ -5,6 +5,7 @@ This module is the core of the PDF generation. It takes a tarball, unpack it, an
 import io
 import json
 import os
+import random
 import shlex
 import subprocess
 import time
@@ -12,9 +13,9 @@ import typing
 from enum import Enum
 from glob import glob
 
-from tex2pdf_tools.preflight_parser import PreflightStatusValues, generate_preflight_response
+from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
-from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
+from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyError
 
 from . import (
     ID_TAG,
@@ -87,6 +88,7 @@ class ConverterDriver:
     water: Watermark
     preflight: PreflightVersion
     auto_detect: bool = False
+    hide_anc_dir: bool = False
 
     def __init__(
         self,
@@ -100,6 +102,7 @@ class ConverterDriver:
         max_appending_files: int = 0,
         preflight: PreflightVersion = PreflightVersion.NONE,
         auto_detect: bool = False,
+        hide_anc_dir: bool = False,
     ):
         self.work_dir = work_dir
         self.in_dir = os.path.join(work_dir, "in")
@@ -122,6 +125,7 @@ class ConverterDriver:
         self.today = None
         self.preflight = preflight
         self.auto_detect = auto_detect
+        self.hide_anc_dir = hide_anc_dir
         self.zzrm = None
         pass
 
@@ -129,6 +133,30 @@ class ConverterDriver:
     def driver_log(self) -> str:
         """The converter driver log."""
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
+
+    def _find_anc_rename_directory(self, ancdir: str) -> str | None:
+        target: str|None = None
+        if os.path.isdir(ancdir):
+            target = f"{self.in_dir}/_anc"
+            assert target is not None  # placate stupid mypy
+            if os.path.isdir(target):
+                # we need to find a way to rename it
+                new_target = None
+                for i in range(10):
+                    try_target = f"{target}_{random.getrandbits(32)}"
+                    if os.path.isdir(try_target):
+                        continue
+                    else:
+                        new_target = try_target
+                        break
+                if not new_target:
+                    # No way that this can happen, 10 times random strings
+                    # and all those directories are present ...???
+                    target = None
+                else:
+                    target = new_target
+        return target
+
 
     def generate_pdf(self) -> str | None:
         """We have the beef."""
@@ -138,7 +166,7 @@ class ConverterDriver:
         self._unpack_tarball()
         try:
             self.zzrm = ZeroZeroReadMe(self.in_dir)
-        except KeyError:
+        except ZZRMKeyError:
             self.zzrm = ZeroZeroReadMe(None)
             logger.warning("Input directory %s contains an invalid 00README file, and ignored", self.in_dir)
             pass
@@ -219,7 +247,24 @@ class ConverterDriver:
             self.outcome["reason"] = "nohyperref is not supported yet"
             self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         else:
-            self._run_tex_commands()
+            # Deal with ignoring of anc directory, if requested
+            if self.hide_anc_dir:
+                ancdir = f"{self.in_dir}/anc"
+                target: str|None = self._find_anc_rename_directory(ancdir)
+                # we should have a target now that works
+                if target is None:
+                    logger.warning("Cannot find target to rename anc directory, strange!")
+                else:
+                    logger.debug("Renaming anc directory %s to %s", ancdir, target)
+                    os.rename(ancdir, target)
+            try:
+                # run TeX under try and have a finally to rename the anc directory back
+                # in case some exception happens in the TeX processing
+                self._run_tex_commands()
+            finally:
+                if self.hide_anc_dir and target is not None:
+                    logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
+                    os.rename(target, ancdir)
             pdf_files = self.outcome.get("pdf_files", [])
             if pdf_files:
                 self._finalize_pdf()
@@ -599,7 +644,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
         success = service_process_tarball(
-            self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect
+            self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect, self.hide_anc_dir
         )
 
         if not success:
