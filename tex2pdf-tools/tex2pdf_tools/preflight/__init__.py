@@ -422,10 +422,13 @@ class ParsedTeXFile(BaseModel):
         # in the dict due to insertion order.
         # Later one we want to do depth first search for documentclass etc
         # (contemplate whether this is strictly necessary!)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self._data):
+
+        # preprocess data to remove comments
+        data = re.sub(re.compile(r"(?<!\\)%.*\n"), "", self._data)
+        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", data):
             self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX, self._data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(ARGS_INCLUDE_REGEX, data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             self.collect_included_files(i)
         logging.debug("%s found included files: %s", self.filename, self.mentioned_files)
@@ -853,7 +856,7 @@ INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
 # \openin2=data.txt ... \read2 to \myline ...
 
 # TODO we should auto-generate this regex
-ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
+ARGS_INCLUDE_REGEX = r"""
     \\(
         input|
         include|                         # command from the core format
