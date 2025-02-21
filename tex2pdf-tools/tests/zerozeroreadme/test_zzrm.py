@@ -101,7 +101,6 @@ class Test00README(unittest.TestCase):
         sio.seek(0)
         data = sio.read()
         expected = """process:
-  compiler: pdflatex
   fontmaps:
   - myfonts1.map
   - myfonts2.map
@@ -137,7 +136,6 @@ stamp: false
 stamp = false
 
 [process]
-compiler = "pdflatex"
 fontmaps = [
     "myfonts1.map",
     "myfonts2.map",
@@ -151,7 +149,6 @@ fontmaps = [
         data = zzrm.to_json()
         expected = """{
     "process": {
-        "compiler": "pdflatex",
         "fontmaps": [
             "myfonts1.map",
             "myfonts2.map"
