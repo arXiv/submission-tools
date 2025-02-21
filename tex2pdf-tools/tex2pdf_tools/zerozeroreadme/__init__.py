@@ -132,7 +132,7 @@ class ZeroZeroReadMe:
         self.version: int = version  # classic 00README.XXX is v1, dict i/o is v2.
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
-        self.process: MainProcessSpec = MainProcessSpec(compiler="pdflatex")
+        self.process: MainProcessSpec = MainProcessSpec()
         self.sources: OrderedDict[str, UserFile] = OrderedDict()
         self.stamp: bool | None = True
         self.nohyperref: bool | None = None
@@ -414,7 +414,10 @@ class ZeroZeroReadMe:
         # If no compiler is selected, select it based on the first toplevel file
         if self.process.compiler is None:
             self.process.compiler = CompilerSpec(
-                engine=EngineType.unknown, lang=LanguageType.unknown, output=OutputType.unknown
+                engine=EngineType.unknown,
+                lang=LanguageType.unknown,
+                output=OutputType.unknown,
+                postp=PostProcessType.unknown,
             )
         if not self.process.compiler.is_determined:
             first_tex = self.toplevels[0]
