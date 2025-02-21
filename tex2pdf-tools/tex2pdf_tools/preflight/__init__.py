@@ -269,6 +269,21 @@ class CompilerSpec(BaseModel):
             self.output = OutputType.unknown
             self.postp = PostProcessType.none
             return
+        # further aliases:
+        # tex -> etex+dvips_ps2pdf
+        # latex -> latex+dvips_ps2pdf
+        if compiler == "tex":
+            self.lang = LanguageType.tex
+            self.engine = EngineType.tex
+            self.output = OutputType.dvi
+            self.postp = PostProcessType.dvips_ps2pdf
+            return
+        if compiler == "latex":
+            self.lang = LanguageType.latex
+            self.engine = EngineType.tex
+            self.output = OutputType.dvi
+            self.postp = PostProcessType.dvips_ps2pdf
+            return
         parts = compiler.split("+", 1)
         comp: str = ""
         if len(parts) == 2:

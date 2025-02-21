@@ -91,6 +91,18 @@ class TestBaseModels(unittest.TestCase):
             CompilerSpec(compiler="pdf_submission").model_dump_json(exclude_none=True, exclude_defaults=True),
             """{"engine":"unknown","lang":"pdf","output":"unknown","postp":"none"}""",
         )
+        self.assertEqual(
+            CompilerSpec(compiler="html_submission").model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"unknown","lang":"html","output":"unknown","postp":"none"}""",
+        )
+        self.assertEqual(
+            CompilerSpec(compiler="tex").model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvips_ps2pdf"}""",
+        )
+        self.assertEqual(
+            CompilerSpec(compiler="latex").model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
+        )
 
     def test_compilerspec_2(self):
         """Test CompilerSpec initialized from dict of data."""
