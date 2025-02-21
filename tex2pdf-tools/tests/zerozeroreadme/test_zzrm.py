@@ -60,7 +60,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
-        self.assertEqual("latex", zzrm.process.compiler.compiler_string)
+        self.assertEqual("latex+dvips_ps2pdf", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
 
     def test_zzrm_v2_03(self) -> None:
