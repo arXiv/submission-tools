@@ -125,13 +125,14 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
 @click.option("--tex2pdf-timeout", default=100, help="timeout passed to tex2pdf")
 @click.option("--post-timeout", default=600, help="timeout for the complete post")
 @click.option("--threads", default=64, help="Number of threads requested for threadpool")
-def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int) -> None:
+@click.option("--auto-detect", is_flag=True, help="Auto detect ZZRM")
+def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int, auto_detect: bool) -> None:
     """Compile submissions in a directory."""
 
     def local_submit_tarball(tarball: str) -> None:
         outcome_file = tarball_to_outcome_path(tarball)
         try:
-            service_process_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout)
+            service_process_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect=auto_detect)
         except FileExistsError:
             logging.info(f"Not recreating already existing {outcome_file}.")
             pass
