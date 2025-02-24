@@ -167,15 +167,15 @@ class ZeroZeroReadMe:
         Load a 00README file.
 
         POLICY:
-        * only files named 00readme.EXT with EXT in either
+        * only files named 00README.EXT with EXT in either
           ZZRM_V1_EXTS or ZZRM_V2_EXTS are accepted.
 
         Raises:
             * ZZRMUnsupportedFileError if file name is not recognized.
         """
         stem, ext = os.path.splitext(os.path.basename(file))
-        if stem.lower() != "00readme":
-            raise ZZRMUnsupportedFileError(f"File {file} must start with 00readme (case-insensitive)")
+        if stem.upper() != "00README":
+            raise ZZRMUnsupportedFileError(f"File {file} must start with 00README (case-insensitive)")
         if ext.lower() in ZZRM_V1_EXTS:
             self._fetch_00readme_data(file, 1)
         elif ext.lower() in ZZRM_V2_EXTS:
@@ -206,7 +206,7 @@ class ZeroZeroReadMe:
             if filename[0] > "0":  # Should I use ord()?
                 break
             (stem, ext) = os.path.splitext(filename)
-            if stem.lower() != "00readme":
+            if stem.upper() != "00README":
                 continue
             if ext.lower() in ZZRM_V1_EXTS:
                 zzrms_v1.append(filename)
@@ -218,13 +218,13 @@ class ZeroZeroReadMe:
                 continue
 
         if len(zzrms_v2) > 1:
-            raise ZZRMMultipleFilesError("Only one v2 00readme directives file is allowed.")
+            raise ZZRMMultipleFilesError("Only one v2 00README directives file is allowed.")
         elif len(zzrms_v2) > 0:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v2[0]), 2)
             return
 
         if len(zzrms_v1) > 1:
-            raise ZZRMMultipleFilesError("Only one v1 00readme directives file is allowed.")
+            raise ZZRMMultipleFilesError("Only one v1 00README directives file is allowed.")
         elif len(zzrms_v1) > 0:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v1[0]), 1)
             return
