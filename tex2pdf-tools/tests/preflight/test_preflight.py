@@ -263,3 +263,17 @@ class TestPreflight(unittest.TestCase):
             pf.detected_toplevel_files[0].issues[0].key,
             "unsupported_compiler_type"
         )
+
+    def test_no_final_newline(self):
+        """Test whether detection of include command works with no final newline."""
+        dir_path = os.path.join(self.fixture_dir, "last-line-no-newline")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "main.tex")
+        found_foo_tex = False
+        for tf in pf.tex_files:
+            if tf.filename == "foo.tex":
+                found_foo_tex = True
+                self.assertEqual(tf.used_tex_files, ["bla.tex"])
+        self.assertTrue(found_foo_tex)
