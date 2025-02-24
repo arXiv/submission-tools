@@ -264,6 +264,20 @@ class TestPreflight(unittest.TestCase):
             "unsupported_compiler_type"
         )
 
+    def test_multi_include_cmds(self):
+        """Test multiple consecutive include commands."""
+        dir_path = os.path.join(self.fixture_dir, "multi-include-cmds")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["a.sty", "b.sty", "c.tex", "e.tex"])
+                self.assertEqual(sorted(tf.used_other_files), ["aa.jpg", "bb.jpg", "cc.jpg", "dd.png", "ee.jpg"])
+        assert found_main
+
     def test_no_final_newline(self):
         """Test whether detection of include command works with no final newline."""
         dir_path = os.path.join(self.fixture_dir, "last-line-no-newline")

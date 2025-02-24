@@ -269,6 +269,21 @@ class CompilerSpec(BaseModel):
             self.output = OutputType.unknown
             self.postp = PostProcessType.none
             return
+        # further aliases:
+        # tex -> etex+dvips_ps2pdf
+        # latex -> latex+dvips_ps2pdf
+        if compiler == "tex":
+            self.lang = LanguageType.tex
+            self.engine = EngineType.tex
+            self.output = OutputType.dvi
+            self.postp = PostProcessType.dvips_ps2pdf
+            return
+        if compiler == "latex":
+            self.lang = LanguageType.latex
+            self.engine = EngineType.tex
+            self.output = OutputType.dvi
+            self.postp = PostProcessType.dvips_ps2pdf
+            return
         parts = compiler.split("+", 1)
         comp: str = ""
         if len(parts) == 2:
@@ -409,7 +424,7 @@ class ParsedTeXFile(BaseModel):
         # (contemplate whether this is strictly necessary!)
 
         # preprocess data to remove comments
-        data = re.sub(re.compile("%.*\n"), "", self._data)
+        data = re.sub(re.compile(r"(?<!\\)%.*\n"), "", self._data)
         for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", data):
             self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
         # check for the rest of include commands

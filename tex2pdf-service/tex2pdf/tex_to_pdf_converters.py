@@ -30,6 +30,10 @@ class RunFail(Exception):
 
     pass
 
+class CompilerNotSpecified(Exception):
+    """cannot detect compiler"""
+
+    pass
 
 class ImplementationError(Exception):
     """Bug!?"""
@@ -350,18 +354,18 @@ class BaseConverter:
 def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
     """Select converter based on ZZRM."""
     if zzrm is None:
-        raise ValueError("Compiler is not defined.")
+        raise CompilerNotSpecified("Compiler is not defined.")
     if zzrm.process.compiler is None:
-        raise ValueError("Compiler is not defined.")
+        raise CompilerNotSpecified("Compiler is not defined.")
     process_spec = zzrm.process.compiler.compiler_string
-    if process_spec == "etex+dvips_ps2pdf":
+    if process_spec == "etex+dvips_ps2pdf" or process_spec == "tex":
         return VanillaTexConverter
-    elif process_spec == "latex+dvips_ps2pdf":
+    elif process_spec == "latex+dvips_ps2pdf" or process_spec == "latex":
         return LatexConverter
     elif process_spec == "pdflatex":
         return PdfLatexConverter
     else:
-        raise ValueError("Unknown compiler, cannot select converter: %s", process_spec)
+        raise CompilerNotSpecified("Unknown compiler, cannot select converter: %s", process_spec)
 
 
 # bad_for_latex_file_exts = {ext: True for ext in [".png", ".jpg", ".jpeg"]}
