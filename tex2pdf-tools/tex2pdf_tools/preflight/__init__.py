@@ -25,6 +25,27 @@ T = TypeVar("T")
 PDF_SUBMISSION_STRING = "pdf_submission"
 HTML_SUBMISSION_STRING = "html_submission"
 
+# Version of the bbl file that is created by biber in the
+# current version of arxiv tex
+# TL2025
+# ======
+# biber 2.20
+# biblatex: 3.20
+# bbl format: 3.3
+#
+# TL2024
+# ======
+# biber 2.20
+# biblatex: 3.20
+# bbl format: 3.3
+#
+# arXiv TeX TL2023
+# ================
+# biber 2.19
+# biblatex 3.19
+# bbl format: 3.2
+CURRENT_ARXIV_TEX_BBL_VERSION = "3.2"
+
 #
 # CLASSES AND TYPES
 #
@@ -337,6 +358,7 @@ class IssueType(str, Enum):
     contents_decode_error = "contents_decode_error"
     issue_in_subfile = "issue_in_subfile"
     index_definition_missing = "index_definition_missing"
+    bbl_version_mismatch = "bbl_version_mismatch"
     other = "other"
 
 
@@ -1320,10 +1342,41 @@ def deal_with_bibliographies(
     for tl_f, tl_n in toplevel_files.items():
         node = nodes[tl_f]
         bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
-        bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
+        bbl_file_full_path = os.path.join(rundir, bbl_file)
+        bbl_file_present = os.path.isfile(bbl_file_full_path)
+        is_biber: bool = False
         if bbl_file_present:
+            # check version of bbl file
+            # First three lines of .bbl file:
+            #
+            # % $ biblatex auxiliary file $
+            # % $ biblatex bbl format version 3.3 $
+            # % Do not modify the above lines!
+            with open(bbl_file_full_path) as bblfn:
+                # try to read up to three lines from the .bbl file
+                # This ma fail for empty .bbl files or files containing less than three lines
+                # in this case the next throws the StopIteration exception
+                try:
+                    head = [next(bblfn).strip() for _ in range(3)]
+                except StopIteration:
+                    head = [""]
+            if head[0] == "% $ biblatex auxiliary file $":
+                # only check files created by biblatex/biber
+                is_biber = True
+                if head[1].startswith("% $ biblatex bbl format version "):
+                    bbl_version = head[1].removeprefix("% $ biblatex bbl format version ").removesuffix(" $")
+                    if bbl_version != CURRENT_ARXIV_TEX_BBL_VERSION:
+                        node.issues.append(
+                            TeXFileIssue(
+                                IssueType.bbl_version_mismatch,
+                                f"Expected {CURRENT_ARXIV_TEX_BBL_VERSION} but got {bbl_version}",
+                                bbl_file,
+                            )
+                        )
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
-            tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=True)
+            tl_n.process.bibliography = BibProcessSpec(
+                processor=BibCompiler.biber if is_biber else BibCompiler.unknown, pre_generated=True
+            )
             # add bbl file to the list of used_other_files
             nodes[tl_f].used_other_files.append(bbl_file)
             # TODO, maybe remove issues with missing .bib files?
@@ -1331,7 +1384,7 @@ def deal_with_bibliographies(
         # toplevel filename .bbl is missing -> require .bib to be available,
         all_bib = node.recursive_collect_files(FileType.bib)
         if all_bib:
-            # TODO detect biber usage!
+            # TODO detect biber usage from source files (done when .bbl is available above)
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
 
 
