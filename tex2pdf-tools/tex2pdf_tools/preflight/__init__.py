@@ -596,7 +596,7 @@ class ParsedTeXFile(BaseModel):
         file_incspec_cleaned: dict[str, IncludeSpec] = {}
         for k, v in file_incspec.items():
             k_cleaned = k.encode("unicode_escape").decode("utf-8")
-        file_incspec_cleaned[k_cleaned] = v
+            file_incspec_cleaned[k_cleaned] = v
         self.mentioned_files |= file_incspec_cleaned
 
     def generic_walk_document_tree(self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T]) -> T:
