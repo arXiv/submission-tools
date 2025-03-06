@@ -322,3 +322,15 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(issue.key, IssueType.bbl_version_mismatch)
         self.assertEqual(issue.filename, "bla.bbl")
 
+    def test_multi_usepackage(self):
+        """Test usepackage with multiple entries."""
+        dir_path = os.path.join(self.fixture_dir, "multi-usepackage")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["a.sty", "b.sty", "c.sty"])
+        assert found_main
