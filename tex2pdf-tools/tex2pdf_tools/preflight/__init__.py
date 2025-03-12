@@ -25,6 +25,27 @@ T = TypeVar("T")
 PDF_SUBMISSION_STRING = "pdf_submission"
 HTML_SUBMISSION_STRING = "html_submission"
 
+# Version of the bbl file that is created by biber in the
+# current version of arxiv tex
+# TL2025
+# ======
+# biber 2.20
+# biblatex: 3.20
+# bbl format: 3.3
+#
+# TL2024
+# ======
+# biber 2.20
+# biblatex: 3.20
+# bbl format: 3.3
+#
+# arXiv TeX TL2023
+# ================
+# biber 2.19
+# biblatex 3.19
+# bbl format: 3.2
+CURRENT_ARXIV_TEX_BBL_VERSION = "3.2"
+
 #
 # CLASSES AND TYPES
 #
@@ -269,6 +290,21 @@ class CompilerSpec(BaseModel):
             self.output = OutputType.unknown
             self.postp = PostProcessType.none
             return
+        # further aliases:
+        # tex -> etex+dvips_ps2pdf
+        # latex -> latex+dvips_ps2pdf
+        if compiler == "tex":
+            self.lang = LanguageType.tex
+            self.engine = EngineType.tex
+            self.output = OutputType.dvi
+            self.postp = PostProcessType.dvips_ps2pdf
+            return
+        if compiler == "latex":
+            self.lang = LanguageType.latex
+            self.engine = EngineType.tex
+            self.output = OutputType.dvi
+            self.postp = PostProcessType.dvips_ps2pdf
+            return
         parts = compiler.split("+", 1)
         comp: str = ""
         if len(parts) == 2:
@@ -322,6 +358,7 @@ class IssueType(str, Enum):
     contents_decode_error = "contents_decode_error"
     issue_in_subfile = "issue_in_subfile"
     index_definition_missing = "index_definition_missing"
+    bbl_version_mismatch = "bbl_version_mismatch"
     other = "other"
 
 
@@ -407,10 +444,13 @@ class ParsedTeXFile(BaseModel):
         # in the dict due to insertion order.
         # Later one we want to do depth first search for documentclass etc
         # (contemplate whether this is strictly necessary!)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", self._data):
+
+        # preprocess data to remove comments
+        data = re.sub(re.compile(r"(?<!\\)%.*\n"), "", self._data)
+        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", data):
             self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX, self._data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(ARGS_INCLUDE_REGEX, data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             self.collect_included_files(i)
         logging.debug("%s found included files: %s", self.filename, self.mentioned_files)
@@ -838,7 +878,7 @@ INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
 # \openin2=data.txt ... \read2 to \myline ...
 
 # TODO we should auto-generate this regex
-ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
+ARGS_INCLUDE_REGEX = r"""
     \\(
         input|
         include|                         # command from the core format
@@ -877,7 +917,7 @@ ARGS_INCLUDE_REGEX = r"""^[^%\n]*?   # check that line is not a comment
     \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
     \s*({[^}]*})?\s*(?:%.*\n)?        # second argument with braces
     \s*({[^}]*})?                     # third argument with braces
-    (?=\s*\W)                         # any non-word character terminating the command
+    (?=\s*(\W|$))                         # any non-word character terminating the command
 """
 
 # All possible CompilerSpecs
@@ -1302,10 +1342,41 @@ def deal_with_bibliographies(
     for tl_f, tl_n in toplevel_files.items():
         node = nodes[tl_f]
         bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
-        bbl_file_present = os.path.isfile(f"{rundir}/{bbl_file}")
+        bbl_file_full_path = os.path.join(rundir, bbl_file)
+        bbl_file_present = os.path.isfile(bbl_file_full_path)
+        is_biber: bool = False
         if bbl_file_present:
+            # check version of bbl file
+            # First three lines of .bbl file:
+            #
+            # % $ biblatex auxiliary file $
+            # % $ biblatex bbl format version 3.3 $
+            # % Do not modify the above lines!
+            with open(bbl_file_full_path) as bblfn:
+                # try to read up to three lines from the .bbl file
+                # This ma fail for empty .bbl files or files containing less than three lines
+                # in this case the next throws the StopIteration exception
+                try:
+                    head = [next(bblfn).strip() for _ in range(3)]
+                except StopIteration:
+                    head = [""]
+            if head[0] == "% $ biblatex auxiliary file $":
+                # only check files created by biblatex/biber
+                is_biber = True
+                if head[1].startswith("% $ biblatex bbl format version "):
+                    bbl_version = head[1].removeprefix("% $ biblatex bbl format version ").removesuffix(" $")
+                    if bbl_version != CURRENT_ARXIV_TEX_BBL_VERSION:
+                        node.issues.append(
+                            TeXFileIssue(
+                                IssueType.bbl_version_mismatch,
+                                f"Expected {CURRENT_ARXIV_TEX_BBL_VERSION} but got {bbl_version}",
+                                bbl_file,
+                            )
+                        )
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
-            tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=True)
+            tl_n.process.bibliography = BibProcessSpec(
+                processor=BibCompiler.biber if is_biber else BibCompiler.unknown, pre_generated=True
+            )
             # add bbl file to the list of used_other_files
             nodes[tl_f].used_other_files.append(bbl_file)
             # TODO, maybe remove issues with missing .bib files?
@@ -1313,7 +1384,7 @@ def deal_with_bibliographies(
         # toplevel filename .bbl is missing -> require .bib to be available,
         all_bib = node.recursive_collect_files(FileType.bib)
         if all_bib:
-            # TODO detect biber usage!
+            # TODO detect biber usage from source files (done when .bbl is available above)
             tl_n.process.bibliography = BibProcessSpec(processor=BibCompiler.unknown, pre_generated=False)
 
 

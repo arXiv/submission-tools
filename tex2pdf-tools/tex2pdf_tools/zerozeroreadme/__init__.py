@@ -132,7 +132,7 @@ class ZeroZeroReadMe:
         self.version: int = version  # classic 00README.XXX is v1, dict i/o is v2.
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
-        self.process: MainProcessSpec = MainProcessSpec(compiler="pdflatex")
+        self.process: MainProcessSpec = MainProcessSpec()
         self.sources: OrderedDict[str, UserFile] = OrderedDict()
         self.stamp: bool | None = True
         self.nohyperref: bool | None = None
@@ -167,15 +167,15 @@ class ZeroZeroReadMe:
         Load a 00README file.
 
         POLICY:
-        * only files named 00readme.EXT with EXT in either
+        * only files named 00README.EXT with EXT in either
           ZZRM_V1_EXTS or ZZRM_V2_EXTS are accepted.
 
         Raises:
             * ZZRMUnsupportedFileError if file name is not recognized.
         """
         stem, ext = os.path.splitext(os.path.basename(file))
-        if stem.lower() != "00readme":
-            raise ZZRMUnsupportedFileError(f"File {file} must start with 00readme (case-insensitive)")
+        if stem.upper() != "00README":
+            raise ZZRMUnsupportedFileError(f"File {file} must start with 00README (case-insensitive)")
         if ext.lower() in ZZRM_V1_EXTS:
             self._fetch_00readme_data(file, 1)
         elif ext.lower() in ZZRM_V2_EXTS:
@@ -206,7 +206,7 @@ class ZeroZeroReadMe:
             if filename[0] > "0":  # Should I use ord()?
                 break
             (stem, ext) = os.path.splitext(filename)
-            if stem.lower() != "00readme":
+            if stem.upper() != "00README":
                 continue
             if ext.lower() in ZZRM_V1_EXTS:
                 zzrms_v1.append(filename)
@@ -218,13 +218,13 @@ class ZeroZeroReadMe:
                 continue
 
         if len(zzrms_v2) > 1:
-            raise ZZRMMultipleFilesError("Only one v2 00readme directives file is allowed.")
+            raise ZZRMMultipleFilesError("Only one v2 00README directives file is allowed.")
         elif len(zzrms_v2) > 0:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v2[0]), 2)
             return
 
         if len(zzrms_v1) > 1:
-            raise ZZRMMultipleFilesError("Only one v1 00readme directives file is allowed.")
+            raise ZZRMMultipleFilesError("Only one v1 00README directives file is allowed.")
         elif len(zzrms_v1) > 0:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v1[0]), 1)
             return
@@ -414,7 +414,10 @@ class ZeroZeroReadMe:
         # If no compiler is selected, select it based on the first toplevel file
         if self.process.compiler is None:
             self.process.compiler = CompilerSpec(
-                engine=EngineType.unknown, lang=LanguageType.unknown, output=OutputType.unknown
+                engine=EngineType.unknown,
+                lang=LanguageType.unknown,
+                output=OutputType.unknown,
+                postp=PostProcessType.unknown,
             )
         if not self.process.compiler.is_determined:
             first_tex = self.toplevels[0]

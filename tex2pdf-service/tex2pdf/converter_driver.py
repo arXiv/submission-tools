@@ -32,7 +32,7 @@ from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, chmod_775, unpack_tarball
 from .tex_patching import fix_tex_sources
-from .tex_to_pdf_converters import BaseConverter, select_converter_class
+from .tex_to_pdf_converters import BaseConverter, select_converter_class, CompilerNotSpecified
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = (
@@ -261,6 +261,10 @@ class ConverterDriver:
                 # run TeX under try and have a finally to rename the anc directory back
                 # in case some exception happens in the TeX processing
                 self._run_tex_commands()
+            except CompilerNotSpecified as e:
+                self.outcome["status"] = "fail"
+                self.outcome["reason"] = str(e)
+                self.outcome["in_files"] = file_props_in_dir(self.in_dir)
             finally:
                 if self.hide_anc_dir and target is not None:
                     logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
