@@ -15,6 +15,8 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import FileResponse, HTMLResponse
 
+from arxiv.identifier import Identifier as arXivID, IdentifierException
+
 from . import MAX_APPENDING_FILES, MAX_TIME_BUDGET, MAX_TOPLEVEL_TEX_FILES, USE_ADDON_TREE
 from .converter_driver import ConversionOutcomeMaker, ConverterDriver, PreflightVersion, AutoTeXConverterDriver
 from .fastapi_util import closer
@@ -268,7 +270,15 @@ async def autotex_pdf(incoming: UploadFile,
     log_extra = {"source_filename": filename}
     logger = get_logger()
     logger.info("%s", incoming.filename)
+    # TODO verify that tag is a correct arXivID, otherwise the AutoTeXConverter
+    # fails because it passes in the tag with -p tag to autotex, which breaks if
+    # it is not a correct arXivID.
     tag = os.path.basename(filename)
+    try:
+        arxivid = arXivID(tag)
+    except IdentifierException:
+        # TODO do something here
+        raise
     while True:
         [stem, ext] = os.path.splitext(tag)
         if ext in [".gz", ".zip", ".tar"]:
@@ -285,7 +295,7 @@ async def autotex_pdf(incoming: UploadFile,
             except ValueError:
                 pass
             pass
-        driver = AutoTeXConverterDriver(tempdir, filename, tag=tag, max_time_budget=timeout_secs)
+        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxivid.id, max_time_budget=timeout_secs)
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:
