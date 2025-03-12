@@ -262,6 +262,9 @@ async def convert_pdf(
               STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
           })
 async def autotex_pdf(incoming: UploadFile,
+                      arxivid: typing.Annotated[
+                          str | None, Query(title="arXiv ID", description="arXiv identifier")
+                      ] = None,
                       timeout: typing.Annotated[int | None,
                         Query(title="Time out", description="Time out in seconds.")] = None,
                       ) -> Response:
@@ -270,21 +273,30 @@ async def autotex_pdf(incoming: UploadFile,
     log_extra = {"source_filename": filename}
     logger = get_logger()
     logger.info("%s", incoming.filename)
-    # TODO verify that tag is a correct arXivID, otherwise the AutoTeXConverter
-    # fails because it passes in the tag with -p tag to autotex, which breaks if
-    # it is not a correct arXivID.
     tag = os.path.basename(filename)
-    try:
-        arxivid = arXivID(tag)
-    except IdentifierException:
-        # TODO do something here
-        raise
     while True:
         [stem, ext] = os.path.splitext(tag)
         if ext in [".gz", ".zip", ".tar"]:
             tag = stem
             continue
         break
+    # now tag points to the bare basename without extensions of the upload filename
+    arxiv_identifier: arXivID | None = None
+    if arxivid is not None:
+        try:
+            arxiv_identifier = arXivID(arxivid)
+        except IdentifierException:
+            logger.warning("Unparsable arXiv identifier: %s - trying to detect from filename", tag, exc_info=True)
+    # if we still not have an identifier, then either the passed in arxivid
+    # could not be parsed, or it wasn't passed in. Try parsing it from the filename.
+    if arxiv_identifier is None:
+        # try to determine arXiv ID from the filename
+        try:
+            arxiv_identifier = arXivID(tag)
+        except IdentifierException:
+            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                content={"message": "Cannot determine arXiv identifier."})
+    # now we have and arxiv_identifier!
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
         await save_stream(in_dir, incoming, filename, log_extra)
@@ -295,7 +307,7 @@ async def autotex_pdf(incoming: UploadFile,
             except ValueError:
                 pass
             pass
-        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxivid.id, max_time_budget=timeout_secs)
+        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxiv_identifier.id, max_time_budget=timeout_secs)
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:
