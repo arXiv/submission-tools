@@ -334,3 +334,16 @@ class TestPreflight(unittest.TestCase):
                 found_main = True
                 self.assertEqual(sorted(tf.used_tex_files), ["a.sty", "b.sty", "c.sty"])
         assert found_main
+
+    def test_svg_compiler_detection(self):
+        """Test correct compiler detection despite unsupported img extension."""
+        dir_path = os.path.join(self.fixture_dir, "svg-include-compiler")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        print(pf)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+        )
+

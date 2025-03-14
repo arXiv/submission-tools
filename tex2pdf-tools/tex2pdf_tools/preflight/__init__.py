@@ -1257,10 +1257,16 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         dvips_exts = set(IMAGE_EXTENSIONS["dvips"].split())
         luatex_exts = set(IMAGE_EXTENSIONS["luatex"].split())
         dvipdfmx_exts = set(IMAGE_EXTENSIONS["dvipdfmx"].split())
+        all_exts = pdftex_exts | dvips_exts | luatex_exts | dvipdfmx_exts
         driver_paths = {"pdftex", "dvips", "dvipdfmx", "luatex"}
         for fn in all_other:
             _, ext = os.path.splitext(fn)
             f_ext = ext[1:].lower()
+            # if an extension is not supported by at least one engine,
+            # do not remove unsupported engines since we will end up
+            # with an empty set of supported engines.
+            if f_ext not in all_exts:
+                continue
             if f_ext not in pdftex_exts:
                 driver_paths.discard("pdftex")
             if f_ext not in dvips_exts:
