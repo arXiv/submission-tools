@@ -89,6 +89,17 @@ class IncludeSpec(BaseModel):
     take_options: bool = True
     multi_args: bool = False
 
+    def ext_str(self) -> str:
+        """Return the list of extensions as string."""
+        exts: str = ""
+        if isinstance(self.extensions, dict):
+            exts = ALL_IMAGE_EXTS
+        elif self.extensions is None:
+            exts = ""
+        else:
+            exts = self.extensions
+        return exts
+
 
 class LanguageType(str, Enum):
     r"""Possible language types of a submission/file.
@@ -752,6 +763,17 @@ IMAGE_EXTENSIONS = {
     "dvipdfmx": "pdf ai png jpg jpeg jp2 jpf bmp ps eps mps",
 }
 
+
+def _merge(a: list[T], b: list[T]) -> list[T]:
+    return a + [e_b for e_b in b if e_b not in a]
+
+
+_extss: list[str] = IMAGE_EXTENSIONS["pdftex"].split()
+_extss = _merge(_extss, IMAGE_EXTENSIONS["dvips"].split())
+_extss = _merge(_extss, IMAGE_EXTENSIONS["dvipdfmx"].split())
+_extss = _merge(_extss, IMAGE_EXTENSIONS["luatex"].split())
+ALL_IMAGE_EXTS: str = " ".join(_extss)
+
 # only parse file with these extensions
 PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo"]
 
@@ -1073,30 +1095,26 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     return nodes, anc_files
 
 
-def _merge(a: list[T], b: list[T]) -> list[T]:
-    return a + [e_b for e_b in b if e_b not in a]
-
-
 def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, str]:
     """Search for files using kpsearch, using the lua script kpse_search.lua."""
     kpse_find_input_data = ""
-    extss: list[str] = IMAGE_EXTENSIONS["pdftex"].split()
-    extss = _merge(extss, IMAGE_EXTENSIONS["dvips"].split())
-    extss = _merge(extss, IMAGE_EXTENSIONS["dvipdfmx"].split())
-    extss = _merge(extss, IMAGE_EXTENSIONS["luatex"].split())
-    all_image_exts: str = " ".join(extss)
     for _, n in nodes.items():
         for k, v in n.mentioned_files.items():
             # we don't know the \jobname by now, so we cannot search for index files
             # (.idx/.ind/etc)
             if k.startswith("<MAIN>."):
                 continue
-            if isinstance(v.extensions, dict):
-                exts = all_image_exts
-            elif v.extensions is None:
-                exts = ""
-            else:
-                exts = v.extensions
+            exts = v.ext_str()
+            if v.extensions == "svg":
+                # support default placement of svg pre-converted images
+                # in "svg-inkscape/" where there is
+                # - <basename>_svg-tex.pdf_tex
+                # - <basename>_svg-tex.pdf
+                # TODO do we want to support different setups for "inkscapepath" setting?
+                bn_k = os.path.basename(k)
+                kpse_find_input_data += f"svg-inkscape/{bn_k}_svg-tex\npdf_tex\n"
+                kpse_find_input_data += f"svg-inkscape/{bn_k}_svg-tex\npdf\n"
+
             kpse_find_input_data += f"{k}\n{exts}\n"
     logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
 
@@ -1111,15 +1129,17 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
         check=True,
     )
 
+    logging.debug("Received the following string from kpse_search.lua:\n%s", p.stdout)
+
     # read back the output information
     kpse_found = {}
     for fname, found in zip_longest(*[iter(p.stdout.splitlines())] * 2, fillvalue=""):
         if found.startswith("./anc/"):
             # ignore ancillary files in the return, they should be marked
             # as not existing
-            kpse_found[fname] = ""
+            kpse_found[fname][found] = ""
         else:
-            kpse_found[fname] = found[2:] if found.startswith("./") else found
+            kpse_found[fname][found] = found[2:] if found.startswith("./") else found
 
     logging.debug("kpse_found return ====%s===", kpse_found)
     return kpse_found
@@ -1130,7 +1150,9 @@ def update_nodes_with_kpse_info(
 ) -> dict[str, ParsedTeXFile]:
     """Update the parsed tex files with the location of used files."""
     for _, n in nodes.items():
-        for f in n.mentioned_files:
+        for f, v in n.mentioned_files.items():
+            exts = v.ext_str()
+            logging.debug("Extensions for current node/mentioned file: %s", exts)
             if f in kpse_found:
                 found = kpse_found[f]
             elif f.startswith("<MAIN>."):
@@ -1237,6 +1259,15 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
             lambda x: x.contains_pdfoutput_false, lambda x, y: x or y
         )
 
+        logging.debug(
+            "guessing compilation parameters: found_language, pdfoutput true, pdfoutput false = %s, %s, %s",
+            found_language,
+            contains_pdfoutput_true,
+            contains_pdfoutput_false,
+        )
+
+        logging.debug("Initial set of compiler: %s", candidate_compilers)
+
         if contains_pdfoutput_true and contains_pdfoutput_false:
             tl.issues.append(TeXFileIssue(IssueType.conflicting_output_type, "pdfoutput set to 0 and 1"))
             # we assume by default pdf output
@@ -1246,10 +1277,14 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         elif contains_pdfoutput_false:
             candidate_compilers.difference_update(PDF_COMPILERS_STR)
 
+        logging.debug("Round 1 set of compiler: %s", candidate_compilers)
+
         # check for fontspec.sty to determine xetex/luatex
         for fn in tl_n.used_system_files + tl_n.used_tex_files:
             if fn.endswith("/fontspec.sty"):
                 candidate_compilers.intersection_update(FONTSPEC_ALLOWED_COMPILERS_STR)
+
+        logging.debug("Round 2 set of compiler: %s", candidate_compilers)
 
         # check all other files
         all_other = tl_n.recursive_collect_files(FileType.other)
@@ -1268,12 +1303,16 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
             if f_ext not in all_exts:
                 continue
             if f_ext not in pdftex_exts:
+                logging.debug("Discarding pdftex due to img extension: %s", f_ext)
                 driver_paths.discard("pdftex")
             if f_ext not in dvips_exts:
+                logging.debug("Discarding dvips due to img extension: %s", f_ext)
                 driver_paths.discard("dvips")
             if f_ext not in dvipdfmx_exts:
+                logging.debug("Discarding dvipdfmx due to img extension: %s", f_ext)
                 driver_paths.discard("dvipdfmx")
             if f_ext not in luatex_exts:
+                logging.debug("Discarding luatex due to img extension: %s", f_ext)
                 driver_paths.discard("luatex")
         if not driver_paths:
             issues.append(TeXFileIssue(IssueType.conflicting_engine_type, "included images force conflicting engines"))
@@ -1307,9 +1346,13 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                 )
             )
 
+        logging.debug("Round 3 set of compiler: %s", candidate_compilers)
+
         lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
 
         candidate_compilers.intersection_update(TEX_COMPILERS_STR if lang == LanguageType.tex else LATEX_COMPILERS_STR)
+
+        logging.debug("Round 4 set of compiler: %s", candidate_compilers)
 
         possible_compiler_strings = list(candidate_compilers)
         supported_compiler_strings = candidate_compilers.intersection(set(SUPPORTED_COMPILERS_STR))

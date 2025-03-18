@@ -51,8 +51,11 @@ local function read_files_and_exts()
       if filename == nil then break end
       local extensions = io.read()
       if extensions == nil then break end -- should we warn about a lone filename?
+      if fileexts[filename] == nil then
+        fileexts[filename] = {}
+      end
       -- print("found " .. filename .. " " .. extensions)
-      fileexts[filename] = extensions
+      fileexts[filename][extensions] = 1
     end
     return fileexts
 end
@@ -82,7 +85,8 @@ end
 local selfautoparent = kpse.var_value("SELFAUTOPARENT")
 -- print(selfautoparent)
 
-for path, exts in pairs(fileexts) do
+for path, exts_table in pairs(fileexts) do
+  for exts, val in pairs(exts_table) do
     -- first test if file as is can be found
     local result = kpse.find_file(path)
     if not result then
@@ -100,9 +104,10 @@ for path, exts in pairs(fileexts) do
     end
     print(path)
     if result then
-        print(result)
+        print(exts .. ":" .. result)
     else
-        print()
+        print(exts .. ":")
     end
+  end
 end
 
