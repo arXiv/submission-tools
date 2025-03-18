@@ -1,7 +1,7 @@
 """
 Directives Manager.
 
-This package enforces policies related to the directives or 00readme file. The main
+This package enforces policies related to the directives or 00README file. The main
 policy is to allow a single v2 directives file. When a document contains a legacy v1
 00README.XXX and no v2 directives file, the 00README.XXX will be converted to a v2
 file, with the 00README.XXX being retained for the historical record.

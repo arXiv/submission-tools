@@ -1,0 +1,26 @@
+\documentclass[]{article}
+
+\usepackage[autostyle]{csquotes}
+
+\usepackage[
+    backend=biber,
+    style=authoryear-icomp,
+    sortlocale=de_DE,
+    natbib=true,
+    url=false, 
+    doi=true,
+    eprint=false
+]{biblatex}
+\addbibresource{bla.bib}
+
+\usepackage[]{hyperref}
+\hypersetup{
+    colorlinks=true,
+}
+
+%% ##############################
+\begin{document}
+    Lorem ipsum dolor sit amet~\citep{kastenholz}.
+    At vero eos et accusam et justo duo dolores et ea rebum~\citet{sigfridsson}.
+    \printbibliography 
+\end{document}

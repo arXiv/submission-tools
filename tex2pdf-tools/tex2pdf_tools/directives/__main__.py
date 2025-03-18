@@ -22,9 +22,9 @@ def main():
         "-c",
         "--create_file",
         nargs="?",
-        const="00readme",
+        const="00README",
         help="Create a new directives file with the specified "
-        'format. Defaults to creating "00readme" if no basename is provided.',
+        'format. Defaults to creating "00README" if no basename is provided.',
     )
     parser.add_argument("-d", "--debug", action="store_true", help="Debug setting.")
     parser.add_argument("-D", "--details", action="store_true", help="List all directives files with format.")
@@ -187,7 +187,7 @@ def main():
         except ValueError as e:
             print(f"Error: {e}")
 
-    # Collect and digest information we need from 00readme
+    # Collect and digest information we need from 00README
     directives = {}
     #    node = {
     #        "ignore": []
@@ -202,7 +202,7 @@ def main():
     # print(f"Serial:{serial}")
     # exit(0)
     # Default behavior will be to examine the root directory and
-    # process the active 00readme and the preflight information.
+    # process the active 00README and the preflight information.
     preflight_data = manager.load_preflight_data(args.preflight_file)
     #    directives['ignore'] = node
     directives["preflight"] = preflight_data

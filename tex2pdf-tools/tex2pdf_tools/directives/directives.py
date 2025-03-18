@@ -25,15 +25,15 @@ def serialize_data(data: dict, format: str) -> str:
     Returns:
         str: Serialized string.
     """
-    if format == "yaml":
-        return yaml.dump(data)
-    elif format == "json":
-        return json.dumps(data, indent=4)
-    elif format == "toml":
-        return toml.dumps(data)
-    else:
-        raise ValueError("Unsupported format. Use 'yaml', 'json', or 'toml'.")
-
+    match format:
+        case "yaml":
+            return yaml.dump(data)
+        case "json":
+            return json.dumps(data, indent=4)
+        case "toml":
+            return toml.dumps(data)
+        case _:
+            raise ValueError("Unsupported format. Use 'yaml', 'json', or 'toml'.")
 
 def write_readme_file(file_path: str, content: str) -> None:
     """
@@ -57,9 +57,9 @@ class DirectiveManager:
         self.root_dir = root_dir
         self.src_dir = src_dir if src_dir is not None else f"{self.root_dir}/src"
         self.directives_files = self.list_directives_files()
-        self.preflight_module = None  # Initialize preflight_module as None
-        self.preflight_data_not_found = False
+        self.preflight_module = None
         self.preflight_hierarchy = None
+        self.preflight_data_not_found = False
         self.readme_object = None
 
     def load_preflight_data(self, preflight_file_arg: str | None = None):
@@ -78,7 +78,6 @@ class DirectiveManager:
         try:
             top_level_files = []
             include_all_files = True
-            # hierarchy = self.preflight_module.load_preflight_data(preflight_file)
             hierarchy = self.preflight_module.build_hierarchy(
                 specified_top_level_files=top_level_files, include_all_files=include_all_files
             )
@@ -96,7 +95,7 @@ class DirectiveManager:
         List all directives files in the root directory.
 
         This routine is using the filename to determine whether the file
-        is a 00readme file. The contents are not validated.
+        is a 00README file. The contents are not validated.
 
         Note: An active or historical 00README.XXX is allowed. We expect to
         find at most one v2 directives file in all newer articles that rely
@@ -118,7 +117,7 @@ class DirectiveManager:
             bool: True if the file is a directives file, False otherwise.
         """
         name, ext = os.path.splitext(filename)
-        return name.lower() == "00readme" and ext.lower() in DIRECTIVE_EXTS
+        return name.upper() == "00README" and ext.lower() in DIRECTIVE_EXTS
 
     def get_active_directives_file(self) -> str:
         """
@@ -133,7 +132,7 @@ class DirectiveManager:
         """
         v2_files = [f for f in self.directives_files if self.is_v2_file(f)]
         if len(v2_files) > 1:
-            raise ValueError("Only one v2 00readme directives file is allowed.")
+            raise ValueError("Only one v2 00README directives file is allowed.")
         elif v2_files:
             return v2_files[0]
 
@@ -153,7 +152,7 @@ class DirectiveManager:
             bool: True if the file is a v2 directives file, False otherwise.
         """
         name, ext = os.path.splitext(filename)
-        return name.lower() == "00readme" and ext.lower() in [".yaml", ".yml", ".json", ".toml"]
+        return name.upper() == "00README" and ext.lower() in [".yaml", ".yml", ".json", ".toml"]
 
     @staticmethod
     def is_v1_file(filename: str) -> bool:
@@ -167,7 +166,7 @@ class DirectiveManager:
             bool: True if the file is a v1 directives file, False otherwise.
         """
         name, ext = os.path.splitext(filename)
-        return name.lower() == "00readme" and ext.lower() == ".xxx"
+        return name.upper() == "00README" and ext.lower() == ".xxx"
 
     def v1_exists(self) -> bool:
         """
@@ -209,7 +208,7 @@ class DirectiveManager:
             bool: True if the file can be made active, False otherwise.
         """
         name, ext = os.path.splitext(filename)
-        if name.lower() != "00readme" or ext.lower() not in DIRECTIVE_EXTS:
+        if name.upper() != "00README" or ext.lower() not in DIRECTIVE_EXTS:
             return False
 
         if self.is_active_directives_file(filename):
@@ -250,7 +249,7 @@ class DirectiveManager:
         zzrm = ZeroZeroReadMe(self.root_dir)
         data = zzrm.to_dict()
 
-        new_00readme_path = os.path.join(self.root_dir, f"00readme.{dest_format}")
+        new_00readme_path = os.path.join(self.root_dir, f"00README.{dest_format}")
         serialized_data = serialize_data(data, dest_format)
         write_readme_file(new_00readme_path, serialized_data)
 
@@ -271,13 +270,13 @@ class DirectiveManager:
         return self.readme_object.ignores
 
     def create_directives_file(
-        self, basename: str = "00readme", elements: dict | None = None, format: str = "json", force: bool = False
+        self, basename: str = "00README", elements: dict | None = None, format: str = "json", force: bool = False
     ):
         """
         Create a new directives file with the specified format.
 
         Args:
-            basename (str, optional): Base name of the file to create (without extension). Defaults to "00readme".
+            basename (str, optional): Base name of the file to create (without extension). Defaults to "00README".
             elements (dict, optional): Elements to write to the file.
             format (str, optional): Format of the file (json, yaml, toml). Defaults to "json".
             force (bool, optional): Whether to force creation even if it would not be active. Defaults to False.

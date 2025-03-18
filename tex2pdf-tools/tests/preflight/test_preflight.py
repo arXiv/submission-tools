@@ -2,6 +2,7 @@ import json
 import os
 import unittest
 
+from tex2pdf_tools.preflight import BibCompiler, IssueType
 from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
 
 
@@ -277,3 +278,72 @@ class TestPreflight(unittest.TestCase):
                 self.assertEqual(sorted(tf.used_tex_files), ["a.sty", "b.sty", "c.tex", "e.tex"])
                 self.assertEqual(sorted(tf.used_other_files), ["aa.jpg", "bb.jpg", "cc.jpg", "dd.png", "ee.jpg"])
         assert found_main
+
+    def test_no_final_newline(self):
+        """Test whether detection of include command works with no final newline."""
+        dir_path = os.path.join(self.fixture_dir, "last-line-no-newline")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "main.tex")
+        found_foo_tex = False
+        for tf in pf.tex_files:
+            if tf.filename == "foo.tex":
+                found_foo_tex = True
+                self.assertEqual(tf.used_tex_files, ["bla.tex"])
+        self.assertTrue(found_foo_tex)
+
+    def test_biber_good_version(self):
+        """Test bbl version matching arXiv TeX version."""
+        dir_path = os.path.join(self.fixture_dir, "bbl_version_good")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biber)
+        self.assertTrue(tf.process.bibliography.pre_generated)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+
+    def test_biber_bad_version(self):
+        """Test bbl version not matching arXiv TeX version."""
+        dir_path = os.path.join(self.fixture_dir, "bbl_version_mismatch")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biber)
+        self.assertTrue(tf.process.bibliography.pre_generated)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 1)
+        issue = tf.issues[0]
+        self.assertEqual(issue.key, IssueType.bbl_version_mismatch)
+        self.assertEqual(issue.filename, "bla.bbl")
+
+    def test_multi_usepackage(self):
+        """Test usepackage with multiple entries."""
+        dir_path = os.path.join(self.fixture_dir, "multi-usepackage")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["a.sty", "b.sty", "c.sty"])
+        assert found_main
+
+    def test_svg_compiler_detection(self):
+        """Test correct compiler detection despite unsupported img extension."""
+        dir_path = os.path.join(self.fixture_dir, "svg-include-compiler")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        print(pf)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+        )
+

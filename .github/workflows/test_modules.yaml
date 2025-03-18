@@ -27,6 +27,8 @@ jobs:
           index
           lipsum
           amsmath
+          csquotes
+          biblatex
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools

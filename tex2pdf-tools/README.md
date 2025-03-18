@@ -1,7 +1,7 @@
 # submission-tools
 
 arXiv submission related tool repository, mainly collection `tex2pdf` with
-its subpackages (`preflight`, `zerozeroreadme`, `tex_inspection`, and `service`)
+its subpackages (`preflight`, `zerozeroreadme`, `tex_inspection`, `directives`)
 and the `pdf_profile` package.
 
 # PDF Profile
@@ -26,10 +26,8 @@ Package: `tex2pdf.zerozeroreadme`
 
 Full specification: [00README for authors](https://docs.google.com/document/d/1WbAh2atcDLG0-yJEP9WDKqujHtwH1Kp_TojykeC2HFQ/edit?usp=sharing)
 
-# TeX2PDF Service
+# Directives
 
-Package: `tex2pdf.service`
+Package: `tex2pdf.directives`
 
-arXiv's next generation TeX compilation based on TexLive Docker container.
-
-See detailed [README.md](tex2pdf/service/README.md)
+Docs?
