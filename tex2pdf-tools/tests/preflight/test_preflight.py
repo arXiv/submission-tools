@@ -341,9 +341,20 @@ class TestPreflight(unittest.TestCase):
         pf: PreflightResponse = generate_preflight_response(dir_path)
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
-        print(pf)
         self.assertEqual(
             pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
             """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
         )
 
+    def test_overlapping_filenames(self):
+        """Test smae filename for multiple file types."""
+        dir_path = os.path.join(self.fixture_dir, "overlapping-filenames")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["article.tex"])
+        assert found_main
