@@ -347,7 +347,7 @@ class TestPreflight(unittest.TestCase):
         )
 
     def test_overlapping_filenames(self):
-        """Test smae filename for multiple file types."""
+        """Test same filename for multiple file types."""
         dir_path = os.path.join(self.fixture_dir, "overlapping-filenames")
         pf: PreflightResponse = generate_preflight_response(dir_path)
         self.assertEqual(pf.status.key.value, "success")
@@ -357,4 +357,17 @@ class TestPreflight(unittest.TestCase):
             if tf.filename == "main.tex":
                 found_main = True
                 self.assertEqual(sorted(tf.used_tex_files), ["article.tex"])
+        assert found_main
+
+    def test_overpic_filenames(self):
+        """Test overpic environment detection."""
+        dir_path = os.path.join(self.fixture_dir, "overpic")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_other_files), ["foo.jpg"])
         assert found_main

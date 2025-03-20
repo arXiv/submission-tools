@@ -475,6 +475,9 @@ class ParsedTeXFile(BaseModel):
         # inc[3] ... second argument (if present)
         # inc[4] ... third argument (if present)
         include_command = inc[0]
+        # special cases for environment style commands
+        if re.match(r"begin\s*{\s*overpic\s*}", include_command):
+            include_command = "overpic"
         if inc[1]:
             include_options = inc[1]
         else:
@@ -897,6 +900,7 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="newindex", source="index", type=FileType.idx),
     IncludeSpec(cmd="makeindex", source="index", type=FileType.idx),
     IncludeSpec(cmd="printindex", source="index", type=FileType.ind),
+    IncludeSpec(cmd="overpic", source="overpic", type=FileType.other, extensions=IMAGE_EXTENSIONS),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
@@ -939,7 +943,8 @@ ARGS_INCLUDE_REGEX = r"""
         asyinclude|                      # asy
         newindex|                        # index
         makeindex|
-        printindex
+        printindex|
+        begin\s*{\s*overpic\s*}          # overpic
     )\s*(?:%.*\n)?
     \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
     \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
