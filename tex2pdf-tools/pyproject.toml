@@ -11,7 +11,7 @@ include = ["LICENSE", "README.md"]
 [tool.poetry.dependencies]
 python = "^3.11"
 #chardet = "^5.0"
-charset-normalizer = "*"
+charset-normalizer = "^3"
 pydantic = "^2.8.2"
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
