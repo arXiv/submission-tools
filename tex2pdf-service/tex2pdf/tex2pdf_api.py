@@ -3,6 +3,7 @@ Tex2PDF FastAPI.
 """
 
 import os
+import re
 import subprocess
 import tempfile
 import traceback
@@ -282,20 +283,34 @@ async def autotex_pdf(incoming: UploadFile,
         break
     # now tag points to the bare basename without extensions of the upload filename
     arxiv_identifier: arXivID | None = None
+    arxiv_identifier_id: str | None = None
     if arxivid is not None:
-        try:
-            arxiv_identifier = arXivID(arxivid)
-        except IdentifierException:
-            logger.warning("Unparsable arXiv identifier: %s - trying to detect from filename", tag, exc_info=True)
+        # check for arxivid as \d+ (in-process submissions)
+        if re.match(r"[0-9]+$", arxivid):
+            arxiv_identifier_id = arxivid
+        else:
+            try:
+                arxiv_identifier = arXivID(arxivid)
+                arxiv_identifier_id = arxiv_identifier.id
+            except IdentifierException:
+                logger.warning("Unparsable arXiv identifier: %s - trying to detect from filename", tag, exc_info=True)
     # if we still not have an identifier, then either the passed in arxivid
     # could not be parsed, or it wasn't passed in. Try parsing it from the filename.
-    if arxiv_identifier is None:
+    if arxiv_identifier_id is None:
         # try to determine arXiv ID from the filename
-        try:
-            arxiv_identifier = arXivID(tag)
-        except IdentifierException:
-            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
-                                content={"message": "Cannot determine arXiv identifier."})
+        if re.match(r"[0-9]+$", tag):
+            arxiv_identifier_id = tag
+        else:
+            try:
+                arxiv_identifier = arXivID(tag)
+                arxiv_identifier_id = arxiv_identifier.id
+            except IdentifierException:
+                return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                                    content={"message": "Cannot determine arXiv identifier."})
+    if arxiv_identifier_id is None:
+        # this should not happen, but I don't want an assertion here
+        return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                            content={"message": "Unexpected internal error, please report - arxivid is None."})
     # now we have and arxiv_identifier!
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
@@ -307,7 +322,7 @@ async def autotex_pdf(incoming: UploadFile,
             except ValueError:
                 pass
             pass
-        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxiv_identifier.id, max_time_budget=timeout_secs)
+        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxiv_identifier_id, max_time_budget=timeout_secs)
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:
