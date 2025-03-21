@@ -12,7 +12,9 @@ from itertools import zip_longest
 from pprint import pformat
 from typing import TypeVar
 
-import chardet
+# switching from chardet to charset_normalizer
+# from chardet import detect as charset_detect
+from charset_normalizer import detect as charset_detect
 from pydantic import BaseModel, Field
 
 # tell ruff to not complain, I don't want to add __all__ entries
@@ -1041,25 +1043,34 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     """Parse a file for included commands."""
     with open(f"{basedir}/{filename}", "rb") as f:
         rawdata = f.read()
-    detected_encoding_data = chardet.detect(rawdata)
+    detected_encoding_data = charset_detect(rawdata)
     encoding: str | None = detected_encoding_data.get("encoding")
     data: str
     if encoding is None:
         encoding = "utf-8"
-    try:
-        data = str(rawdata.decode(encoding))
-    except UnicodeDecodeError:
-        logging.warning("Failed to decode %s in %s", filename, encoding)
+    # order of encodings we try:
+    # - utf-8 (which includes ascii!)
+    # - detected encoding
+    try_encodings: list[str] = []
+    if encoding != "utf-8":
+        try_encodings.append("utf-8")
+    try_encodings.append(encoding)
+    logging.debug("Trying the following encodings in order: %s", try_encodings)
+    found_encoding: str | None = None
+    for enc in try_encodings:
         try:
-            # try once more, this time with ascii
-            data = str(rawdata.decode("ascii"))
+            data = str(rawdata.decode(enc))
+            found_encoding = enc
+            logging.debug("Detected encoding %s", enc)
+            break
         except UnicodeDecodeError:
-            n = ParsedTeXFile(filename=filename)
-            n._data = ""
-            n.issues.append(
-                TeXFileIssue(IssueType.contents_decode_error, f"cannot decode file, tried {encoding} and ascii")
-            )
-            return n
+            logging.debug("Failed to decode %s in %s", filename, enc)
+    if not found_encoding:
+        n = ParsedTeXFile(filename=filename)
+        n._data = ""
+        n.issues.append(TeXFileIssue(IssueType.contents_decode_error, f"cannot decode file, tried {try_encodings}"))
+        return n
+
     # standardize line endings
     line_ending_re = re.compile(r"\r\n|\r|\n")
     data = re.sub(line_ending_re, "\n", data)
