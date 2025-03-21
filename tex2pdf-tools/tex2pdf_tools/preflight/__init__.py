@@ -537,16 +537,16 @@ class ParsedTeXFile(BaseModel):
             # the first argument might contain a trailing /, so remove double //
             filearg = filearg.replace("//", "/")
             filearg = filearg[2:] if filearg.startswith("./") else filearg
-            file_incspec[filearg.strip()] = {incdef.cmd: incdef}
+            file_incspec[filearg.strip().strip('"')] = {incdef.cmd: incdef}
         elif incdef.cmd == "usetikzlibrary":
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
-                file_incspec[f"tikzlibrary{f.strip()}.code.tex"] = {incdef.cmd: incdef}
+                file_incspec[f"""tikzlibrary{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliography":
             # replace end of line comments with empty string
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for bf in include_argument.split(","):
-                f = bf.strip()
+                f = bf.strip().strip('"')
                 f = f[2:] if f.startswith("./") else f
                 if f.endswith(".bib"):
                     file_incspec[f] = {incdef.cmd: incdef}
@@ -573,7 +573,7 @@ class ParsedTeXFile(BaseModel):
         elif incdef.cmd == "usepackage" or incdef.cmd == "RequirePackage":
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
-                fn = f.strip()
+                fn = f.strip().strip('"')
                 fn = fn if fn.endswith(".sty") else f"{fn}.sty"
                 if fn == "hyperref.sty":
                     self.hyperref_found = True
@@ -581,9 +581,9 @@ class ParsedTeXFile(BaseModel):
         else:
             if isinstance(incdef.file_argument, int):
                 if incdef.file_argument == 1:
-                    filearg = include_argument.strip()
+                    filearg = include_argument.strip().strip('"')
                 elif incdef.file_argument == 2:
-                    filearg = include_extra_argument.strip()
+                    filearg = include_extra_argument.strip().strip('"')
                 else:
                     # logging.error("incdef.file_argument = %s", incdef.file_argument)
                     logging.error("incdef: %s", pformat(incdef))
@@ -598,7 +598,7 @@ class ParsedTeXFile(BaseModel):
                 if incdef.multi_args:
                     for f in filearg.split(","):
                         fn = f[2:] if f.startswith("./") else f
-                        file_incspec[fn.strip()] = {incdef.cmd: incdef}
+                        file_incspec[fn.strip().strip('"')] = {incdef.cmd: incdef}
                 else:
                     filearg = filearg[2:] if filearg.startswith("./") else filearg
                     file_incspec[filearg] = {incdef.cmd: incdef}
