@@ -748,8 +748,19 @@ class AutoTeXConverterDriver(ConverterDriver):
             logger.warning(f"No log files found for {arxivID}")
             log = None
         else:
-            with open(log_files[0]) as file:
-                log = file.read()
+            # log files created by LaTeX are in "font encoding" that is the
+            # encoding used for output. Thus, in most cases T1 encoding which
+            # is similar to latin1, but differs slightly. Let us try to read
+            # in latin1 and if that fails, use bytes
+            # TODO for luatex/xetex we have to review this, since the logfile
+            # encoding will be utf-8.
+            try:
+                with open(log_files[0], encoding="iso-8859-1") as file:
+                    log = file.read()
+            except UnicodeDecodeError:
+                logger.warning(f"Couldn't decode log file {log_files[0]} - trying bytes")
+                with open(log_files[0], "rb") as file:
+                    log = file.read()
 
         # Create an outcome structure
         # This is unfortunately not well documented and has severe duplication of entries
