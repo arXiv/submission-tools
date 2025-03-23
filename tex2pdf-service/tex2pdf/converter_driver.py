@@ -744,6 +744,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         # we use glob here, since we will need to rename the autotex.log created
         # by autotex.pl to arxivID.log *within* autotex.log
         log_files = glob(f"{self.in_dir}/tex_logs/autotex.log")
+        log: str|bytes|None = None
         if not log_files:
             logger.warning(f"No log files found for {arxivID}")
             log = None
