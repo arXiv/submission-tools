@@ -23,7 +23,7 @@ def submit_tarball(
     post_timeout: int = 10,
     json_response: bool = False,
     api_args: dict = {},
-) -> None | dict:
+) -> tuple[None | dict, int]:
     meta = None
     params_dict = {"timeout": tex2pdf_timeout}
     params_dict.update(api_args)
@@ -43,23 +43,27 @@ def submit_tarball(
                 if status_code == 200:
                     if res.content:
                         if json_response:
-                            return json.loads(res.content)
+                            return json.loads(res.content), 200
                         else:
                             os.makedirs(os.path.dirname(outcome_file), exist_ok=True)
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
                             meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
+
                 else:
                     logging.warning("%s: status code %d", url, status_code)
 
             except TimeoutError:
                 logging.warning("%s: Connection timed out", tarball)
+                status_code = 500
 
             except Exception as exc:
                 logging.warning("%s: %s", tarball, str(exc))
+                status_code = 500
+
             break
 
-    return meta
+    return meta, status_code
 
 
 @pytest.fixture(scope="module")
@@ -146,8 +150,9 @@ def test_api_smoke(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test1/test1.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test1.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
-    assert meta is not None
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is None
+    assert status == 500
 
 
 @pytest.mark.integration
@@ -155,7 +160,7 @@ def test_api_test2(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
     assert meta.get("tex_files") == ["fake-file-2.tex"]
@@ -168,7 +173,7 @@ def test_api_test3(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
     assert meta.get("tex_files") == ["fake-file-2.tex", "fake-file-1.tex", "fake-file-3.tex"]
@@ -182,7 +187,7 @@ def test_api_test4(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
@@ -194,7 +199,7 @@ def test_api_test_anc_ignore(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-anc-ignore.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
     assert meta is not None
     assert meta.get("status") == "fail"
 
@@ -203,7 +208,7 @@ def test_api_test_anc_ignore_no_ancfiles(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
@@ -215,7 +220,7 @@ def test_api_preflight(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
-    meta = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
+    meta, status = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
     assert meta is not None
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
@@ -228,8 +233,8 @@ def test_api_preflight(docker_container):
 
 @pytest.mark.integration
 def test_remote2023(docker_container) -> None:
-    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test1/test1.tar.gz")
-    out_dir = os.path.join(SELF_DIR, "output/test1-remote")
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
+    out_dir = os.path.join(SELF_DIR, "output/test2-remote")
     url = docker_container + "/convert/"
     tag = os.path.basename(tarball)
 
@@ -240,9 +245,9 @@ def test_remote2023(docker_container) -> None:
     converter = RemoteConverterDriver(url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True)
     logging.debug("Calling generate_pdf")
     pdf = converter.generate_pdf()
-    assert os.path.isfile(f"{out_dir}/outcome-test1.json")
-    assert os.path.isfile(f"{out_dir}/out/test1.pdf")
-    assert pdf == "test1.pdf"
+    assert os.path.isfile(f"{out_dir}/outcome-test2.json")
+    assert os.path.isfile(f"{out_dir}/out/test2.pdf")
+    assert pdf == "test2.pdf"
 
 
 @pytest.mark.integration
