@@ -51,10 +51,10 @@ local function read_files_and_exts()
       if filename == nil then break end
       local extensions = io.read()
       if extensions == nil then break end -- should we warn about a lone filename?
+      -- print("found " .. filename .. " " .. extensions)
       if fileexts[filename] == nil then
         fileexts[filename] = {}
       end
-      -- print("found " .. filename .. " " .. extensions)
       fileexts[filename][extensions] = 1
     end
     return fileexts
@@ -85,10 +85,18 @@ end
 local selfautoparent = kpse.var_value("SELFAUTOPARENT")
 -- print(selfautoparent)
 
-for path, exts_table in pairs(fileexts) do
-  for exts, val in pairs(exts_table) do
-    -- first test if file as is can be found
-    local result = kpse.find_file(path)
+for path, subv in pairs(fileexts) do
+  for exts, val in pairs(subv) do
+    -- if the path has already an extension, search for it
+    -- as is
+    local result
+    if path:match("^.+(%..+)$") then
+        result = kpse.find_file(path)
+    end
+    -- if we don't have a result, that is:
+    -- * either file didn't have an extension to begin with
+    -- * or we didn't find anything as is
+    -- then search for the file with extension
     if not result then
         for ext in string.gmatch(exts, "[^%s]+") do
             result = kpse.find_file(path .. "." .. ext)
@@ -103,10 +111,11 @@ for path, exts_table in pairs(fileexts) do
         end
     end
     print(path)
+    print(exts)
     if result then
-        print(exts .. ":" .. result)
+        print(result)
     else
-        print(exts .. ":")
+        print()
     end
   end
 end
