@@ -12,9 +12,6 @@ from itertools import zip_longest
 from pprint import pformat
 from typing import TypeVar
 
-# switching from chardet to charset_normalizer
-# from chardet import detect as charset_detect
-from charset_normalizer import detect as charset_detect
 from pydantic import BaseModel, Field
 
 # tell ruff to not complain, I don't want to add __all__ entries
@@ -392,7 +389,7 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    _data: str = ""
+    _data: bytes = b""  # content of files is read in bytes
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -420,12 +417,12 @@ class ParsedTeXFile(BaseModel):
         self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
             self.language = LanguageType.latex
-        if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
+        if re.search(rb"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
             self.language = LanguageType.latex
-        if re.search(r"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
             self.language = LanguageType.tex
             self.contains_bye = True
-        if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
                 self.issues.append(
@@ -433,9 +430,9 @@ class ParsedTeXFile(BaseModel):
                 )
             self.language = LanguageType.latex
 
-        if re.search(r"^[^%]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
+        if re.search(rb"^[^%]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
             self.contains_pdfoutput_true = True
-        if re.search(r"^[^%]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
+        if re.search(rb"^[^%]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
             self.contains_pdfoutput_false = True
 
     def update_engine_based_on_system_files(self) -> None:
@@ -459,13 +456,24 @@ class ParsedTeXFile(BaseModel):
         # (contemplate whether this is strictly necessary!)
 
         # preprocess data to remove comments
-        data = re.sub(re.compile(r"(?<!\\)%.*\n"), "", self._data)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", data):
-            self.mentioned_files[str(f)] = {"input": INCLUDE_COMMANDS_DICT["input"]}
+        data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
+        for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
+            # f is a byte string, but corresponds to an input file.
+            try:
+                ff = f.decode("utf-8")
+                self.mentioned_files[ff] = {"input": INCLUDE_COMMANDS_DICT["input"]}
+            except UnicodeDecodeError:
+                # TODO can we do more here?
+                logging.warning("Cannot decode argument to input: %s", f)
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX, data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(ARGS_INCLUDE_REGEX.encode("utf-8"), data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
-            self.collect_included_files(i)
+            try:
+                ii = [x.decode("utf-8") for x in i]
+                self.collect_included_files(ii)
+            except UnicodeDecodeError:
+                # TODO can we do more here?
+                logging.warning("Cannot decode argument: %s", i)
         logging.debug("%s found included files: %s", self.filename, self.mentioned_files)
 
     def collect_included_files(self, inc: list[str]) -> None:
@@ -1043,38 +1051,10 @@ def string_to_bool(value: str) -> bool:
 def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     """Parse a file for included commands."""
     with open(f"{basedir}/{filename}", "rb") as f:
-        rawdata = f.read()
-    detected_encoding_data = charset_detect(rawdata)
-    encoding: str | None = detected_encoding_data.get("encoding")
-    data: str
-    if encoding is None:
-        encoding = "utf-8"
-    # order of encodings we try:
-    # - utf-8 (which includes ascii!)
-    # - detected encoding
-    try_encodings: list[str] = []
-    if encoding != "utf-8":
-        try_encodings.append("utf-8")
-    try_encodings.append(encoding)
-    logging.debug("Trying the following encodings in order: %s", try_encodings)
-    found_encoding: str | None = None
-    for enc in try_encodings:
-        try:
-            data = str(rawdata.decode(enc))
-            found_encoding = enc
-            logging.debug("Detected encoding %s", enc)
-            break
-        except UnicodeDecodeError:
-            logging.debug("Failed to decode %s in %s", filename, enc)
-    if not found_encoding:
-        n = ParsedTeXFile(filename=filename)
-        n._data = ""
-        n.issues.append(TeXFileIssue(IssueType.contents_decode_error, f"cannot decode file, tried {try_encodings}"))
-        return n
-
+        data = f.read()
     # standardize line endings
-    line_ending_re = re.compile(r"\r\n|\r|\n")
-    data = re.sub(line_ending_re, "\n", data)
+    line_ending_re = re.compile(rb"\r\n|\r|\n")
+    data = re.sub(line_ending_re, b"\n", data)
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
