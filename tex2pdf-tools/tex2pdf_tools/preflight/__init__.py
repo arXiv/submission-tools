@@ -786,7 +786,8 @@ _extss = _merge(_extss, IMAGE_EXTENSIONS["luatex"].split())
 ALL_IMAGE_EXTS: str = " ".join(_extss)
 
 # only parse file with these extensions
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo"]
+# .pdf_tex are generated tex files from the svg.sty packages
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo", ".pdf_tex"]
 
 single_argument_include_commands = [
     "include",
