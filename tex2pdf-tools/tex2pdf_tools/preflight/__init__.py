@@ -760,6 +760,7 @@ class PreflightResponse(BaseModel):
     detected_toplevel_files: list[ToplevelFile]
     tex_files: list[ParsedTeXFile]
     ancillary_files: list[str]
+    maybe_used_files: list[str]
 
     def to_json(self, **kwargs: typing.Any) -> str:
         """Return a json representation."""
@@ -796,6 +797,10 @@ ALL_IMAGE_EXTS: str = " ".join(_extss)
 # only parse file with these extensions
 # .pdf_tex are generated tex files from the svg.sty packages
 PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo", ".pdf_tex"]
+# extensions of files we want to keep but cannot detect in preflight directly
+MAYBE_USED_FILE_EXTENSIONS = [
+    ".pygtex",  # frozen cache of minted/pygmentize
+]
 
 single_argument_include_commands = [
     "include",
@@ -1066,7 +1071,7 @@ def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     return n
 
 
-def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str]]:
+def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str], list[str]]:
     """Parse all TeX files in a directory."""
     glob_files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
@@ -1076,6 +1081,9 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     files = [f for f in all_files if not f.startswith("anc/")]
     # ancillary files
     anc_files = [t for t in all_files if t.startswith("anc/")]
+    #
+    # maybe files
+    maybe_files = [t for t in files if os.path.splitext(t)[1].lower() in MAYBE_USED_FILE_EXTENSIONS]
     # files = os.listdir(rundir)
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
@@ -1083,19 +1091,27 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
         # we didn't find any tex file, check for a single PDF file
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
-            return ToplevelFile(
-                filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
-            ), anc_files
+            return (
+                ToplevelFile(
+                    filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
+                ),
+                anc_files,
+                maybe_files,
+            )
         else:
             # check for HTML submissions
             for f in sorted(files):
                 if f.lower().endswith(".html"):
-                    return ToplevelFile(
-                        filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
-                    ), anc_files
+                    return (
+                        ToplevelFile(
+                            filename=f, process=MainProcessSpec(compiler=CompilerSpec(compiler=HTML_SUBMISSION_STRING))
+                        ),
+                        anc_files,
+                        maybe_files,
+                    )
     nodes = {f: parse_file(rundir, f) for f in tex_files}
     # print(nodes)
-    return nodes, anc_files
+    return nodes, anc_files, maybe_files
 
 
 def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, dict[str, str]]:
@@ -1491,7 +1507,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     roots: dict[str, ParsedTeXFile]
     toplevel_files: dict[str, ToplevelFile]
 
-    n, anc_files = parse_dir(rundir)
+    n, anc_files, maybe_files = parse_dir(rundir)
     if isinstance(n, ToplevelFile):
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
@@ -1526,6 +1542,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         detected_toplevel_files=[tl for tl in toplevel_files.values()],
         tex_files=[n for n in nodes.values()],
         ancillary_files=anc_files,
+        maybe_used_files=maybe_files,
     )
 
 
@@ -1539,6 +1556,7 @@ def generate_preflight_response(rundir: str, json: bool = False, **kwargs: typin
             detected_toplevel_files=[],
             tex_files=[],
             ancillary_files=[],
+            maybe_used_files=[],
         )
     if json:
         return pfr.to_json(**kwargs)

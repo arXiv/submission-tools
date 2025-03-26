@@ -74,12 +74,14 @@ class PreflightReport:
 
         visited: set[str] = set()
         used_files: set[str] = set()
+        maybe_used_files: set[str] = set(self.data.get("maybe_used_files", []))
         for top_level_file in top_level_files:
             used_files.update(collect_files([top_level_file], visited))
+        used_files.update(maybe_used_files)
         return list(used_files)
 
     def build_hierarchy(
-            self, specified_top_level_files: list[str] | None = None, include_all_files: bool = False
+        self, specified_top_level_files: list[str] | None = None, include_all_files: bool = False
     ) -> dict[str, typing.Any]:
         """Create the hierarchy response."""
 
@@ -118,6 +120,8 @@ class PreflightReport:
             updates = build_tree(top_level_file, visited, used_files)
             if updates:
                 hierarchy.update(updates)
+        # add the set of maybe used files as used files
+        used_files.update(self.data.get("maybe_used_files", []))
 
         all_files = set(self.list_top_level_files() + self.list_tex_files())
         not_selected_files = list(all_files - used_files)
