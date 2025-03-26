@@ -548,8 +548,6 @@ class ZeroZeroReadMe:
             if uf.usage == FileUsageType.toplevel:
                 # convert .tex to .pdf filename
                 assembly.append(strip_to_basename(fn, ".pdf"))
-            elif uf.usage == FileUsageType.include:
-                assembly.append(fn)
         return assembly
 
     def to_yaml(self, output: typing.TextIO) -> typing.TextIO:
