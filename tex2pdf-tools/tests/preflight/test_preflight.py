@@ -322,3 +322,66 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(issue.key, IssueType.bbl_version_mismatch)
         self.assertEqual(issue.filename, "bla.bbl")
 
+    def test_multi_usepackage(self):
+        """Test usepackage with multiple entries."""
+        dir_path = os.path.join(self.fixture_dir, "multi-usepackage")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["a.sty", "b.sty", "c.sty"])
+        assert found_main
+
+    def test_svg_compiler_detection(self):
+        """Test correct compiler detection despite unsupported img extension."""
+        dir_path = os.path.join(self.fixture_dir, "svg-include-compiler")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"pdf","postp":"none"}""",
+        )
+
+    def test_overlapping_filenames(self):
+        """Test same filename for multiple file types."""
+        dir_path = os.path.join(self.fixture_dir, "overlapping-filenames")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["article.tex"])
+        assert found_main
+
+    def test_overpic_filenames(self):
+        """Test overpic environment detection."""
+        dir_path = os.path.join(self.fixture_dir, "overpic")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_other_files), ["foo.jpg"])
+        assert found_main
+
+
+    def test_quoted_arguments(self):
+        """Test quoted arguments to commands."""
+        dir_path = os.path.join(self.fixture_dir, "quoted-arguments")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        found_main = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_other_files), ["bla bla.jpg", "foo.png"])
+        assert found_main

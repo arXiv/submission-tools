@@ -12,7 +12,6 @@ from itertools import zip_longest
 from pprint import pformat
 from typing import TypeVar
 
-import chardet
 from pydantic import BaseModel, Field
 
 # tell ruff to not complain, I don't want to add __all__ entries
@@ -88,6 +87,17 @@ class IncludeSpec(BaseModel):
     file_argument: int | list[int] = 1
     take_options: bool = True
     multi_args: bool = False
+
+    def ext_str(self) -> str:
+        """Return the list of extensions as string."""
+        exts: str = ""
+        if isinstance(self.extensions, dict):
+            exts = ALL_IMAGE_EXTS
+        elif self.extensions is None:
+            exts = ""
+        else:
+            exts = self.extensions
+        return exts
 
 
 class LanguageType(str, Enum):
@@ -379,7 +389,7 @@ class ParsedTeXFile(BaseModel):
     """Result of parsing a TeX file."""
 
     filename: str
-    _data: str = ""
+    _data: bytes = b""  # content of files is read in bytes
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -393,7 +403,7 @@ class ParsedTeXFile(BaseModel):
     used_ind_files: list[str] = []
     used_other_files: list[str] = []
     used_system_files: list[str] = Field(exclude=True, default=[])
-    mentioned_files: dict[str, IncludeSpec] = Field(exclude=True, default={})
+    mentioned_files: dict[str, dict[str, IncludeSpec]] = Field(exclude=True, default={})
     issues: list[TeXFileIssue] = []
     children: list["ParsedTeXFile"] = Field(exclude=True, default=[])
     parents: list["ParsedTeXFile"] = Field(exclude=True, default=[])
@@ -407,12 +417,12 @@ class ParsedTeXFile(BaseModel):
         self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
             self.language = LanguageType.latex
-        if re.search(r"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
+        if re.search(rb"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
             self.language = LanguageType.latex
-        if re.search(r"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
             self.language = LanguageType.tex
             self.contains_bye = True
-        if re.search(r"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
                 self.issues.append(
@@ -420,9 +430,9 @@ class ParsedTeXFile(BaseModel):
                 )
             self.language = LanguageType.latex
 
-        if re.search(r"^[^%]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
+        if re.search(rb"^[^%]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
             self.contains_pdfoutput_true = True
-        if re.search(r"^[^%]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
+        if re.search(rb"^[^%]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
             self.contains_pdfoutput_false = True
 
     def update_engine_based_on_system_files(self) -> None:
@@ -446,13 +456,24 @@ class ParsedTeXFile(BaseModel):
         # (contemplate whether this is strictly necessary!)
 
         # preprocess data to remove comments
-        data = re.sub(re.compile(r"(?<!\\)%.*\n"), "", self._data)
-        for f in re.findall(r"\\input\s+([-a-zA-Z0-9._]+)", data):
-            self.mentioned_files[str(f)] = INCLUDE_COMMANDS_DICT["input"]
+        data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
+        for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
+            # f is a byte string, but corresponds to an input file.
+            try:
+                ff = f.decode("utf-8")
+                self.mentioned_files[ff] = {"input": INCLUDE_COMMANDS_DICT["input"]}
+            except UnicodeDecodeError:
+                # TODO can we do more here?
+                logging.warning("Cannot decode argument to input: %s", f)
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX, data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(ARGS_INCLUDE_REGEX.encode("utf-8"), data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
-            self.collect_included_files(i)
+            try:
+                ii = [x.decode("utf-8") for x in i]
+                self.collect_included_files(ii)
+            except UnicodeDecodeError:
+                # TODO can we do more here?
+                logging.warning("Cannot decode argument: %s", i)
         logging.debug("%s found included files: %s", self.filename, self.mentioned_files)
 
     def collect_included_files(self, inc: list[str]) -> None:
@@ -464,6 +485,9 @@ class ParsedTeXFile(BaseModel):
         # inc[3] ... second argument (if present)
         # inc[4] ... third argument (if present)
         include_command = inc[0]
+        # special cases for environment style commands
+        if re.match(r"begin\s*{\s*overpic\s*}", include_command):
+            include_command = "overpic"
         if inc[1]:
             include_options = inc[1]
         else:
@@ -500,7 +524,7 @@ class ParsedTeXFile(BaseModel):
         include_extra_argument = include_extra_argument[1:-1]
         include_extra2_argument = include_extra2_argument[1:-1]
 
-        file_incspec: dict[str, IncludeSpec] = {}
+        file_incspec: dict[str, dict[str, IncludeSpec]] = {}
 
         # we ignore includes in self-defined macros
         if re.match(r"#[1-9]", include_argument):
@@ -521,29 +545,31 @@ class ParsedTeXFile(BaseModel):
             # the first argument might contain a trailing /, so remove double //
             filearg = filearg.replace("//", "/")
             filearg = filearg[2:] if filearg.startswith("./") else filearg
-            file_incspec[filearg.strip()] = incdef
+            file_incspec[filearg.strip().strip('"')] = {incdef.cmd: incdef}
         elif incdef.cmd == "usetikzlibrary":
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
-                file_incspec[f"tikzlibrary{f.strip()}.code.tex"] = incdef
+                file_incspec[f"""tikzlibrary{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliography":
             # replace end of line comments with empty string
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for bf in include_argument.split(","):
-                f = bf.strip()
+                f = bf.strip().strip('"')
                 f = f[2:] if f.startswith("./") else f
                 if f.endswith(".bib"):
-                    file_incspec[f] = incdef
+                    file_incspec[f] = {incdef.cmd: incdef}
                 else:
-                    file_incspec[f"{f}.bib"] = incdef
+                    file_incspec[f"{f}.bib"] = {incdef.cmd: incdef}
         elif incdef.cmd == "makeindex":  # \makeindex -> \newindex{default}{idx}{ind}{Index}
             logging.debug("makeindex found")
             # encode the information of index definition into the filename
-            file_incspec["<MAIN>.<default>.<idx>.<ind>"] = incdef
+            file_incspec["<MAIN>.<default>.<idx>.<ind>"] = {incdef.cmd: incdef}
         elif incdef.cmd == "newindex":  # \newindex{tag}{raw_extension}{compiled_extension}{Whatever title}
             logging.debug(f"newindex found with tag {include_extra_argument} and {include_extra2_argument}")
             # encode the information of index definition into the filename
-            file_incspec[f"<MAIN>.<{include_argument}>.<{include_extra_argument}>.<{include_extra2_argument}>"] = incdef
+            file_incspec[f"<MAIN>.<{include_argument}>.<{include_extra_argument}>.<{include_extra2_argument}>"] = {
+                incdef.cmd: incdef
+            }
         elif incdef.cmd == "printindex":  # \printindex[tag] (default is <default> for tag
             logging.debug(f"printindex found with tag {include_options}")
             if include_options == "":
@@ -551,21 +577,21 @@ class ParsedTeXFile(BaseModel):
             else:
                 tag = include_options
             # encode the information of index usage tag into the filename
-            file_incspec[f"<MAIN>.<{tag}>"] = incdef
+            file_incspec[f"<MAIN>.<{tag}>"] = {incdef.cmd: incdef}
         elif incdef.cmd == "usepackage" or incdef.cmd == "RequirePackage":
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
-                fn = f.strip()
+                fn = f.strip().strip('"')
                 fn = fn if fn.endswith(".sty") else f"{fn}.sty"
                 if fn == "hyperref.sty":
                     self.hyperref_found = True
-                file_incspec[fn] = incdef
+                file_incspec[fn] = {incdef.cmd: incdef}
         else:
             if isinstance(incdef.file_argument, int):
                 if incdef.file_argument == 1:
-                    filearg = include_argument.strip()
+                    filearg = include_argument.strip().strip('"')
                 elif incdef.file_argument == 2:
-                    filearg = include_extra_argument.strip()
+                    filearg = include_extra_argument.strip().strip('"')
                 else:
                     # logging.error("incdef.file_argument = %s", incdef.file_argument)
                     logging.error("incdef: %s", pformat(incdef))
@@ -580,10 +606,10 @@ class ParsedTeXFile(BaseModel):
                 if incdef.multi_args:
                     for f in filearg.split(","):
                         fn = f[2:] if f.startswith("./") else f
-                        file_incspec[fn.strip()] = incdef
+                        file_incspec[fn.strip().strip('"')] = {incdef.cmd: incdef}
                 else:
                     filearg = filearg[2:] if filearg.startswith("./") else filearg
-                    file_incspec[filearg] = incdef
+                    file_incspec[filearg] = {incdef.cmd: incdef}
 
             else:
                 raise PreflightException(f"Unexpected type of file_argument: {type(incdef.file_argument)}")
@@ -593,11 +619,15 @@ class ParsedTeXFile(BaseModel):
         # the filearg could be very strange stuff, like when \includegraphics is redefined
         # \def\includegraphics{....}
         # in the case of agutexSI2019.cls, the .... even includes a \n
-        file_incspec_cleaned: dict[str, IncludeSpec] = {}
+        file_incspec_cleaned: dict[str, dict[str, IncludeSpec]] = {}
         for k, v in file_incspec.items():
             k_cleaned = k.encode("unicode_escape").decode("utf-8")
-        file_incspec_cleaned[k_cleaned] = v
-        self.mentioned_files |= file_incspec_cleaned
+            file_incspec_cleaned[k_cleaned] = v
+        for k, v in file_incspec_cleaned.items():
+            if k in self.mentioned_files:
+                self.mentioned_files[k] |= file_incspec_cleaned[k]
+            else:
+                self.mentioned_files[k] = file_incspec_cleaned[k]
 
     def generic_walk_document_tree(self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T]) -> T:
         """Walk the document tree in map/reduce fashion."""
@@ -752,8 +782,20 @@ IMAGE_EXTENSIONS = {
     "dvipdfmx": "pdf ai png jpg jpeg jp2 jpf bmp ps eps mps",
 }
 
+
+def _merge(a: list[T], b: list[T]) -> list[T]:
+    return a + [e_b for e_b in b if e_b not in a]
+
+
+_extss: list[str] = IMAGE_EXTENSIONS["pdftex"].split()
+_extss = _merge(_extss, IMAGE_EXTENSIONS["dvips"].split())
+_extss = _merge(_extss, IMAGE_EXTENSIONS["dvipdfmx"].split())
+_extss = _merge(_extss, IMAGE_EXTENSIONS["luatex"].split())
+ALL_IMAGE_EXTS: str = " ".join(_extss)
+
 # only parse file with these extensions
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo"]
+# .pdf_tex are generated tex files from the svg.sty packages
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo", ".pdf_tex"]
 
 single_argument_include_commands = [
     "include",
@@ -869,6 +911,7 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="newindex", source="index", type=FileType.idx),
     IncludeSpec(cmd="makeindex", source="index", type=FileType.idx),
     IncludeSpec(cmd="printindex", source="index", type=FileType.ind),
+    IncludeSpec(cmd="overpic", source="overpic", type=FileType.other, extensions=IMAGE_EXTENSIONS),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
@@ -911,7 +954,8 @@ ARGS_INCLUDE_REGEX = r"""
         asyinclude|                      # asy
         newindex|                        # index
         makeindex|
-        printindex
+        printindex|
+        begin\s*{\s*overpic\s*}          # overpic
     )\s*(?:%.*\n)?
     \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
     \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
@@ -1007,29 +1051,10 @@ def string_to_bool(value: str) -> bool:
 def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
     """Parse a file for included commands."""
     with open(f"{basedir}/{filename}", "rb") as f:
-        rawdata = f.read()
-    detected_encoding_data = chardet.detect(rawdata)
-    encoding: str | None = detected_encoding_data.get("encoding")
-    data: str
-    if encoding is None:
-        encoding = "utf-8"
-    try:
-        data = str(rawdata.decode(encoding))
-    except UnicodeDecodeError:
-        logging.warning("Failed to decode %s in %s", filename, encoding)
-        try:
-            # try once more, this time with ascii
-            data = str(rawdata.decode("ascii"))
-        except UnicodeDecodeError:
-            n = ParsedTeXFile(filename=filename)
-            n._data = ""
-            n.issues.append(
-                TeXFileIssue(IssueType.contents_decode_error, f"cannot decode file, tried {encoding} and ascii")
-            )
-            return n
+        data = f.read()
     # standardize line endings
-    line_ending_re = re.compile(r"\r\n|\r|\n")
-    data = re.sub(line_ending_re, "\n", data)
+    line_ending_re = re.compile(rb"\r\n|\r|\n")
+    data = re.sub(line_ending_re, b"\n", data)
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
@@ -1073,31 +1098,18 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     return nodes, anc_files
 
 
-def _merge(a: list[T], b: list[T]) -> list[T]:
-    return a + [e_b for e_b in b if e_b not in a]
-
-
-def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, str]:
+def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, dict[str, str]]:
     """Search for files using kpsearch, using the lua script kpse_search.lua."""
     kpse_find_input_data = ""
-    extss: list[str] = IMAGE_EXTENSIONS["pdftex"].split()
-    extss = _merge(extss, IMAGE_EXTENSIONS["dvips"].split())
-    extss = _merge(extss, IMAGE_EXTENSIONS["dvipdfmx"].split())
-    extss = _merge(extss, IMAGE_EXTENSIONS["luatex"].split())
-    all_image_exts: str = " ".join(extss)
     for _, n in nodes.items():
-        for k, v in n.mentioned_files.items():
-            # we don't know the \jobname by now, so we cannot search for index files
-            # (.idx/.ind/etc)
-            if k.startswith("<MAIN>."):
-                continue
-            if isinstance(v.extensions, dict):
-                exts = all_image_exts
-            elif v.extensions is None:
-                exts = ""
-            else:
-                exts = v.extensions
-            kpse_find_input_data += f"{k}\n{exts}\n"
+        for k, subv in n.mentioned_files.items():
+            for cmd, v in subv.items():
+                # we don't know the \jobname by now, so we cannot search for index files
+                # (.idx/.ind/etc)
+                if k.startswith("<MAIN>."):
+                    continue
+                exts = v.ext_str()
+                kpse_find_input_data += f"{k}\n{exts}\n"
     logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
 
     if not kpse_find_input_data:
@@ -1111,62 +1123,69 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
         check=True,
     )
 
+    logging.debug("kpse_found return: ===\n%s\n===", p.stdout)
+
     # read back the output information
-    kpse_found = {}
-    for fname, found in zip_longest(*[iter(p.stdout.splitlines())] * 2, fillvalue=""):
+    kpse_found: dict[str, dict[str, str]] = {}
+    for fname, exts, found in zip_longest(*[iter(p.stdout.splitlines())] * 3, fillvalue=""):
+        logging.debug("zipping gives fname / exts / found = %s / %s / %s", fname, exts, found)
+        if fname not in kpse_found:
+            kpse_found[fname] = {}
         if found.startswith("./anc/"):
             # ignore ancillary files in the return, they should be marked
             # as not existing
-            kpse_found[fname] = ""
+            kpse_found[fname][exts] = ""
         else:
-            kpse_found[fname] = found[2:] if found.startswith("./") else found
+            kpse_found[fname][exts] = found[2:] if found.startswith("./") else found
 
     logging.debug("kpse_found return ====%s===", kpse_found)
     return kpse_found
 
 
 def update_nodes_with_kpse_info(
-    nodes: dict[str, ParsedTeXFile], kpse_found: dict[str, str]
+    nodes: dict[str, ParsedTeXFile], kpse_found: dict[str, dict[str, str]]
 ) -> dict[str, ParsedTeXFile]:
     """Update the parsed tex files with the location of used files."""
     for _, n in nodes.items():
-        for f in n.mentioned_files:
-            if f in kpse_found:
-                found = kpse_found[f]
-            elif f.startswith("<MAIN>."):
-                # deal with index idx/ind files that are based on jobname
-                # and aren't found.
-                logging.debug(r"keeping \jobname file %s", f)
-                found = f
-            else:
-                logging.error("kpse_found not containing =%s=", f)
-                break
-            if found.startswith("SYSTEM:"):
-                # record system files serparately
-                n.used_system_files.append(found[7:])
-                continue
-            # if we don't find the file, and it is not loaded optionally, record it as issue
-            if found == "":
-                if n.mentioned_files[f].cmd != "InputIfFileExists":
-                    n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
-                continue
-            if n.mentioned_files[f].type == FileType.tex:
-                n.used_tex_files.append(found)
-            elif n.mentioned_files[f].type == FileType.bib:
-                n.used_bib_files.append(found)
-            elif n.mentioned_files[f].type == FileType.bbl:
-                n.used_bbl_files.append(found)
-            elif n.mentioned_files[f].type == FileType.ind:
-                n.used_ind_files.append(found)
-            elif n.mentioned_files[f].type == FileType.idx:
-                n.used_idx_files.append(found)
-            elif n.mentioned_files[f].type == FileType.other:
-                n.used_other_files.append(found)
-            else:
-                raise PreflightException(f"Unknown file type {n.mentioned_files[f].type} for file {f}")
-        # n.update_engine_based_on_system_files()
-        # n.update_compiler_data()
-        # logging.debug("update_nodes_with_kpse_info: %s engine set to %s", n.filename, n.engine)
+        for f, subv in n.mentioned_files.items():
+            for cmd, v in subv.items():
+                v_exts = v.ext_str()
+                if f in kpse_found and v_exts in kpse_found[f]:
+                    found = kpse_found[f][v_exts]
+                elif f.startswith("<MAIN>."):
+                    # deal with index idx/ind files that are based on jobname
+                    # and aren't found.
+                    logging.debug(r"keeping \jobname file %s", f)
+                    found = f
+                else:
+                    logging.error("kpse_found not containing =%s=", f)
+                    break
+                if found.startswith("SYSTEM:"):
+                    # record system files serparately
+                    n.used_system_files.append(found[7:])
+                    continue
+                # if we don't find the file, and it is not loaded optionally, record it as issue
+                if found == "":
+                    if v.cmd != "InputIfFileExists":
+                        n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
+                    continue
+                if v.type == FileType.tex:
+                    n.used_tex_files.append(found)
+                elif v.type == FileType.bib:
+                    n.used_bib_files.append(found)
+                elif v.type == FileType.bbl:
+                    n.used_bbl_files.append(found)
+                elif v.type == FileType.ind:
+                    n.used_ind_files.append(found)
+                elif v.type == FileType.idx:
+                    n.used_idx_files.append(found)
+                elif v.type == FileType.other:
+                    n.used_other_files.append(found)
+                else:
+                    raise PreflightException(f"Unknown file type {v.type} for file {f}")
+            # n.update_engine_based_on_system_files()
+            # n.update_compiler_data()
+            # logging.debug("update_nodes_with_kpse_info: %s engine set to %s", n.filename, n.engine)
     return nodes
 
 
@@ -1257,10 +1276,16 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         dvips_exts = set(IMAGE_EXTENSIONS["dvips"].split())
         luatex_exts = set(IMAGE_EXTENSIONS["luatex"].split())
         dvipdfmx_exts = set(IMAGE_EXTENSIONS["dvipdfmx"].split())
+        all_exts = pdftex_exts | dvips_exts | luatex_exts | dvipdfmx_exts
         driver_paths = {"pdftex", "dvips", "dvipdfmx", "luatex"}
         for fn in all_other:
             _, ext = os.path.splitext(fn)
             f_ext = ext[1:].lower()
+            # if an extension is not supported by at least one engine,
+            # do not remove unsupported engines since we will end up
+            # with an empty set of supported engines.
+            if f_ext not in all_exts:
+                continue
             if f_ext not in pdftex_exts:
                 driver_paths.discard("pdftex")
             if f_ext not in dvips_exts:
