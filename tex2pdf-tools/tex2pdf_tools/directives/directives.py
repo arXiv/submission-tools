@@ -246,28 +246,41 @@ class DirectiveManager:
 
         # The current routine does not allow you to select the file, it picks it for
         # you. So we can't do V2.formatA -> v2.formatB
-        zzrm = ZeroZeroReadMe(self.root_dir)
-        data = zzrm.to_dict()
-
         new_00readme_path = os.path.join(self.root_dir, f"00README.{dest_format}")
-        serialized_data = serialize_data(data, dest_format)
-        write_readme_file(new_00readme_path, serialized_data)
+        try:
+            zzrm = ZeroZeroReadMe(self.root_dir)
+            data = zzrm.to_dict()
 
-        print(f"Upgraded to v2 and saved as {new_00readme_path}")
+            serialized_data = serialize_data(data, dest_format)
+            write_readme_file(new_00readme_path, serialized_data)
+
+            print(f"Upgraded to v2 and saved as {new_00readme_path}")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error parsing {new_00readme_path} build directives file: {e}")
 
     def process_directives(self, dest_format: str = "json"):
         """Load a ZZRM file and return it as dictionary."""
-        zzrm = ZeroZeroReadMe(self.src_dir)
-        self.readme_object = zzrm
+        data = None
+        zzrm_filename = self.get_active_directives_file()
+        try:
+            zzrm = ZeroZeroReadMe(self.src_dir)
+            zzrm_filename = zzrm.readme_filename
+            self.readme_object = zzrm
 
-        data = zzrm.to_dict()
+            data = zzrm.to_dict()
+        except json.JSONDecodeError as e:
+            error_message = f"Error parsing {zzrm_filename} build directives file: {e}"
+            raise ValueError(error_message)
+
         return data
 
     def readme_list_ignore(self):
         """Return the list of ignores."""
         if not self.readme_object:
             self.process_directives()
-        return self.readme_object.ignores
+        if self.readme_object:
+            return self.readme_object.ignores
+        return None
 
     def create_directives_file(
         self, basename: str = "00README", elements: dict | None = None, format: str = "json", force: bool = False
