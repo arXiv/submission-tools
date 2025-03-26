@@ -8,7 +8,7 @@ import toml
 import yaml
 
 from ..preflight import PreflightReport
-from ..zerozeroreadme import ZeroZeroReadMe
+from ..zerozeroreadme import ZeroZeroReadMe, ZZRMInvalidFormatError
 
 # Recognized directives file extensions (formats)
 DIRECTIVE_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
@@ -255,7 +255,7 @@ class DirectiveManager:
             write_readme_file(new_00readme_path, serialized_data)
 
             print(f"Upgraded to v2 and saved as {new_00readme_path}")
-        except json.JSONDecodeError as e:
+        except (json.JSONDecodeError, ZZRMInvalidFormatError)  as e:
             raise ValueError(f"Error parsing {new_00readme_path} build directives file: {e}")
 
     def process_directives(self, dest_format: str = "json"):
@@ -268,7 +268,8 @@ class DirectiveManager:
             self.readme_object = zzrm
 
             data = zzrm.to_dict()
-        except json.JSONDecodeError as e:
+        
+        except (json.JSONDecodeError, ZZRMInvalidFormatError) as e:
             error_message = f"Error parsing {zzrm_filename} build directives file: {e}"
             raise ValueError(error_message)
 
