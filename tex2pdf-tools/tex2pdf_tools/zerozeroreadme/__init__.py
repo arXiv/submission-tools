@@ -267,7 +267,7 @@ class ZeroZeroReadMe:
             if len(idioms) == 2:
                 filename = idioms[0]
                 keyword = idioms[1]
-                userfile: UserFile = UserFile(filename=filename)
+                userfile: UserFile = self.sources[filename] if filename in self.sources else UserFile(filename=filename)
                 # go over the possible entries in v1 00README files
                 #   file toplevelfile
                 #   file ignored
