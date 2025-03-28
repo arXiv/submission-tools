@@ -73,7 +73,7 @@ def docker_container(request):
     url = f"http://localhost:{PORT}"
 
     if not request.config.getoption("--no-docker-setup"):
-        image_name = "public-tex2pdf-app-2024-2024-07-21"
+        image_name = "public-tex2pdf-app-2023-2023-05-21"
         container_name = "test-arxiv-tex2pdf"
         dockerport = "8080"
 
