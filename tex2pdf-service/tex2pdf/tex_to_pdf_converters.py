@@ -18,6 +18,11 @@ from .service_logger import get_logger
 
 WITH_SHELL_ESCAPE = False
 
+# common command line arguments to all tex/latex calls
+COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-halt-on-error"]
+# extra latex command line arguments
+EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
+
 
 class NoTexFile(Exception):
     """No tex file found in the tarball"""
@@ -509,7 +514,7 @@ class LatexConverter(BaseDviConverter):
 
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         # breaks many packages... f"-output-directory=../{bod}"
-        args = ["/usr/bin/latex", "-interaction=batchmode", "-file-line-error", "-recorder"]
+        args = ["/usr/bin/latex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -557,7 +562,7 @@ class PdfLatexConverter(BaseConverter):
 
     def _get_pdflatex_args(self, tex_file: str) -> list[str]:
         """Return the pdflatex command line arguments"""
-        args = ["/usr/bin/pdflatex"] + ["-interaction=batchmode", "-recorder", "-file-line-error"]
+        args = ["/usr/bin/pdflatex",  *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         # You need this sometimes, and harmful sometimes.
         if not self.pdfoutput_1_seen:
             args.append("-output-format=pdf")
@@ -640,7 +645,7 @@ class PdfLatexConverter(BaseConverter):
 #         # pdf_filename = os.path.join(in_dir, stem_pdf)
 #         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
 #
-#         args = ["/usr/bin/pdftex", "-interaction=batchmode", "-recorder"]
+#         args = ["/usr/bin/pdftex",  *COMMON_TEX_CMD_LINE_ARGS]
 #         if WITH_SHELL_ESCAPE:
 #             args.append("-shell-escape")
 #         args.append(tex_file)
@@ -699,7 +704,7 @@ class VanillaTexConverter(BaseDviConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
 
-        args = ["/usr/bin/etex", "-interaction=batchmode", "-recorder"]
+        args = ["/usr/bin/etex", *COMMON_TEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
