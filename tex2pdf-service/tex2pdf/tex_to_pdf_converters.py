@@ -19,6 +19,11 @@ from .service_logger import get_logger
 WITH_SHELL_ESCAPE = False
 
 # common command line arguments to all tex/latex calls
+# -interaction=batchmode supress most console output
+# -recorder creates a .fls file that records all read/written files
+# -halt-on-error ensures that if an included file is missing, then La(TeX) does not
+#  continue to process the file and produce a PDF, but returns an error.
+# -file-line-error changes the formatting of the error messages
 COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-halt-on-error"]
 # extra latex command line arguments
 EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
