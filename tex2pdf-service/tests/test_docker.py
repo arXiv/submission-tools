@@ -261,3 +261,13 @@ def test_remote2023_anc_ignore(docker_container) -> None:
     pdf = converter.generate_pdf()
     assert pdf is None
     assert os.path.isfile(f"{out_dir}/test-anc-ignore.tar.gz-outcome.tar.gz")
+
+@pytest.mark.integration
+def test_api_missing_graphics(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-img/test-missing-img.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-missing-img.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # compilation must fail on missing files
+    assert meta.get("status") == "fail"
