@@ -1,5 +1,17 @@
 """GenPDF preflight parser."""
 
+# TODO for graphicspath
+# it seems that an image file that is included via a sub-tex files
+# is still mentioned as used other file in the toplevel file
+# THIS IS STRANGE and I have no idea why this happens (as of now)
+# BUT !!! THIS ALSO HAPPENS on master branch - are we supposed to have this?
+#
+# Also, used_tex_files seems to include the toplevel file itself ....
+# this does NOT happen on master!
+#
+# Also, CHECK whether graphicspath requires a final / or not
+# the lua script for now assumes that there is one!!!!
+#
 import glob
 import logging
 import os
@@ -390,7 +402,7 @@ class ParsedTeXFile(BaseModel):
 
     filename: str
     _data: bytes = b""  # content of files is read in bytes
-    _graphicspath: list[str] = []
+    _graphicspath: list[list[str]] = []
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -487,16 +499,22 @@ class ParsedTeXFile(BaseModel):
         # doing it with plain re
         graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
         logging.debug("Found the following graphicspath entries: %s!r", graphicspath_occurrences)
-        if graphicspath_occurrences:
-            # we found one or more matches, pick the last
-            last_match = graphicspath_occurrences[-1]
-            inside_group = last_match[0]  # this is the match inside the argument braces
+        gp_entries: list[list[str]] = []
+        for gp in graphicspath_occurrences:
+            inside_group = gp[0]  # this is the match inside the argument braces
             all_path = re.findall(rb"{([^}]*)}", inside_group)
-            try:
-                self._graphicspath = [d.strip().decode("utf-8") for d in all_path]
-            except UnicodeDecodeError:
-                # TODO can we do more here?
-                logging.warning("Cannot decode graphicspath entry: %s!r", all_path)
+            this_gp_entry: list[str] = []
+            for d in all_path:
+                try:
+                    this_gp_entry.append(d.strip().decode("utf-8"))
+                except UnicodeDecodeError:
+                    # TODO can we do more here?
+                    logging.warning("Cannot decode graphicspath entry: %s!r in %s!r", d, gp)
+            # if we could parse an entry, append it
+            if this_gp_entry:
+                gp_entries.append(this_gp_entry)
+        if gp_entries:
+            self._graphicspath = gp_entries
             logging.debug("Setting graphicspath to %s", self._graphicspath)
 
         # check for the rest of include commands
@@ -648,7 +666,7 @@ class ParsedTeXFile(BaseModel):
             else:
                 raise PreflightException(f"Unexpected type of file_argument: {type(incdef.file_argument)}")
 
-        logging.debug(file_incspec)
+        logging.debug("Detected inc spec: %s", file_incspec)
         # clean up the actual file argument
         # the filearg could be very strange stuff, like when \includegraphics is redefined
         # \def\includegraphics{....}
@@ -765,6 +783,7 @@ class ParsedTeXFile(BaseModel):
 
     def _recursive_collect_files(self, what: FileType | str, visited: dict[str, bool]) -> list[str]:
         """Recursively collect all tex/bib/other files."""
+        logging.debug("_recursive_collect_files: fn = %s, type = %s", self.filename, what)
         if what == FileType.bib:
             idx = "used_bib_files"
         elif what == FileType.bbl:
@@ -782,6 +801,7 @@ class ParsedTeXFile(BaseModel):
         else:
             raise PreflightException(f"no such file type: {what}")
         found: list[str] = getattr(self, idx)
+        logging.debug("_recursive_collect_files: setting found to %s", found)
         visited[self.filename] = True
         for n in self.children:
             if n.filename in visited:
@@ -1161,25 +1181,82 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     return nodes, anc_files, maybe_files
 
 
-def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str, dict[str, str]]:
-    """Search for files using kpsearch, using the lua script kpse_search.lua."""
+def kpse_search_files(
+    basedir: str, nodes: dict[str, ParsedTeXFile], toplevel_node: ParsedTeXFile | None = None
+) -> dict[str, dict[str, str]]:
+    """Search for files using kpsearch, using the lua script kpse_search.lua.
+
+    If toplevel_node is None, only search for TeX files, otherwise
+    search for all non-TeX files included recursively in the document tree
+    of toplevel_node.
+    """
     kpse_find_input_data = ""
-    for _, n in nodes.items():
+    if toplevel_node:
+        # The following does NOT include the toplevel_node itself!!!
+        all_used_nodes: list[str] = toplevel_node.recursive_collect_files(FileType.tex)
+        all_used_nodes.append(toplevel_node.filename)
+        search_nodes = {f: nodes[f] for f in all_used_nodes}
+        logging.debug(
+            "kpse_search_file: searching in document tree for %s - %s - %s",
+            toplevel_node.filename,
+            all_used_nodes,
+            search_nodes.keys(),
+        )
+        # search for graphics path
+        # if we find two or more, skip completely - this is not supported since we would need to know
+        # the order, and which images are loaded at what time
+        # Other option would be to make multiple graphicspath additive, which is not what
+        # latex does, but might help?
+        logging.debug("Bubbling up graphicspath to toplevel files")
+        all_graphicspaths: list[list[str]] = toplevel_node.generic_walk_document_tree(
+            lambda x: x._graphicspath,
+            lambda x, y: [*x, *y] if y is not None else x,  # we cannot use append, needs to be functional!
+            [],
+        )  # Deal with the set of "normal" inclusions
+        logging.debug("Bubbled up graphics path gives: %s", all_graphicspaths)
+        if len(all_graphicspaths) > 1:
+            logging.warning("Multiple graphicspath directive detected, skipping all of them!")
+        elif len(all_graphicspaths) == 1:
+            toplevel_node._graphicspath = all_graphicspaths
+            logging.debug(
+                "Set graphicspath of toplevel file %s to %s", toplevel_node.filename, toplevel_node._graphicspath
+            )
+        if toplevel_node and toplevel_node._graphicspath:
+            # there can only be one entry
+            kpse_find_input_data += f"""#graphicspath={":".join(toplevel_node._graphicspath[0])}\n"""
+    else:
+        search_nodes = nodes
+        logging.debug("kpse_search_file: searching all nodes for TeX files")
+
+    for _, n in search_nodes.items():
         for k, subv in n.mentioned_files.items():
             for cmd, v in subv.items():
+                logging.debug("kpse_search: k = %s, cmd = %s, v = %s", k, cmd, v)
+                # if we are in the first round (toplevel_files is empty) we only search
+                # for TeX files, so skip everything else.
+                if toplevel_node:
+                    # search for all but TeX files within the toplevel_node
+                    if v.type == FileType.tex:
+                        continue
+                else:
+                    # search for TeX files only
+                    if v.type != FileType.tex:
+                        continue
+
                 # we don't know the \jobname by now, so we cannot search for index files
                 # (.idx/.ind/etc)
                 if k.startswith("<MAIN>."):
                     continue
                 exts = v.ext_str()
                 kpse_find_input_data += f"{k}\n{exts}\n"
+                logging.debug("... adding k/exts %s/%s to find input", k, exts)
     logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
 
     if not kpse_find_input_data:
         return {}
 
     p = subprocess.run(
-        ["texlua", f"{MODULE_PATH}/kpse_search.lua", "-mark-sys-files", basedir],
+        ["texlua", f"{MODULE_PATH}/kpse_search.lua", "-v", "-mark-sys-files", basedir],
         input=kpse_find_input_data,
         capture_output=True,
         text=True,
@@ -1188,7 +1265,11 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
 
     logging.debug("kpse_found return: ===\n%s\n===", p.stdout)
     # lua script ships out debug output using DEBUG: header per line
-    lines = [line for line in p.stdout.splitlines() if line[:7] != "DEBUG: "]
+    lines_stdout = p.stdout.splitlines()
+    lines = [line for line in lines_stdout if line[:7] != "DEBUG: "]
+    for line in lines_stdout:
+        if line[:7] == "DEBUG: ":
+            logging.debug(f"kpse_find.lua {line}")
 
     # read back the output information
     kpse_found: dict[str, dict[str, str]] = {}
@@ -1212,11 +1293,15 @@ def update_nodes_with_kpse_info(
 ) -> dict[str, ParsedTeXFile]:
     """Update the parsed tex files with the location of used files."""
     for _, n in nodes.items():
+        logging.debug("update_nodes_with_kpse_info: working on %s", n.filename)
         for f, subv in n.mentioned_files.items():
+            logging.debug("... got f = %s", f)
             for cmd, v in subv.items():
                 v_exts = v.ext_str()
+                logging.debug("...... got cmd = %s, vexts = %s, v type = %s", cmd, v_exts, v.type)
                 if f in kpse_found and v_exts in kpse_found[f]:
                     found = kpse_found[f][v_exts]
+                    logging.debug("...... found %s", found)
                 elif f.startswith("<MAIN>."):
                     # deal with index idx/ind files that are based on jobname
                     # and aren't found.
@@ -1248,9 +1333,6 @@ def update_nodes_with_kpse_info(
                     n.used_other_files.append(found)
                 else:
                     raise PreflightException(f"Unknown file type {v.type} for file {f}")
-            # n.update_engine_based_on_system_files()
-            # n.update_compiler_data()
-            # logging.debug("update_nodes_with_kpse_info: %s engine set to %s", n.filename, n.engine)
     return nodes
 
 
@@ -1569,7 +1651,8 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             toplevel_files = {}
             status = PreflightStatus(key=PreflightStatusValues.error, info="No TeX files found")
         else:
-            # search for files with kpse
+            logging.debug("generate preflight: initial nodes = %s", nodes)
+            # search for TeX files only in a first round
             kpse_found = kpse_search_files(rundir, nodes)
             # update nodes with information of found kpse
             nodes = update_nodes_with_kpse_info(nodes, kpse_found)
@@ -1579,6 +1662,19 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             logging.debug("found root nodes: %s", roots.keys())
             # determine toplevel files
             toplevel_files = compute_toplevel_files(roots, nodes)
+            # search for all other files per toplevel file
+            for tlf in toplevel_files.keys():
+                tl_n = nodes[tlf]
+                logging.debug(
+                    "Working on toplevel file %s searching for other files %s", tl_n.filename, tl_n.used_other_files
+                )
+                kpse_found2 = kpse_search_files(rundir, nodes, tl_n)
+                nodes = update_nodes_with_kpse_info(nodes, kpse_found2)
+                logging.debug(
+                    "After working on toplevel file %s searching for other files - n.used_other_files = %s",
+                    tl_n.filename,
+                    nodes[tlf].used_other_files,
+                )
             # determine compilation settings
             guess_compilation_parameters(toplevel_files, nodes)
             # deal with bibliographies, which is painful
