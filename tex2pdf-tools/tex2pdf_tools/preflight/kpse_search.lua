@@ -41,6 +41,22 @@ end
 
 local graphicspath
 local program_name
+local mark_sys_files = true
+local subdir
+local debug = 0
+
+local function _do_debug(s,n)
+    if n <= debug then
+        print("DEBUG: " .. s)
+    end
+end
+local function _debug(s)
+    _do_debug(s,1)
+end
+local function _ddebug(s)
+    _do_debug(s,2)
+end
+
 
 local function read_files_and_exts()
     -- read all the lines from stdin
@@ -60,23 +76,29 @@ local function read_files_and_exts()
           filename = entry
           local extensions = io.read()
           if extensions == nil then break end -- should we warn about a lone filename?
-          -- print("found " .. filename .. " " .. extensions)
+          _ddebug("found " .. filename .. " " .. extensions)
           if fileexts[filename] == nil then
               fileexts[filename] = {}
           end
-          fileexts[filename] = extensions
+          fileexts[filename][extensions] = 1
       end
     end
     return fileexts
 end
 
-local mark_sys_files = true
-local subdir
-if arg[1] == "-mark-sys-files" then
-    mark_sys_files = false
-    subdir = arg[2]
-else
-    subdir = arg[1]
+
+local cur_arg = 1
+while cur_arg <= #arg do
+    if arg[cur_arg] == "-mark-sys-files" then
+        mark_sys_files = false
+    elseif arg[cur_arg] == "-v" then
+        debug = 1
+    elseif arg[cur_arg] == "-vv" then
+        debug = 2
+    else
+        subdir = arg[cur_arg]
+    end
+    cur_arg = cur_arg + 1
 end
 
 if subdir then
@@ -85,8 +107,8 @@ end
 
 local fileexts = read_files_and_exts()
 
-print("DEBUG: ===== GRAPHICS PATH = " .. (graphicspath or ""))
-print("DEBUG: ===== PROGRAM NAME  = " .. (program_name or ""))
+_debug("===== GRAPHICS PATH = " .. (graphicspath or ""))
+_debug("===== PROGRAM NAME  = " .. (program_name or ""))
 
 -- use the configured or default program name
 kpse.set_program_name(program_name or 'lualatex')
@@ -99,7 +121,7 @@ if next(fileexts) == nil then
 end
 
 local selfautoparent = kpse.var_value("SELFAUTOPARENT")
-print("DEBUG: selfautoparent = " .. selfautoparent)
+_debug("selfautoparent = " .. selfautoparent)
 
 -- prepare graphicspath for search
 if not graphicspath then
@@ -112,17 +134,25 @@ end
 -- search for all files with possible extensions given
 -- in addition, search also in entries of graphicspath
 for path, subv in pairs(fileexts) do
+    _ddebug("path = " .. path)
+    local result
+    local saved_exts
     for exts, val in pairs(subv) do
-        local result
+        saved_exts = exts
+        _ddebug("exts = " .. exts)
+        _ddebug("val = " .. val)
         -- loop over the graphicspath entries. We have at least one
         -- empty match to search as is
         for gp in string.gmatch(graphicspath, "[^:]*") do
-            -- print("searching for " .. gp .. path)
+            _ddebug("searching for " .. gp .. path)
             -- if we have an extension, search for the file as is first
             if path:match("^.+(%..+)$") then
                 -- Note that graphicspath entries need a final /
                 result = kpse.find_file(gp .. path)
-                if result then break end
+                if result then
+                    _ddebug("Found it! A")
+                    goto end_of_loops
+                end
             end
             -- print("found " .. (result or "nothing"))
             -- if we don't have a result, that is:
@@ -131,23 +161,28 @@ for path, subv in pairs(fileexts) do
             -- then search for the file with extension
             if not result then
                 for ext in string.gmatch(exts, "[^%s]+") do
+                    _ddebug("searching for " .. gp .. path .. "." .. ext)
                     result = kpse.find_file(gp .. path .. "." .. ext)
-                    if result then break end
+                    if result then
+                        _ddebug("Found it! B")
+                        goto end_of_loops
+                    end
                 end
             end
         end
-        if result and not mark_sys_files then
-            if string.startswith(result, selfautoparent) then
-                result = "SYSTEM:" .. result
-            end
+    end
+    ::end_of_loops::
+    if result and not mark_sys_files then
+        if string.startswith(result, selfautoparent) then
+            result = "SYSTEM:" .. result
         end
-        print(path)
-        print(exts)
-        if result then
-            print(result)
-        else
-            print()
-        end
+    end
+    print(path)
+    print(saved_exts)
+    if result then
+       print(result)
+    else
+       print()
     end
 end
 
