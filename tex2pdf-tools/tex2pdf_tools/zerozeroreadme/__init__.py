@@ -5,6 +5,7 @@ import os
 import typing
 from collections import OrderedDict
 from enum import Enum
+from json import JSONDecodeError
 
 import toml
 import tomli_w
@@ -95,6 +96,12 @@ class ZZRMKeyError(ZZRMException):
 
 class ZZRMParseError(ZZRMException):
     """Error when parsing a ZZRM from a dictionary."""
+
+    pass
+
+
+class ZZRMInvalidFormatError(ZZRMException):
+    """Error when parsing a yaml/toml/json fails."""
 
     pass
 
@@ -260,7 +267,7 @@ class ZeroZeroReadMe:
             if len(idioms) == 2:
                 filename = idioms[0]
                 keyword = idioms[1]
-                userfile: UserFile = UserFile(filename=filename)
+                userfile: UserFile = self.sources[filename] if filename in self.sources else UserFile(filename=filename)
                 # go over the possible entries in v1 00README files
                 #   file toplevelfile
                 #   file ignored
@@ -316,12 +323,23 @@ class ZeroZeroReadMe:
         zzrm = None
         match ext:
             case ".yml" | ".yaml":
-                loader = YAML()
-                zzrm = loader.load(data)
+                try:
+                    loader = YAML()
+                    zzrm = loader.load(data)
+                except Exception as e:
+                    # ruamel.yaml documentation is just **silent** about what exceptions it throws, how bad.
+                    raise ZZRMInvalidFormatError("Invalid file format") from e
             case ".json" | ".jsn" | ".ndjson":
-                zzrm = json.loads(data)
+                try:
+                    zzrm = json.loads(data)
+                except JSONDecodeError as e:
+                    raise ZZRMInvalidFormatError("Invalid file format") from e
             case ".toml":
-                zzrm = toml.loads(data)
+                try:
+                    zzrm = toml.loads(data)
+                except toml.TomlDecodeError as e:
+                    raise ZZRMInvalidFormatError("Invalid file format") from e
+
         if zzrm:
             self.version = 2
             self.from_dict(zzrm)
@@ -530,8 +548,6 @@ class ZeroZeroReadMe:
             if uf.usage == FileUsageType.toplevel:
                 # convert .tex to .pdf filename
                 assembly.append(strip_to_basename(fn, ".pdf"))
-            elif uf.usage == FileUsageType.include:
-                assembly.append(fn)
         return assembly
 
     def to_yaml(self, output: typing.TextIO) -> typing.TextIO:

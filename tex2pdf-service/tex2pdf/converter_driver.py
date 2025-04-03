@@ -14,7 +14,7 @@ from enum import Enum
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
-from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyError
+from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyError, ZZRMInvalidFormatError
 
 from . import (
     ID_TAG,
@@ -163,12 +163,9 @@ class ConverterDriver:
         self.t0 = time.perf_counter()
 
         self._unpack_tarball()
-        try:
-            self.zzrm = ZeroZeroReadMe(self.in_dir)
-        except ZZRMKeyError:
-            self.zzrm = ZeroZeroReadMe(None)
-            logger.warning("Input directory %s contains an invalid 00README file, and ignored", self.in_dir)
-            pass
+        # this might raise various exceptions, that should be reported to the API down the line
+        self.zzrm = ZeroZeroReadMe(self.in_dir)
+
         self.outcome = {
             ID_TAG: self.tag,
             "status": None,

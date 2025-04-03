@@ -41,7 +41,6 @@ files = []
 develop = false
 
 [package.dependencies]
-chardet = "^5.0"
 pydantic = "^2.8.2"
 ruamel-yaml = "^0.18.5"
 toml = "^0.10.2"
@@ -51,7 +50,7 @@ tomli_w = "^1.0"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "99d5ea8a887dd1a8e2a881e8e72aa8568b3e82b7"
+resolved_reference = "1a269ba5114104b5eb4437a445e784b5380c1c10"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -74,17 +73,6 @@ python-versions = ">=3.6"
 files = [
     {file = "certifi-2024.8.30-py3-none-any.whl", hash = "sha256:922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8"},
     {file = "certifi-2024.8.30.tar.gz", hash = "sha256:bec941d2aa8195e248a60b31ff9f0558284cf01a52591ceda73ea9afffd69fd9"},
-]
-
-[[package]]
-name = "chardet"
-version = "5.2.0"
-description = "Universal encoding detector for Python 3"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "chardet-5.2.0-py3-none-any.whl", hash = "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970"},
-    {file = "chardet-5.2.0.tar.gz", hash = "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7"},
 ]
 
 [[package]]

@@ -79,7 +79,7 @@ class PreflightReport:
         return list(used_files)
 
     def build_hierarchy(
-            self, specified_top_level_files: list[str] | None = None, include_all_files: bool = False
+        self, specified_top_level_files: list[str] | None = None, include_all_files: bool = False
     ) -> dict[str, typing.Any]:
         """Create the hierarchy response."""
 
@@ -128,4 +128,5 @@ class PreflightReport:
             "document_tree": hierarchy,
             "used_files": list(used_files),
             "not_selected": not_selected_files,
+            "maybe_used_files": self.data.get("maybe_used_files", []),
         }
