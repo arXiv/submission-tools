@@ -1187,10 +1187,12 @@ def kpse_search_files(basedir: str, nodes: dict[str, ParsedTeXFile]) -> dict[str
     )
 
     logging.debug("kpse_found return: ===\n%s\n===", p.stdout)
+    # lua script ships out debug output using DEBUG: header per line
+    lines = [line for line in p.stdout.splitlines() if line[:7] != "DEBUG: "]
 
     # read back the output information
     kpse_found: dict[str, dict[str, str]] = {}
-    for fname, exts, found in zip_longest(*[iter(p.stdout.splitlines())] * 3, fillvalue=""):
+    for fname, exts, found in zip_longest(*[iter(lines)] * 3, fillvalue=""):
         logging.debug("zipping gives fname / exts / found = %s / %s / %s", fname, exts, found)
         if fname not in kpse_found:
             kpse_found[fname] = {}
