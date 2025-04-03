@@ -390,6 +390,7 @@ class ParsedTeXFile(BaseModel):
 
     filename: str
     _data: bytes = b""  # content of files is read in bytes
+    _graphicspath: list[str] = []
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -459,12 +460,45 @@ class ParsedTeXFile(BaseModel):
         data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
         for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
             # f is a byte string, but corresponds to an input file.
+            logging.debug("%s regex found %s!r", self.filename, f)
             try:
                 ff = f.decode("utf-8")
                 self.mentioned_files[ff] = {"input": INCLUDE_COMMANDS_DICT["input"]}
             except UnicodeDecodeError:
                 # TODO can we do more here?
                 logging.warning("Cannot decode argument to input: %s", f)
+        # deal with finding \graphicspath{ ... }
+        # which is required to detect grpahics files in other directories
+        # format:
+        #    \graphicspath{  {path1/} {path2/} ... }
+        # list of paths in braces, must end in a forward /
+        # The general regexp does not allow braces in braces like { {foobar} }
+        # so we have to treat this differently
+        # we cannot use re.findall or so because we need balanced braces search
+        #
+        # using regex module
+        # data = "...\n\graphicspath{ {bla} }\n\\graphicspath{ {foo} { something/  } { bar } }\nsomerest"
+        # m = regex.search(r"^[^%\n]*?\\graphicspath\s*{(\s*{([^}]*)}\s*)+}",
+        #                  data, regex.MULTILINE | regex.REVERSE)
+        # m.allcaptures()[2] gives the inner list in reverse -> [' bar ', ' something/  ', 'foo']
+        # because this does a "reverse" search so the returned list is also in reverse!
+        # this search the LAST occurrence!
+
+        # doing it with plain re
+        graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
+        logging.debug("Found the following graphicspath entries: %s!r", graphicspath_occurrences)
+        if graphicspath_occurrences:
+            # we found one or more matches, pick the last
+            last_match = graphicspath_occurrences[-1]
+            inside_group = last_match[0]  # this is the match inside the argument braces
+            all_path = re.findall(rb"{([^}]*)}", inside_group)
+            try:
+                self._graphicspath = [d.strip().decode("utf-8") for d in all_path]
+            except UnicodeDecodeError:
+                # TODO can we do more here?
+                logging.warning("Cannot decode graphicspath entry: %s!r", all_path)
+            logging.debug("Setting graphicspath to %s", self._graphicspath)
+
         # check for the rest of include commands
         for i in re.findall(ARGS_INCLUDE_REGEX.encode("utf-8"), data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
