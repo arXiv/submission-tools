@@ -629,19 +629,32 @@ class ParsedTeXFile(BaseModel):
             else:
                 self.mentioned_files[k] = file_incspec_cleaned[k]
 
-    def generic_walk_document_tree(self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T]) -> T:
+    def generic_walk_document_tree(
+        self, map: Callable[["ParsedTeXFile"], T], reduce: Callable[[T, T], T], init: T | None = None
+    ) -> T:
         """Walk the document tree in map/reduce fashion."""
-        return self._generic_walk_document_tree(map, reduce, {})
+        return self._generic_walk_document_tree(map, reduce, {}, init)
 
     def _generic_walk_document_tree(
         self,
         map: Callable[["ParsedTeXFile"], T],
         reduce: Callable[[T, T], T],
         visited: dict[str, bool],
+        init: T | None = None,
     ) -> T:
         """Call a function on any node of a document tree - internal helper."""
-        ret = map(self)
+        if init is None:
+            logging.debug("generic_walk_document_tree: init is None")
+            ret = map(self)
+            logging.debug("generic_walk_document_tree: init ret to %s", ret)
+        else:
+            logging.debug("generic_walk_document_tree: init is %s", init)
+            selfmap = map(self)
+            logging.debug("generic_walk_document_tree: map self is %s", selfmap)
+            ret = reduce(init, selfmap)
+            logging.debug("generic_walk_document_tree: ret %s = reduce ( init %s , map self %s )", ret, init, selfmap)
         visited[self.filename] = True
+        logging.debug("generic_walk_document_tree: children = %s", [f.filename for f in self.children])
         for n in self.children:
             if n.filename not in visited:
                 ret_kid = n._generic_walk_document_tree(map, reduce, visited)
