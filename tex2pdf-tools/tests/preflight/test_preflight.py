@@ -252,6 +252,25 @@ class TestPreflight(unittest.TestCase):
             """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
         )
 
+    def test_epsfig_dvips(self):
+        """Test epsfig image extraction."""
+        dir_path = os.path.join(self.fixture_dir, "epsfig-test")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "main.tex")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
+        )
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                self.assertEqual(
+                    sorted(tf.used_other_files),
+                    ["bla.eps", "foo.eps"]
+                )
+
+
     def test_mixed_images(self):
         """Test failure when mixing png and eps."""
         dir_path = os.path.join(self.fixture_dir, "mixed-images")
