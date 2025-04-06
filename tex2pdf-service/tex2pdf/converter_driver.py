@@ -18,6 +18,7 @@ from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyE
 
 from . import (
     ID_TAG,
+    GIT_COMMIT_HASH,
     MAX_TIME_BUDGET,
     catalog_files,
     file_props,
@@ -562,6 +563,7 @@ class ConversionOutcomeMaker:
         zzrm_text = zzrm_generated.read()
         outcome_meta = {
             "version": 1,  # outcome format version
+            "git_hash": GIT_COMMIT_HASH,
             "in_directory": os.path.basename(in_dir),
             "out_directory": os.path.basename(out_dir),
             "in_files": catalog_files(in_dir),
