@@ -29,7 +29,7 @@ USE_ADDON_TREE: bool = os.environ.get("USE_ADDON_TREE") in ["y", "true"]
 MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
 MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 
-GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
+TEX2PDF_GIT_COMMIT_HASH: str = os.environ.get("TEX2PDF_GIT_COMMIT_HASH", "(unknown)")
 
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger"""

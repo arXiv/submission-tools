@@ -161,9 +161,10 @@ def test_api_git_hash(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
-    assert meta.get("git_hash") is not None
-    assert meta.get("git_hash") != ""
-    assert meta.get("git_hash") != "(unknown)"
+    assert meta.get("version_info") is not None
+    assert meta.get("version_info") != ""
+    assert meta.get("version_info") != "(unknown)"
+    assert meta.get("version_info").startswith("tex2pdf:")
 
 
 @pytest.mark.integration
