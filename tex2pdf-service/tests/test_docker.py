@@ -163,6 +163,7 @@ def test_api_git_hash(docker_container):
     assert meta is not None
     assert meta.get("git_hash") is not None
     assert meta.get("git_hash") != ""
+    assert meta.get("git_hash") != "(unknown)"
 
 
 @pytest.mark.integration
