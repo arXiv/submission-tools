@@ -524,11 +524,12 @@ class ConversionOutcomeMaker:
     done by a visitor class.
     """
 
-    def __init__(self, work_dir: str, tag: str, outcome_file: str | None = None):
+    def __init__(self, work_dir: str, tag: str, outcome_file: str | None = None, gen_id: str = "tex2pdf"):
         self.work_dir = work_dir
         self.tag = tag
         self.outcome_file = f"{tag}.outcome.tar.gz" if outcome_file is None else outcome_file
         self.log_extra = {ID_TAG: self.tag}
+        self.gen_id = gen_id
         pass
 
     def create_outcome(
@@ -563,7 +564,7 @@ class ConversionOutcomeMaker:
         zzrm_text = zzrm_generated.read()
         outcome_meta = {
             "version": 1,  # outcome format version
-            "version_info": f"tex2pdf:{TEX2PDF_GIT_COMMIT_HASH}",
+            "version_info": f"{self.gen_id}:{TEX2PDF_GIT_COMMIT_HASH}",
             "in_directory": os.path.basename(in_dir),
             "out_directory": os.path.basename(out_dir),
             "in_files": catalog_files(in_dir),
