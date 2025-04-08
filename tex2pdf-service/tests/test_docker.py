@@ -154,6 +154,18 @@ def test_api_smoke(docker_container):
     assert meta is None
     assert status == 500
 
+@pytest.mark.integration
+def test_api_git_hash(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("version_info") is not None
+    assert meta.get("version_info") != ""
+    assert meta.get("version_info") != "tex2pdf:(unknown)"
+    assert meta.get("version_info").startswith("tex2pdf:")
+
 
 @pytest.mark.integration
 def test_api_test2(docker_container):
