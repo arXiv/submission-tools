@@ -163,7 +163,7 @@ def test_api_git_hash(docker_container):
     assert meta is not None
     assert meta.get("version_info") is not None
     assert meta.get("version_info") != ""
-    assert meta.get("version_info") != "(unknown)"
+    assert meta.get("version_info") != "tex2pdf:(unknown)"
     assert meta.get("version_info").startswith("tex2pdf:")
 
 
