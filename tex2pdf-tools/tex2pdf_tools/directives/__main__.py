@@ -214,7 +214,7 @@ def main():
         with open(args.output_file, "w") as outfile:
             json.dump(directives, outfile, indent=2)
 
-    if args.base and args.identifier:
+    elif args.base and args.identifier:
         base_submission_dir = os.path.join(args.base, args.identifier[:4], args.identifier)
         if os.path.exists(base_submission_dir):
             new_filename = "directives.json"
