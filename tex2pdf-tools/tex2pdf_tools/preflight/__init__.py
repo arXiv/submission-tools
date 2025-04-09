@@ -424,7 +424,7 @@ class ParsedTeXFile(BaseModel):
         self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
             self.language = LanguageType.latex
-        if re.search(rb"\\text(bf|it|sl)|\\section|\\chapter", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*(\\text(bf|it|sl)|\\section|\\chapter)", self._data, re.MULTILINE):
             self.language = LanguageType.latex
         if re.search(rb"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
             self.language = LanguageType.tex
@@ -437,9 +437,9 @@ class ParsedTeXFile(BaseModel):
                 )
             self.language = LanguageType.latex
 
-        if re.search(rb"^[^%]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
             self.contains_pdfoutput_true = True
-        if re.search(rb"^[^%]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
+        if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
             self.contains_pdfoutput_false = True
 
     def update_engine_based_on_system_files(self) -> None:
@@ -466,7 +466,7 @@ class ParsedTeXFile(BaseModel):
         data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
         for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
             # f is a byte string, but corresponds to an input file.
-            logging.debug("%s regex found %s!r", self.filename, f)
+            logging.debug("%s regex found %s", self.filename, f)
             try:
                 ff = f.decode("utf-8")
                 self.mentioned_files[ff] = {"input": INCLUDE_COMMANDS_DICT["input"]}
@@ -492,7 +492,7 @@ class ParsedTeXFile(BaseModel):
 
         # doing it with plain re
         graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
-        logging.debug("Found the following graphicspath entries: %s!r", graphicspath_occurrences)
+        logging.debug("Found the following graphicspath entries: %s", graphicspath_occurrences)
         gp_entries: list[list[str]] = []
         for gp in graphicspath_occurrences:
             inside_group = gp[0]  # this is the match inside the argument braces
@@ -503,7 +503,7 @@ class ParsedTeXFile(BaseModel):
                     this_gp_entry.append(d.strip().decode("utf-8"))
                 except UnicodeDecodeError:
                     # TODO can we do more here?
-                    logging.warning("Cannot decode graphicspath entry: %s!r in %s!r", d, gp)
+                    logging.warning("Cannot decode graphicspath entry: %s in %s", d, gp)
             # if we could parse an entry, append it
             if this_gp_entry:
                 gp_entries.append(this_gp_entry)
@@ -803,7 +803,9 @@ class ParsedTeXFile(BaseModel):
             idx = "issues"
         else:
             raise PreflightException(f"no such file type: {what}")
-        found: list[str] = getattr(self, idx)
+        # we will extend this list, so we cannot use the attribute itself,
+        # but need a copy of it
+        found: list[str] = getattr(self, idx).copy()
         logging.debug("_recursive_collect_files: setting found to %s", found)
         visited[self.filename] = True
         for n in self.children:
@@ -1194,6 +1196,8 @@ def kpse_search_files(
     search for all non-TeX files included recursively in the document tree
     of toplevel_node.
     """
+    logging.debug("DUMP A")
+    _dump_nodes(nodes)
     kpse_find_input_data = ""
     if toplevel_node:
         # The following does NOT include the toplevel_node itself
@@ -1201,8 +1205,12 @@ def kpse_search_files(
         # it will be appended to the original node list, since these are only pointers
         # to lists.
         all_used_nodes: list[str] = toplevel_node.recursive_collect_files(FileType.tex).copy()
+        logging.debug("DUMP B")
+        _dump_nodes(nodes)
         all_used_nodes.append(toplevel_node.filename)
         search_nodes = {f: nodes[f] for f in all_used_nodes}
+        logging.debug("DUMP C")
+        _dump_nodes(nodes)
         logging.debug(
             "kpse_search_file: searching in document tree for %s - %s - %s",
             toplevel_node.filename,
@@ -1232,7 +1240,7 @@ def kpse_search_files(
             # there can only be one entry
             kpse_find_input_data += f"""#graphicspath={":".join(toplevel_node._graphicspath[0])}\n"""
     else:
-        search_nodes = nodes
+        search_nodes = nodes.copy()
         logging.debug("kpse_search_file: searching all nodes for TeX files")
 
     for _, n in search_nodes.items():
