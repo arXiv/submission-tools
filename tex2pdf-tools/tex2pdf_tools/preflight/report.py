@@ -113,8 +113,8 @@ class PreflightReport:
                             for child_filename in tex_file["used_ind_files"]:
                                 node[filename]["children"].append({child_filename: {"issues": [], "children": []}})
                                 used_files.add(child_filename)
-                        if "used_inx_files" in tex_file:
-                            for child_filename in tex_file["used_inx_files"]:
+                        if "used_idx_files" in tex_file:
+                            for child_filename in tex_file["used_idx_files"]:
                                 node[filename]["children"].append({child_filename: {"issues": [], "children": []}})
                                 used_files.add(child_filename)
             return node
