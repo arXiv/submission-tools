@@ -242,7 +242,9 @@ class TestDirectiveManager(unittest.TestCase):
         dir_path = os.path.join(self.fixture_dir, "index_files")
 
         preflight_file = os.path.join(dir_path, 'gcp_preflight.json')
-        src_dir = os.path.join(dir_path, 'src')
+        # src_dir is not required for this test, but the module checks that
+        # a src_dif exists
+        src_dir = preflight_file
         #output_json = <some temporary location that exists during tests>
 
         # Read the preflight JSON file and check specific fields
@@ -256,7 +258,7 @@ class TestDirectiveManager(unittest.TestCase):
         # put together arguments and call
 
         # Create
-        manager = DirectiveManager(dir_path)
+        manager = DirectiveManager(dir_path, src_dir)
         directives = {}
         serial = manager.process_directives()
         directives["directives"] = serial
