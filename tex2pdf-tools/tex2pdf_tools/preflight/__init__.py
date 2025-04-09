@@ -1297,7 +1297,7 @@ def kpse_search_files(
 
 
 def update_nodes_with_kpse_info(
-    nodes: dict[str, ParsedTeXFile], kpse_found: dict[str, dict[str, str]]
+    nodes: dict[str, ParsedTeXFile], kpse_found: dict[str, dict[str, str]], only_tex: bool
 ) -> dict[str, ParsedTeXFile]:
     """Update the parsed tex files with the location of used files."""
     for _, n in nodes.items():
@@ -1328,20 +1328,26 @@ def update_nodes_with_kpse_info(
                     if v.cmd != "InputIfFileExists":
                         n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
                     continue
-                if v.type == FileType.tex:
-                    n.used_tex_files.append(found)
-                elif v.type == FileType.bib:
-                    n.used_bib_files.append(found)
-                elif v.type == FileType.bbl:
-                    n.used_bbl_files.append(found)
-                elif v.type == FileType.ind:
-                    n.used_ind_files.append(found)
-                elif v.type == FileType.idx:
-                    n.used_idx_files.append(found)
-                elif v.type == FileType.other:
-                    n.used_other_files.append(found)
+                if only_tex:
+                    if v.type == FileType.tex:
+                        n.used_tex_files.append(found)
+                    else:
+                        logging.debug("Ignoring anything else in only_tex=True mode")
                 else:
-                    raise PreflightException(f"Unknown file type {v.type} for file {f}")
+                    if v.type == FileType.bib:
+                        n.used_bib_files.append(found)
+                    elif v.type == FileType.bbl:
+                        n.used_bbl_files.append(found)
+                    elif v.type == FileType.ind:
+                        n.used_ind_files.append(found)
+                    elif v.type == FileType.idx:
+                        n.used_idx_files.append(found)
+                    elif v.type == FileType.other:
+                        n.used_other_files.append(found)
+                    elif v.type == FileType.tex:
+                        logging.debug("Ignoring tex files in only_tex=False mode")
+                    else:
+                        raise PreflightException(f"Unknown file type {v.type} for file {f}")
     return nodes
 
 
@@ -1584,6 +1590,8 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
         #          ]
         all_ind = [fn[8:-1] for fn in node.recursive_collect_files(FileType.ind)]
         all_idx = [fn[7:] for fn in node.recursive_collect_files(FileType.idx)]
+        logging.debug("Got all_ind = %s", all_ind)
+        logging.debug("Got all_idx = %s", all_idx)
         defined_indices = {}
         for idxdef in all_idx:
             tag, idx_ext, ind_ext = idxdef.split(".")
@@ -1672,7 +1680,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             # search for TeX files only in a first round
             kpse_found = kpse_search_files(rundir, nodes)
             # update nodes with information of found kpse
-            nodes = update_nodes_with_kpse_info(nodes, kpse_found)
+            nodes = update_nodes_with_kpse_info(nodes, kpse_found, only_tex=True)
             logging.debug("found TeX file nodes: %s", nodes.keys())
             # create tree
             roots, nodes = compute_document_graph(nodes)
@@ -1686,7 +1694,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
                     "Working on toplevel file %s searching for other files %s", tl_n.filename, tl_n.used_other_files
                 )
                 kpse_found2 = kpse_search_files(rundir, nodes, tl_n)
-                nodes = update_nodes_with_kpse_info(nodes, kpse_found2)
+                nodes = update_nodes_with_kpse_info(nodes, kpse_found2, only_tex=False)
             logging.debug(
                 "After working on toplevel file %s searching for other files - n.used_other_files = %s",
                 tl_n.filename,
