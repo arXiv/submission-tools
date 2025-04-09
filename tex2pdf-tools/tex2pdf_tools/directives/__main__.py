@@ -213,7 +213,6 @@ def main():
     preflight_data = manager.load_preflight_data(args.preflight_file)
     #    directives['ignore'] = node
     directives["preflight"] = preflight_data
-    directives["preflight"] = preflight_data
 
     # Direct output to specified output file, otherwise use standard
     # submission directory (if available) to store
