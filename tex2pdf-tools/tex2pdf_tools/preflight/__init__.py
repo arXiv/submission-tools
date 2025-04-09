@@ -1318,7 +1318,7 @@ def update_nodes_with_kpse_info(
                 else:
                     # we search in two steps, so not all entries will ever be in the return value
                     logging.debug("kpse_found not containing =%s=", f)
-                    break
+                    continue
                 if found.startswith("SYSTEM:"):
                     # record system files serparately
                     n.used_system_files.append(found[7:])
@@ -1638,7 +1638,7 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
             tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=False)
 
 
-def _dump_nodes(nodes: dict[str, ParsedTeXFile]):
+def _dump_nodes(nodes: dict[str, ParsedTeXFile]) -> None:
     logging.debug("DUMPING NODES")
     for k, n in nodes.items():
         logging.debug("... DUMP node k = %s", k)

@@ -135,18 +135,20 @@ end
 -- in addition, search also in entries of graphicspath
 for path, subv in pairs(fileexts) do
     _ddebug("path = " .. path)
-    local result
-    local saved_exts
     for exts, val in pairs(subv) do
+        local result
+        local saved_exts
+        _ddebug("Entering search for " .. path)
         saved_exts = exts
         _ddebug("exts = " .. exts)
         _ddebug("val = " .. val)
         -- loop over the graphicspath entries. We have at least one
         -- empty match to search as is
         for gp in string.gmatch(graphicspath, "[^:]*") do
-            _ddebug("searching for " .. gp .. path)
+            _ddebug("Entering gp search for " .. gp .. path)
             -- if we have an extension, search for the file as is first
             if path:match("^.+(%..+)$") then
+                _debug("Found an extension")
                 -- Note that graphicspath entries need a final /
                 result = kpse.find_file(gp .. path)
                 if result then
@@ -170,19 +172,19 @@ for path, subv in pairs(fileexts) do
                 end
             end
         end
-    end
-    ::end_of_loops::
-    if result and not mark_sys_files then
-        if string.startswith(result, selfautoparent) then
-            result = "SYSTEM:" .. result
+        ::end_of_loops::
+        if result and not mark_sys_files then
+            if string.startswith(result, selfautoparent) then
+                result = "SYSTEM:" .. result
+            end
         end
-    end
-    print(path)
-    print(saved_exts)
-    if result then
-        print(result)
-    else
-        print()
+        print(path)
+        print(saved_exts)
+        if result then
+            print(result)
+        else
+            print()
+        end
     end
 end
 
