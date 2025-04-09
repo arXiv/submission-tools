@@ -244,7 +244,7 @@ class TestDirectiveManager(unittest.TestCase):
         preflight_file = os.path.join(dir_path, 'gcp_preflight.json')
         # src_dir is not required for this test, but the module checks that
         # a src_dif exists
-        src_dir = preflight_file
+        src_dir = dir_path
         #output_json = <some temporary location that exists during tests>
 
         # Read the preflight JSON file and check specific fields
