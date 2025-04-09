@@ -5,13 +5,7 @@
 # is still mentioned as used other file in the toplevel file
 # THIS IS STRANGE and I have no idea why this happens (as of now)
 # BUT !!! THIS ALSO HAPPENS on master branch - are we supposed to have this?
-#
-# Also, used_tex_files seems to include the toplevel file itself ....
-# this does NOT happen on master!
-#
-# Also, CHECK whether graphicspath requires a final / or not
-# the lua script for now assumes that there is one!!!!
-#
+
 import glob
 import logging
 import os
@@ -1200,13 +1194,13 @@ def kpse_search_files(
     search for all non-TeX files included recursively in the document tree
     of toplevel_node.
     """
-    # TODO !!!! SOMETHING IN THIS FUNCTION IS CHANGING `nodes` ???!?!?!?!?!
-    logging.debug("DUMP HACK enterin kpse_search")
-    _dump_nodes(nodes)
     kpse_find_input_data = ""
     if toplevel_node:
-        # The following does NOT include the toplevel_node itself!!!
-        all_used_nodes: list[str] = toplevel_node.recursive_collect_files(FileType.tex)
+        # The following does NOT include the toplevel_node itself
+        # we need to make a copy, otherwise, when we append the toplevel filename,
+        # it will be appended to the original node list, since these are only pointers
+        # to lists.
+        all_used_nodes: list[str] = toplevel_node.recursive_collect_files(FileType.tex).copy()
         all_used_nodes.append(toplevel_node.filename)
         search_nodes = {f: nodes[f] for f in all_used_nodes}
         logging.debug(
@@ -1220,8 +1214,6 @@ def kpse_search_files(
         # the order, and which images are loaded at what time
         # Other option would be to make multiple graphicspath additive, which is not what
         # latex does, but might help?
-        logging.debug("DUMP HACK BBBBB")
-        _dump_nodes(nodes)
         logging.debug("Bubbling up graphicspath to toplevel files")
         all_graphicspaths: list[list[str]] = toplevel_node.generic_walk_document_tree(
             lambda x: x._graphicspath,
@@ -1242,8 +1234,6 @@ def kpse_search_files(
     else:
         search_nodes = nodes
         logging.debug("kpse_search_file: searching all nodes for TeX files")
-    logging.debug("DUMP HACK AAAAA")
-    _dump_nodes(nodes)
 
     for _, n in search_nodes.items():
         for k, subv in n.mentioned_files.items():
@@ -1272,8 +1262,9 @@ def kpse_search_files(
     if not kpse_find_input_data:
         return {}
 
+    debug_args = ["-v"] if logging.root.level == logging.DEBUG else []
     p = subprocess.run(
-        ["texlua", f"{MODULE_PATH}/kpse_search.lua", "-v", "-mark-sys-files", basedir],
+        ["texlua", f"{MODULE_PATH}/kpse_search.lua", *debug_args, "-mark-sys-files", basedir],
         input=kpse_find_input_data,
         capture_output=True,
         text=True,
@@ -1325,7 +1316,8 @@ def update_nodes_with_kpse_info(
                     logging.debug(r"keeping \jobname file %s", f)
                     found = f
                 else:
-                    logging.error("kpse_found not containing =%s=", f)
+                    # we search in two steps, so not all entries will ever be in the return value
+                    logging.debug("kpse_found not containing =%s=", f)
                     break
                 if found.startswith("SYSTEM:"):
                     # record system files serparately
@@ -1687,27 +1679,19 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             logging.debug("found root nodes: %s", roots.keys())
             # determine toplevel files
             toplevel_files = compute_toplevel_files(roots, nodes)
-            _dump_nodes(nodes)
             # search for all other files per toplevel file
             for tlf in toplevel_files.keys():
                 tl_n = nodes[tlf]
                 logging.debug(
                     "Working on toplevel file %s searching for other files %s", tl_n.filename, tl_n.used_other_files
                 )
-                logging.debug("DUMPING NODES in loop BEFORE kpse_search_files")
-                _dump_nodes(nodes)
                 kpse_found2 = kpse_search_files(rundir, nodes, tl_n)
-                logging.debug("DUMPING NODES in loop BEFORE UPDATE")
-                _dump_nodes(nodes)
                 nodes = update_nodes_with_kpse_info(nodes, kpse_found2)
-                logging.debug("DUMPING NODES in loop AFTER UPDATE")
-                _dump_nodes(nodes)
             logging.debug(
                 "After working on toplevel file %s searching for other files - n.used_other_files = %s",
                 tl_n.filename,
                 nodes[tlf].used_other_files,
             )
-            _dump_nodes(nodes)
             # determine compilation settings
             guess_compilation_parameters(toplevel_files, nodes)
             # deal with bibliographies, which is painful

@@ -180,9 +180,9 @@ for path, subv in pairs(fileexts) do
     print(path)
     print(saved_exts)
     if result then
-       print(result)
+        print(result)
     else
-       print()
+        print()
     end
 end
 
