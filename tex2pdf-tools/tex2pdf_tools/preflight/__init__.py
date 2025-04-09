@@ -638,6 +638,15 @@ class ParsedTeXFile(BaseModel):
                 if fn == "hyperref.sty":
                     self.hyperref_found = True
                 file_incspec[fn] = {incdef.cmd: incdef}
+        elif incdef.cmd == "psfig" or incdef.cmd == "epsfig":
+            # Command syntax: \(e)psfig{file=xxxx, ...}
+            # which is similar to \includegraphics[...]{xxxx}
+            for f in include_argument.split(","):
+                stanza = f.strip().strip('"')
+                if stanza.startswith("file="):
+                    file_incspec[stanza[5:]] = {incdef.cmd: incdef}
+                elif stanza.startswith("figure="):
+                    file_incspec[stanza[7:]] = {incdef.cmd: incdef}
         else:
             if isinstance(incdef.file_argument, int):
                 if incdef.file_argument == 1:
@@ -1008,6 +1017,7 @@ ARGS_INCLUDE_REGEX = r"""
         bibliography|
         includegraphics|                 # graphic[sx]
         epsfig|                          # epsfig
+        psfig|
         import|                          # import \import{prefix}{file} searches prefix/file
         includestandalone|               # standalone \includestandalone[〈options〉]{〈file〉}
         subfile|                         # subfiles

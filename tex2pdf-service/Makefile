@@ -47,6 +47,7 @@ app.docker:
 		--progress=plain \
 	        --build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_BASE_IMAGE_DATE} \
+		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
 		--platform=linux/amd64 -t ${app_tag}-${base_tag_version}:latest .
 
 #-#
