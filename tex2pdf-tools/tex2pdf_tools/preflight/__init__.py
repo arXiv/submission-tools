@@ -1204,6 +1204,7 @@ def kpse_search_files(
     logging.debug("DUMP A")
     _dump_nodes(nodes)
     kpse_find_input_data = ""
+    kpse_find_input_data_prefix = ""
     if toplevel_node:
         # The following does NOT include the toplevel_node itself
         # we need to make a copy, otherwise, when we append the toplevel filename,
@@ -1248,7 +1249,7 @@ def kpse_search_files(
             )
         if toplevel_node and toplevel_node._graphicspath:
             # there can only be one entry
-            kpse_find_input_data += f"""#graphicspath={":".join(toplevel_node._graphicspath[0])}\n"""
+            kpse_find_input_data_prefix += f"""#graphicspath={":".join(toplevel_node._graphicspath[0])}\n"""
     else:
         search_nodes = nodes.copy()
         logging.debug("kpse_search_file: searching all nodes for TeX files")
@@ -1275,15 +1276,16 @@ def kpse_search_files(
                 exts = v.ext_str()
                 kpse_find_input_data += f"{k}\n{exts}\n"
                 logging.debug("... adding k/exts %s/%s to find input", k, exts)
-    logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
 
     if not kpse_find_input_data:
         return {}
 
+    logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
+
     debug_args = ["-v"] if logging.root.level == logging.DEBUG else []
     p = subprocess.run(
         ["texlua", f"{MODULE_PATH}/kpse_search.lua", *debug_args, "-mark-sys-files", basedir],
-        input=kpse_find_input_data,
+        input=kpse_find_input_data_prefix + kpse_find_input_data,
         capture_output=True,
         text=True,
         check=True,
@@ -1573,20 +1575,20 @@ def deal_with_bibliographies(
             # % $ biblatex auxiliary file $
             # % $ biblatex bbl format version 3.3 $
             # % Do not modify the above lines!
-            with open(bbl_file_full_path) as bblfn:
+            with open(bbl_file_full_path, "rb") as bblfn:
                 # try to read up to three lines from the .bbl file
                 # This ma fail for empty .bbl files or files containing less than three lines
                 # in this case the next throws the StopIteration exception
                 try:
                     head = [next(bblfn).strip() for _ in range(3)]
                 except StopIteration:
-                    head = [""]
-            if head[0] == "% $ biblatex auxiliary file $":
+                    head = [b""]
+            if head[0] == b"% $ biblatex auxiliary file $":
                 # only check files created by biblatex/biber
                 is_biber = True
-                if head[1].startswith("% $ biblatex bbl format version "):
-                    bbl_version = head[1].removeprefix("% $ biblatex bbl format version ").removesuffix(" $")
-                    if bbl_version != CURRENT_ARXIV_TEX_BBL_VERSION:
+                if head[1].startswith(b"% $ biblatex bbl format version "):
+                    bbl_version = head[1].removeprefix(b"% $ biblatex bbl format version ").removesuffix(b" $")
+                    if bbl_version != CURRENT_ARXIV_TEX_BBL_VERSION.encode("ascii"):
                         node.issues.append(
                             TeXFileIssue(
                                 IssueType.bbl_version_mismatch,
