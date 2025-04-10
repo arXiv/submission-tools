@@ -69,7 +69,14 @@ def main():
     if args.base and args.base is not DEFAULT_BASE and args.root_dir:
         parser.error("Arguments --base_dir and --root_dir cannot be used together.")
 
-    if not args.root_dir and args.base and not os.path.exists(args.base):
+    if args.root_dir and not os.path.exists(args.root_dir):
+        parser.error(
+            f"Arguments root directory does not exist {args.root_dir}"
+        )
+
+    if not args.root_dir and args.base and not os.path.exists(args.base)\
+            and not (args.preflight_file and args.src_dir):
+        # Allow override when both preflight file and src directory are specified.
         parser.error(
             f"Arguments base directory does not exist {args.base}: Use --root_dir or both --base and --identifier."
         )
@@ -206,7 +213,6 @@ def main():
     preflight_data = manager.load_preflight_data(args.preflight_file)
     #    directives['ignore'] = node
     directives["preflight"] = preflight_data
-    directives["preflight"] = preflight_data
 
     # Direct output to specified output file, otherwise use standard
     # submission directory (if available) to store
@@ -214,7 +220,7 @@ def main():
         with open(args.output_file, "w") as outfile:
             json.dump(directives, outfile, indent=2)
 
-    if args.base and args.identifier:
+    elif args.base and args.identifier:
         base_submission_dir = os.path.join(args.base, args.identifier[:4], args.identifier)
         if os.path.exists(base_submission_dir):
             new_filename = "directives.json"

@@ -1,0 +1,57 @@
+{
+  "status": {
+    "key": "success"
+  },
+  "detected_toplevel_files": [
+    {
+      "filename": "solvable.tex",
+      "process": {
+        "compiler": {
+          "engine": "tex",
+          "lang": "latex",
+          "output": "pdf",
+          "postp": "none"
+        },
+        "bibliography": {
+          "pre_generated": true
+        },
+        "index": {
+          "pre_generated": true
+        }
+      },
+      "hyperref_found": true,
+      "issues": [
+        {
+          "key": "issue_in_subfile",
+          "info": "1",
+          "filename": "solvable.tex"
+        }
+      ]
+    }
+  ],
+  "tex_files": [
+    {
+      "filename": "solvable.tex",
+      "language": "latex",
+      "contains_documentclass": true,
+      "hyperref_found": true,
+      "used_idx_files": [
+        "solvable.idx"
+      ],
+      "used_ind_files": [
+        "solvable.ind"
+      ],
+      "used_other_files": [
+        "solvable.bbl"
+      ],
+      "issues": [
+        {
+          "key": "file_not_found",
+          "info": "cft.bib"
+        }
+      ]
+    }
+  ],
+  "ancillary_files": [],
+  "maybe_used_files": []
+}
