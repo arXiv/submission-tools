@@ -585,6 +585,11 @@ class ParsedTeXFile(BaseModel):
         # checked for the key presence above
         incdef = INCLUDE_COMMANDS_DICT[include_command]
 
+        no_arguments_commands = ["makeindex", "printindex"]
+        if include_argument == "" and incdef.cmd not in no_arguments_commands:
+            logging.debug(r"Skipping %s due to empty argument, maybe a \verb?", incdef.cmd)
+            return
+
         # first deal with special cases
         if incdef.cmd == "import":  # \import{prefix}{file} searches prefix/file
             filearg = f"{include_argument}/{include_extra_argument}"
@@ -1208,7 +1213,12 @@ def kpse_search_files(
         logging.debug("DUMP B")
         _dump_nodes(nodes)
         all_used_nodes.append(toplevel_node.filename)
-        search_nodes = {f: nodes[f] for f in all_used_nodes}
+        search_nodes = {}
+        for f in all_used_nodes:
+            if f in nodes:
+                search_nodes[f] = nodes[f]
+            else:
+                logging.debug("TeX-like file included but not found, skipping: %s", f)
         logging.debug("DUMP C")
         _dump_nodes(nodes)
         logging.debug(
@@ -1305,11 +1315,24 @@ def kpse_search_files(
 
 
 def update_nodes_with_kpse_info(
-    nodes: dict[str, ParsedTeXFile], kpse_found: dict[str, dict[str, str]], only_tex: bool
+    nodes: dict[str, ParsedTeXFile],
+    kpse_found: dict[str, dict[str, str]],
+    only_tex: bool,
+    toplevel_node: ParsedTeXFile | None = None,
 ) -> dict[str, ParsedTeXFile]:
-    """Update the parsed tex files with the location of used files."""
+    """Update the parsed tex files with the location of used files.
+
+    If toplevel_node is given, only update nodes below that node in the document forest.
+    """
+    selected_nodes: list[str] = []
+    if toplevel_node:
+        selected_nodes = toplevel_node.recursive_collect_files(FileType.tex).copy()
+        selected_nodes.append(toplevel_node.filename)
     for _, n in nodes.items():
-        logging.debug("update_nodes_with_kpse_info: working on %s", n.filename)
+        if selected_nodes and n.filename not in selected_nodes:
+            logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, toplevel_node.filename)
+            continue
+        logging.debug("update_nodes_with_kpse_info: working on %s only_tex = %s", n.filename, only_tex)
         for f, subv in n.mentioned_files.items():
             logging.debug("... got f = %s", f)
             for cmd, v in subv.items():
@@ -1343,7 +1366,9 @@ def update_nodes_with_kpse_info(
                         logging.debug("Ignoring anything else in only_tex=True mode")
                 else:
                     if v.type == FileType.bib:
+                        logging.debug("Adding for %s found %s to used_bib_files", n.filename, found)
                         n.used_bib_files.append(found)
+                        logging.debug("Now used_bib_files = %s", n.used_bib_files)
                     elif v.type == FileType.bbl:
                         n.used_bbl_files.append(found)
                     elif v.type == FileType.ind:
@@ -1508,7 +1533,8 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         elif not supported_compiler_strings:
             issues.append(
                 TeXFileIssue(
-                    IssueType.unsupported_compiler_type, f"compiler(s) {possible_compiler_strings} not supported"
+                    IssueType.unsupported_compiler_type,
+                    f"compiler(s) {sorted(possible_compiler_strings)} not supported",
                 )
             )
 
@@ -1702,7 +1728,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
                     "Working on toplevel file %s searching for other files %s", tl_n.filename, tl_n.used_other_files
                 )
                 kpse_found2 = kpse_search_files(rundir, nodes, tl_n)
-                nodes = update_nodes_with_kpse_info(nodes, kpse_found2, only_tex=False)
+                nodes = update_nodes_with_kpse_info(nodes, kpse_found2, only_tex=False, toplevel_node=tl_n)
             logging.debug(
                 "After working on toplevel file %s searching for other files - n.used_other_files = %s",
                 tl_n.filename,
