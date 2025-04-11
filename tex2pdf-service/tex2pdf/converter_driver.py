@@ -18,6 +18,7 @@ from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyE
 
 from . import (
     ID_TAG,
+    GIT_COMMIT_HASH,
     MAX_TIME_BUDGET,
     catalog_files,
     file_props,
@@ -523,11 +524,12 @@ class ConversionOutcomeMaker:
     done by a visitor class.
     """
 
-    def __init__(self, work_dir: str, tag: str, outcome_file: str | None = None):
+    def __init__(self, work_dir: str, tag: str, outcome_file: str | None = None, gen_id: str = "tex2pdf"):
         self.work_dir = work_dir
         self.tag = tag
         self.outcome_file = f"{tag}.outcome.tar.gz" if outcome_file is None else outcome_file
         self.log_extra = {ID_TAG: self.tag}
+        self.gen_id = gen_id
         pass
 
     def create_outcome(
@@ -562,6 +564,7 @@ class ConversionOutcomeMaker:
         zzrm_text = zzrm_generated.read()
         outcome_meta = {
             "version": 1,  # outcome format version
+            "version_info": f"{self.gen_id}:{GIT_COMMIT_HASH}",
             "in_directory": os.path.basename(in_dir),
             "out_directory": os.path.basename(out_dir),
             "in_files": catalog_files(in_dir),
@@ -579,7 +582,14 @@ class ConversionOutcomeMaker:
         if converter_driver.converter:
             outcome_meta["converter"] = converter_driver.converter.converter_name()
         if outcome:
+            # outcome could come from a remote call and already contain a `version_info`
+            complete_version_info: str = ""
+            if "version_info" in outcome:
+                complete_version_info = f"""{outcome_meta["version_info"]} {outcome["version_info"]}"""
+            else:
+                complete_version_info = str(outcome_meta["version_info"])
             outcome_meta.update(outcome)
+            outcome_meta["version_info"] = complete_version_info
         outcome_meta_file = f"outcome-{self.tag}.json"
         with open(os.path.join(self.work_dir, outcome_meta_file), "w", encoding="utf-8") as fd:
             json.dump(outcome_meta, fd, indent=2)

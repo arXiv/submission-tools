@@ -1,5 +1,6 @@
 import unittest
 import os
+import json
 from unittest.mock import MagicMock, patch
 from tex2pdf_tools.directives import DirectiveManager
 
@@ -232,6 +233,46 @@ class TestDirectiveManager(unittest.TestCase):
         mock_listdir.return_value = ['00README.XXX']
         manager = DirectiveManager("dummy_dir")
         self.assertFalse(manager.v2_exists())
+
+    def setUp(self):
+        self.fixture_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixture"))
+
+    def test_used_index_files(self) -> None:
+        """Test detection of used index files."""
+        dir_path = os.path.join(self.fixture_dir, "index_files")
+
+        preflight_file = os.path.join(dir_path, 'gcp_preflight.json')
+        # src_dir is not required for this test, but the module checks that
+        # a src_dif exists
+        src_dir = dir_path
+        #output_json = <some temporary location that exists during tests>
+
+        # Read the preflight JSON file and check specific fields
+        with open(preflight_file, 'r') as f:
+            preflight_json = json.load(f)
+            tex_files = preflight_json.get("tex_files", [])
+            # Note: "solvable.idx" exists in preflight but not in src directory
+            self.assertTrue(any("solvable.idx" in file.get("used_idx_files", []) for file in tex_files))
+            self.assertTrue(any("solvable.ind" in file.get("used_ind_files", []) for file in tex_files))
+
+        # put together arguments and call
+
+        # Create
+        manager = DirectiveManager(dir_path, src_dir)
+        directives = {}
+        serial = manager.process_directives()
+        directives["directives"] = serial
+        preflight_data = manager.load_preflight_data(preflight_file)
+        directives["preflight"] = preflight_data
+
+        # For manual inspection
+        with open('/tmp/test_output.json', "w") as outfile:
+            json.dump(directives, outfile, indent=2)
+
+        # Inspect the JSON output for specific field values
+        self.assertIn("used_files", directives["preflight"])
+        self.assertIn("solvable.ind", directives["preflight"]["used_files"])
+
 
 if __name__ == "__main__":
     unittest.main()
