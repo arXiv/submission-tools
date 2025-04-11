@@ -1100,7 +1100,7 @@ COMPILER["xelatex"] = CompilerSpec(
 )
 
 ALL_COMPILERS = list(COMPILER.values())
-ALL_COMPILERS_STR = [c.compiler_string for c in ALL_COMPILERS]
+ALL_COMPILERS_STR: list[str] = [c.compiler_string for c in ALL_COMPILERS if c.compiler_string is not None]
 DVI_COMPILERS = [c for c in ALL_COMPILERS if c.output == OutputType.dvi]
 DVI_COMPILERS_STR = [c.compiler_string for c in DVI_COMPILERS]
 PDF_COMPILERS = [c for c in ALL_COMPILERS if c.output == OutputType.pdf]
@@ -1331,7 +1331,9 @@ def update_nodes_with_kpse_info(
         selected_nodes = toplevel_node.recursive_collect_files(FileType.tex).copy()
         selected_nodes.append(toplevel_node.filename)
     for _, n in nodes.items():
-        if selected_nodes and n.filename not in selected_nodes:
+        # the check for toplevel_node is not necessary, but mypy cannot deduce that
+        # it is set if selected_nodes is not []
+        if toplevel_node and selected_nodes and n.filename not in selected_nodes:
             logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, toplevel_node.filename)
             continue
         logging.debug("update_nodes_with_kpse_info: working on %s only_tex = %s", n.filename, only_tex)
@@ -1592,7 +1594,7 @@ def deal_with_bibliographies(
                         node.issues.append(
                             TeXFileIssue(
                                 IssueType.bbl_version_mismatch,
-                                f"Expected {CURRENT_ARXIV_TEX_BBL_VERSION} but got {bbl_version}",
+                                f"Expected {CURRENT_ARXIV_TEX_BBL_VERSION} but got {bbl_version!r}",
                                 bbl_file,
                             )
                         )
