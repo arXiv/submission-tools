@@ -17,7 +17,8 @@ tomli_w = "^1.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
-pytest = "^8.3.3"
+pytest = "*"
+pytest-cov = "*"
 mypy = "*"
 mypy-extensions = "*"
 types-toml = "^0.10.8.20240310"
