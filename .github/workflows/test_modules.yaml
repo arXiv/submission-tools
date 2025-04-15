@@ -39,4 +39,4 @@ jobs:
       run: |
         cd tex2pdf-tools
         export PYTHONPATH=$PWD
-        poetry run pytest --cov=tex2pdf_tools --cov-fail-under=69 tests/
+        poetry run pytest tests

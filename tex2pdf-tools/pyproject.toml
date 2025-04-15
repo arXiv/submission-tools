@@ -37,7 +37,11 @@ line-length = 120
 [tool.pylint]
 max-line-length = 120
 
+[tool.pytest.ini_options]
+addopts = "--cov=tex2pdf_tools --cov-fail-under=69"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
 
