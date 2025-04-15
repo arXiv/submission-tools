@@ -283,3 +283,17 @@ def test_api_missing_graphics(docker_container):
     assert meta is not None
     # compilation must fail on missing files
     assert meta.get("status") == "fail"
+
+@pytest.mark.integration
+def test_api_missing_glo(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-glo/test-missing-glo.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-missing-glo.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # compilation must succeed
+    assert meta.get("status") == "success"
+    # we need two runs, the first one creates the glossary entry
+    assert len(meta.get("converters")[0].get("runs")) == 2
+    # the first run should have exit code 1, since it misses the not-available glo entry
+    assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1

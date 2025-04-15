@@ -24,7 +24,7 @@ WITH_SHELL_ESCAPE = False
 # -halt-on-error ensures that if an included file is missing, then La(TeX) does not
 #  continue to process the file and produce a PDF, but returns an error.
 # -file-line-error changes the formatting of the error messages
-COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-halt-on-error"]
+COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder"]
 # extra latex command line arguments
 EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
 
@@ -143,15 +143,15 @@ class BaseConverter:
                     {"status": "fail", "step": step, "reason": f"failed to create {base_format}", "runs": self.runs}
                 )
                 return outcome
-            # return code is not a good indication, unfortunately.
-            # status = "success" if run["return_code"] == 0 else "fail"
+            # return code is not a good indication, unfortunately./PHM
+            status = "success" if run["return_code"] == 0 else "fail"
             for line in run["log"].splitlines():
                 if line.find(rerun_needle) >= 0:
                     # Need retry
                     status = "fail"
                     break
-            else:
-                status = "success"
+            #else:
+            #    status = "success"
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
