@@ -934,6 +934,7 @@ INCLUDE_COMMANDS = [
     ),
     IncludeSpec(cmd="bibliography", source="core", type=FileType.bib, extensions="bib", take_options=False),
     IncludeSpec(cmd="includegraphics", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
+    IncludeSpec(cmd="includegraphics*", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="psfig", source="epsfig", type=FileType.other, extensions=EPS_EXTENSIONS),
     IncludeSpec(
         cmd="subfile",
@@ -1016,6 +1017,7 @@ ARGS_INCLUDE_REGEX = r"""
         RequirePackage|
         RequirePackageWithOptions|
         bibliography|
+        includegraphics\*|               # graphic[sx]
         includegraphics|                 # graphic[sx]
         epsfig|                          # epsfig
         psfig|
