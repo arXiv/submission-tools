@@ -238,42 +238,40 @@ class ConverterDriver:
             self.outcome.update({"status": "fail", "tex_file": None, "in_files": file_props_in_dir(self.in_dir)})
             return None
 
-        # Once no-hyperref is implemented, change here - future fixme
+        # Ignore nohyperref, we will not auto-add hyperref, so we don't need this option
         if self.zzrm.nohyperref:
-            self.outcome["status"] = "fail"
-            self.outcome["reason"] = "nohyperref is not supported yet"
-            self.outcome["in_files"] = file_props_in_dir(self.in_dir)
-        else:
-            # Deal with ignoring of anc directory, if requested
-            if self.hide_anc_dir:
-                ancdir = f"{self.in_dir}/anc"
-                target: str|None = self._find_anc_rename_directory(ancdir)
-                # we should have a target now that works
-                if target is None:
-                    logger.warning("Cannot find target to rename anc directory, strange!")
-                else:
-                    logger.debug("Renaming anc directory %s to %s", ancdir, target)
-                    os.rename(ancdir, target)
-            try:
-                # run TeX under try and have a finally to rename the anc directory back
-                # in case some exception happens in the TeX processing
-                self._run_tex_commands()
-            except CompilerNotSpecified as e:
-                self.outcome["status"] = "fail"
-                self.outcome["reason"] = str(e)
-                self.outcome["in_files"] = file_props_in_dir(self.in_dir)
-            finally:
-                if self.hide_anc_dir and target is not None:
-                    logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
-                    os.rename(target, ancdir)
-            pdf_files = self.outcome.get("pdf_files", [])
-            if pdf_files:
-                self._finalize_pdf()
-                self.outcome["status"] = "success"
+            logger.warning("Ignoring nohyperref but continuing")
+            # self.outcome["status"] = "fail"
+            # self.outcome["reason"] = "nohyperref is not supported yet"
+            # self.outcome["in_files"] = file_props_in_dir(self.in_dir)
+        # Deal with ignoring of anc directory, if requested
+        if self.hide_anc_dir:
+            ancdir = f"{self.in_dir}/anc"
+            target: str|None = self._find_anc_rename_directory(ancdir)
+            # we should have a target now that works
+            if target is None:
+                logger.warning("Cannot find target to rename anc directory, strange!")
             else:
-                self.outcome["status"] = "fail"
-                pass
-            pass
+                logger.debug("Renaming anc directory %s to %s", ancdir, target)
+                os.rename(ancdir, target)
+        try:
+            # run TeX under try and have a finally to rename the anc directory back
+            # in case some exception happens in the TeX processing
+            self._run_tex_commands()
+        except CompilerNotSpecified as e:
+            self.outcome["status"] = "fail"
+            self.outcome["reason"] = str(e)
+            self.outcome["in_files"] = file_props_in_dir(self.in_dir)
+        finally:
+            if self.hide_anc_dir and target is not None:
+                logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
+                os.rename(target, ancdir)
+        pdf_files = self.outcome.get("pdf_files", [])
+        if pdf_files:
+            self._finalize_pdf()
+            self.outcome["status"] = "success"
+        else:
+            self.outcome["status"] = "fail"
         return self.outcome.get("pdf_file")
 
     def report_preflight(self) -> None:
