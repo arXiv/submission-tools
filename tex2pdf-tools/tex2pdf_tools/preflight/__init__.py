@@ -1736,11 +1736,11 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
                 )
                 kpse_found2 = kpse_search_files(rundir, nodes, tl_n)
                 nodes = update_nodes_with_kpse_info(nodes, kpse_found2, only_tex=False, toplevel_node=tl_n)
-            logging.debug(
-                "After working on toplevel file %s searching for other files - n.used_other_files = %s",
-                tl_n.filename,
-                nodes[tlf].used_other_files,
-            )
+                logging.debug(
+                    "After working on toplevel file %s searching for other files - n.used_other_files = %s",
+                    tl_n.filename,
+                    nodes[tlf].used_other_files,
+                )
             # determine compilation settings
             guess_compilation_parameters(toplevel_files, nodes)
             # deal with bibliographies, which is painful
