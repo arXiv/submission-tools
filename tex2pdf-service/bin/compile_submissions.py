@@ -125,7 +125,7 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
 @click.option("--tex2pdf-timeout", default=100, help="timeout passed to tex2pdf")
 @click.option("--post-timeout", default=600, help="timeout for the complete post")
 @click.option("--threads", default=64, help="Number of threads requested for threadpool")
-@click.option("--auto-detect", is_flag=True, help="Auto detect ZZRM")
+@click.option("--auto-detect", default=True, help="Use preflight for ZZRM generation")
 def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int, auto_detect: bool) -> None:
     """Compile submissions in a directory."""
 
