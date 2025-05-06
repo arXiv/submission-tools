@@ -381,6 +381,11 @@ class ZeroZeroReadMe:
                     self.stamp = v
                 else:
                     self.stamp = string_to_bool(v)
+            elif k == "nohyperref":
+                if isinstance(v, bool):
+                    self.nohyperref = v
+                else:
+                    self.nohyperref = string_to_bool(v)
             else:
                 raise ZZRMParseError(f"Invalid key for 00README: {k}")
 

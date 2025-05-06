@@ -15,3 +15,4 @@ sources:
     keep_comments: yes
   - filename: yaml-5.tex
 stamp: no
+nohyperref: no
