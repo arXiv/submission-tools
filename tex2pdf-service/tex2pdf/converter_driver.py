@@ -462,7 +462,7 @@ class ConverterDriver:
             pass
         except Exception as exc:
             if isinstance(exc, (subprocess.TimeoutExpired, subprocess.CalledProcessError)):
-                logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
+                logger.warning("Failed combining PDFs: %s (stdout=%s, stderr=%s)", exc, exc.stdout, exc.stderr, extra=self.log_extra)
                 outcome["gs"] = {}
                 if isinstance(exc, subprocess.CalledProcessError):
                     outcome["gs"]["return_code"] = exc.returncode
