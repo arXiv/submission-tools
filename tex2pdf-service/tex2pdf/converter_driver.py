@@ -245,15 +245,17 @@ class ConverterDriver:
             # self.outcome["reason"] = "nohyperref is not supported yet"
             # self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         # Deal with ignoring of anc directory, if requested
+        target: str|None = None
         if self.hide_anc_dir:
             ancdir = f"{self.in_dir}/anc"
-            target: str|None = self._find_anc_rename_directory(ancdir)
-            # we should have a target now that works
-            if target is None:
-                logger.warning("Cannot find target to rename anc directory, strange!")
-            else:
-                logger.debug("Renaming anc directory %s to %s", ancdir, target)
-                os.rename(ancdir, target)
+            if os.path.isdir(ancdir):
+                target = self._find_anc_rename_directory(ancdir)
+                # we should have a target now that works
+                if target is None:
+                    logger.warning("Cannot find target to rename anc directory, strange!")
+                else:
+                    logger.debug("Renaming anc directory %s to %s", ancdir, target)
+                    os.rename(ancdir, target)
         try:
             # run TeX under try and have a finally to rename the anc directory back
             # in case some exception happens in the TeX processing
