@@ -478,6 +478,10 @@ class ConverterDriver:
 
         if self.water.text and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
+            # the "combine documents" step may have failed, and the pdf_file may not exist
+            if not os.path.exists(pdf_file):
+                logger.warning("PDF file %s not found, cannot watermark", pdf_file, extra=self.log_extra)
+                return
             temp_name = outcome["pdf_file"] + ".watermarked.pdf"
             watered = self._watermark(pdf_file, os.path.join(self.out_dir, temp_name))
 
