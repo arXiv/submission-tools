@@ -2,6 +2,7 @@
 This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
 """
 
+import hashlib
 import os
 import shlex
 import subprocess
@@ -57,6 +58,7 @@ class BaseConverter:
     runs: list[dict]  # Each run generates an output
     log: str
     log_extra: dict
+    aux_hashes: list[str]
     use_addon_tree: bool
     zzrm: ZeroZeroReadMe | None
     init_time: float
@@ -77,6 +79,7 @@ class BaseConverter:
         self.runs = []
         self.log = ""
         self.log_extra = {ID_TAG: self.conversion_tag}
+        self.aux_hashes = []
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
@@ -161,6 +164,13 @@ class BaseConverter:
                 )
                 return outcome
             status = "success"
+            # check for aux size difference
+            if len(self.aux_hashes) > 1:
+                # the last aux hash added is from the current run
+                # if the checksum hasn't changed, this is promising
+                if self.aux_hashes[-1] != self.aux_hashes[-2]:
+                    logger.debug("Aux file size changed, need to rerun")
+                    status = "fail"
             for line in run["log"].splitlines():
                 if line.find(rerun_needle) >= 0:
                     # Need retry
@@ -299,6 +309,12 @@ class BaseConverter:
             pass
         pass
 
+    def fetch_aux_hash(self, aux_file: str) -> None:
+        if os.path.exists(aux_file):
+            with open(aux_file, "rb") as fd:
+                self.aux_hashes.append(hashlib.sha256(fd.read()).hexdigest())
+
+
     def decorate_args(self, args: list[str]) -> list[str]:
         """Adjust the command args for TexLive commands.
 
@@ -353,8 +369,10 @@ class BaseConverter:
         """Run a command to generate a pdf"""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
+        aux_filename = os.path.join(in_dir, f"{stem}.aux")
         self._check_cmd_run(run, pdf_filename)
         self._report_run(run, out, err, step, in_dir, out_dir, "pdf", pdf_filename)
+        self.fetch_aux_hash(aux_filename)
         if log_file:
             self.fetch_log(log_file)
             if self.log:
@@ -465,8 +483,10 @@ class BaseDviConverter(BaseConverter):
         """Runs the given command to generate dvi file and returns the run result."""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
+        aux_filename = os.path.join(in_dir, f"{stem}.aux")
         self._check_cmd_run(run, dvi_filename)
         latex_log_file = os.path.join(in_dir, f"{stem}.log")
+        self.fetch_aux_hash(aux_filename)
         self.fetch_log(latex_log_file)
         if self.log:
             run["log"] = self.log
