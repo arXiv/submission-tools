@@ -19,6 +19,7 @@ from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyE
 
 from . import (
     ID_TAG,
+    GIT_COMMIT_HASH,
     MAX_TIME_BUDGET,
     catalog_files,
     file_props,
@@ -238,42 +239,42 @@ class ConverterDriver:
             self.outcome.update({"status": "fail", "tex_file": None, "in_files": file_props_in_dir(self.in_dir)})
             return None
 
-        # Once no-hyperref is implemented, change here - future fixme
+        # Ignore nohyperref, we will not auto-add hyperref, so we don't need this option
         if self.zzrm.nohyperref:
-            self.outcome["status"] = "fail"
-            self.outcome["reason"] = "nohyperref is not supported yet"
-            self.outcome["in_files"] = file_props_in_dir(self.in_dir)
-        else:
-            # Deal with ignoring of anc directory, if requested
-            if self.hide_anc_dir:
-                ancdir = f"{self.in_dir}/anc"
-                target: str|None = self._find_anc_rename_directory(ancdir)
+            logger.warning("Ignoring nohyperref but continuing")
+            # self.outcome["status"] = "fail"
+            # self.outcome["reason"] = "nohyperref is not supported yet"
+            # self.outcome["in_files"] = file_props_in_dir(self.in_dir)
+        # Deal with ignoring of anc directory, if requested
+        target: str|None = None
+        if self.hide_anc_dir:
+            ancdir = f"{self.in_dir}/anc"
+            if os.path.isdir(ancdir):
+                target = self._find_anc_rename_directory(ancdir)
                 # we should have a target now that works
                 if target is None:
                     logger.warning("Cannot find target to rename anc directory, strange!")
                 else:
                     logger.debug("Renaming anc directory %s to %s", ancdir, target)
                     os.rename(ancdir, target)
-            try:
-                # run TeX under try and have a finally to rename the anc directory back
-                # in case some exception happens in the TeX processing
-                self._run_tex_commands()
-            except CompilerNotSpecified as e:
-                self.outcome["status"] = "fail"
-                self.outcome["reason"] = str(e)
-                self.outcome["in_files"] = file_props_in_dir(self.in_dir)
-            finally:
-                if self.hide_anc_dir and target is not None:
-                    logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
-                    os.rename(target, ancdir)
-            pdf_files = self.outcome.get("pdf_files", [])
-            if pdf_files:
-                self._finalize_pdf()
-                self.outcome["status"] = "success"
-            else:
-                self.outcome["status"] = "fail"
-                pass
-            pass
+        try:
+            # run TeX under try and have a finally to rename the anc directory back
+            # in case some exception happens in the TeX processing
+            self._run_tex_commands()
+        except CompilerNotSpecified as e:
+            self.outcome["status"] = "fail"
+            self.outcome["reason"] = str(e)
+            self.outcome["in_files"] = file_props_in_dir(self.in_dir)
+        finally:
+            if self.hide_anc_dir and target is not None:
+                logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
+                os.rename(target, ancdir)
+        pdf_files = self.outcome.get("pdf_files", [])
+        if pdf_files:
+            self._finalize_pdf()
+            self.outcome["status"] = "success"
+        else:
+            self.outcome["status"] = "fail"
         return self.outcome.get("pdf_file")
 
     def report_preflight(self) -> None:
@@ -464,7 +465,7 @@ class ConverterDriver:
             pass
         except Exception as exc:
             if isinstance(exc, (subprocess.TimeoutExpired, subprocess.CalledProcessError)):
-                logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
+                logger.warning("Failed combining PDFs: %s (stdout=%s, stderr=%s)", exc, exc.stdout, exc.stderr, extra=self.log_extra)
                 outcome["gs"] = {}
                 if isinstance(exc, subprocess.CalledProcessError):
                     outcome["gs"]["return_code"] = exc.returncode
@@ -480,6 +481,10 @@ class ConverterDriver:
 
         if self.water.text and (not self.zzrm.nostamp):
             pdf_file = os.path.join(self.out_dir, outcome["pdf_file"])
+            # the "combine documents" step may have failed, and the pdf_file may not exist
+            if not os.path.exists(pdf_file):
+                logger.warning("PDF file %s not found, cannot watermark", pdf_file, extra=self.log_extra)
+                return
             temp_name = outcome["pdf_file"] + ".watermarked.pdf"
             watered = self._watermark(pdf_file, os.path.join(self.out_dir, temp_name))
 
@@ -524,11 +529,12 @@ class ConversionOutcomeMaker:
     done by a visitor class.
     """
 
-    def __init__(self, work_dir: str, tag: str, outcome_file: str | None = None):
+    def __init__(self, work_dir: str, tag: str, outcome_file: str | None = None, gen_id: str = "tex2pdf"):
         self.work_dir = work_dir
         self.tag = tag
         self.outcome_file = f"{tag}.outcome.tar.gz" if outcome_file is None else outcome_file
         self.log_extra = {ID_TAG: self.tag}
+        self.gen_id = gen_id
         pass
 
     def create_outcome(
@@ -563,6 +569,7 @@ class ConversionOutcomeMaker:
         zzrm_text = zzrm_generated.read()
         outcome_meta = {
             "version": 1,  # outcome format version
+            "version_info": f"{self.gen_id}:{GIT_COMMIT_HASH}",
             "in_directory": os.path.basename(in_dir),
             "out_directory": os.path.basename(out_dir),
             "in_files": catalog_files(in_dir),
@@ -580,7 +587,14 @@ class ConversionOutcomeMaker:
         if converter_driver.converter:
             outcome_meta["converter"] = converter_driver.converter.converter_name()
         if outcome:
+            # outcome could come from a remote call and already contain a `version_info`
+            complete_version_info: str = ""
+            if "version_info" in outcome:
+                complete_version_info = f"""{outcome_meta["version_info"]} {outcome["version_info"]}"""
+            else:
+                complete_version_info = str(outcome_meta["version_info"])
             outcome_meta.update(outcome)
+            outcome_meta["version_info"] = complete_version_info
         outcome_meta_file = f"outcome-{self.tag}.json"
         with open(os.path.join(self.work_dir, outcome_meta_file), "w", encoding="utf-8") as fd:
             json.dump(outcome_meta, fd, indent=2)

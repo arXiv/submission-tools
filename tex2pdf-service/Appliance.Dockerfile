@@ -44,6 +44,7 @@ RUN poetry install --without=dev
 
 FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE
+ARG GIT_COMMIT_HASH
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -54,7 +55,8 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_NO_INTERACTION=1 \
     WORKER_HOME="/home/worker" \
     VENV_PATH="/home/worker/.venv" \
-    PORT=8080
+    PORT=8080 \
+    GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
 
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 

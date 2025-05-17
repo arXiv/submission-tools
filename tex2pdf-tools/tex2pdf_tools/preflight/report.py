@@ -70,6 +70,10 @@ class PreflightReport:
                                 collected_files.update(tex_file["used_other_files"])
                             if "used_bib_files" in tex_file:
                                 collected_files.update(tex_file["used_bib_files"])
+                            if "used_idx_files" in tex_file:
+                                collected_files.update(tex_file["used_idx_files"])
+                            if "used_ind_files" in tex_file:
+                                collected_files.update(tex_file["used_ind_files"])
             return collected_files
 
         visited: set[str] = set()
@@ -103,6 +107,14 @@ class PreflightReport:
                                 used_files.add(child_filename)
                         if "used_bib_files" in tex_file:
                             for child_filename in tex_file["used_bib_files"]:
+                                node[filename]["children"].append({child_filename: {"issues": [], "children": []}})
+                                used_files.add(child_filename)
+                        if "used_ind_files" in tex_file:
+                            for child_filename in tex_file["used_ind_files"]:
+                                node[filename]["children"].append({child_filename: {"issues": [], "children": []}})
+                                used_files.add(child_filename)
+                        if "used_idx_files" in tex_file:
+                            for child_filename in tex_file["used_idx_files"]:
                                 node[filename]["children"].append({child_filename: {"issues": [], "children": []}})
                                 used_files.add(child_filename)
             return node

@@ -2,6 +2,7 @@
 This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
 """
 
+import hashlib
 import os
 import shlex
 import subprocess
@@ -13,7 +14,6 @@ from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
 from . import ID_TAG, MAX_LATEX_RUNS, MAX_TIME_BUDGET, file_props, file_props_in_dir, local_exec
-from .log_inspection import inspect_log
 from .service_logger import get_logger
 
 WITH_SHELL_ESCAPE = False
@@ -24,7 +24,7 @@ WITH_SHELL_ESCAPE = False
 # -halt-on-error ensures that if an included file is missing, then La(TeX) does not
 #  continue to process the file and produce a PDF, but returns an error.
 # -file-line-error changes the formatting of the error messages
-COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-halt-on-error"]
+COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder"]
 # extra latex command line arguments
 EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
 
@@ -58,6 +58,7 @@ class BaseConverter:
     runs: list[dict]  # Each run generates an output
     log: str
     log_extra: dict
+    aux_hashes: list[str]
     use_addon_tree: bool
     zzrm: ZeroZeroReadMe | None
     init_time: float
@@ -78,6 +79,7 @@ class BaseConverter:
         self.runs = []
         self.log = ""
         self.log_extra = {ID_TAG: self.conversion_tag}
+        self.aux_hashes = []
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
@@ -113,6 +115,7 @@ class BaseConverter:
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
     ) -> dict:
+        logger = get_logger()
         # Stem: the filename of the tex file without the extension
         # we need to ensure that if the tex_file is called subdir/foobar.tex
         # then the stem is only "foobar" since compilation runs in the root
@@ -123,9 +126,12 @@ class BaseConverter:
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
         # first run
         step = "first_run"
+        logger.debug("Starting first compile run")
         run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
+        logger.debug("First run finished with %s", run)
         output_size = run[base_format]["size"]
         if output_size is None:
+            logger.debug("output size is None, failing")
             outcome.update(
                 {"status": "fail", "step": step, "reason": f"failed to create {base_format}", "runs": self.runs}
             )
@@ -134,24 +140,43 @@ class BaseConverter:
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
         for iteration in range(MAX_LATEX_RUNS - 1):
+            logger.debug("Starting %s run", iteration + 1)
             step = f"second_run:{iteration}"
             run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
             # maybe PDF/DVI creating fails on second run, so check output size again
             output_size = run[base_format]["size"]
             if output_size is None:
+                logger.debug("second run output size is None, failing")
                 outcome.update(
                     {"status": "fail", "step": step, "reason": f"failed to create {base_format}", "runs": self.runs}
                 )
                 return outcome
-            # return code is not a good indication, unfortunately.
-            # status = "success" if run["return_code"] == 0 else "fail"
+            if run["return_code"] != 0:
+                logger.debug("Second or later run has error exit code, failing")
+                name = run[base_format]["name"]
+                artifact_file = os.path.join(in_dir, name)
+                if os.path.exists(artifact_file):
+                    logger.debug("Output %s deleted due to failed run", name)
+                    os.unlink(artifact_file)
+                    run[base_format] = file_props(artifact_file)
+                outcome.update(
+                    {"status": "fail", "step": step, "reason": f"compiler run returned error code", "runs": self.runs}
+                )
+                return outcome
+            status = "success"
+            # check for aux size difference
+            if len(self.aux_hashes) > 1:
+                # the last aux hash added is from the current run
+                # if the checksum hasn't changed, this is promising
+                if self.aux_hashes[-1] != self.aux_hashes[-2]:
+                    logger.debug("Aux file size changed, need to rerun")
+                    status = "fail"
             for line in run["log"].splitlines():
                 if line.find(rerun_needle) >= 0:
                     # Need retry
+                    logger.debug("Found rerun needle")
                     status = "fail"
                     break
-            else:
-                status = "success"
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
@@ -284,6 +309,12 @@ class BaseConverter:
             pass
         pass
 
+    def fetch_aux_hash(self, aux_file: str) -> None:
+        if os.path.exists(aux_file):
+            with open(aux_file, "rb") as fd:
+                self.aux_hashes.append(hashlib.sha256(fd.read()).hexdigest())
+
+
     def decorate_args(self, args: list[str]) -> list[str]:
         """Adjust the command args for TexLive commands.
 
@@ -338,24 +369,14 @@ class BaseConverter:
         """Run a command to generate a pdf"""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
+        aux_filename = os.path.join(in_dir, f"{stem}.aux")
         self._check_cmd_run(run, pdf_filename)
         self._report_run(run, out, err, step, in_dir, out_dir, "pdf", pdf_filename)
+        self.fetch_aux_hash(aux_filename)
         if log_file:
             self.fetch_log(log_file)
             if self.log:
                 run["log"] = self.log
-        return run
-
-    def check_missing(self, in_dir: str, run: dict, artifact: str) -> dict:
-        """Scoop up the missing files from the tex command log"""
-        name = run[artifact]["name"]
-        artifact_file = os.path.join(in_dir, name)
-        if os.path.exists(artifact_file) and (missings := inspect_log(run["log"], break_on_found=False)):
-            run["missings"] = missings
-            get_logger().debug(f"Output {name} deleted due to incomplete run.")
-            os.unlink(artifact_file)
-            run[artifact] = file_props(artifact_file)
-            pass
         return run
 
     pass
@@ -462,14 +483,15 @@ class BaseDviConverter(BaseConverter):
         """Runs the given command to generate dvi file and returns the run result."""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
+        aux_filename = os.path.join(in_dir, f"{stem}.aux")
         self._check_cmd_run(run, dvi_filename)
         latex_log_file = os.path.join(in_dir, f"{stem}.log")
+        self.fetch_aux_hash(aux_filename)
         self.fetch_log(latex_log_file)
         if self.log:
             run["log"] = self.log
         artifact = "dvi"
         self._report_run(run, out, err, step, in_dir, work_dir, artifact, dvi_filename)
-        run = self.check_missing(in_dir, run, artifact)
         return run
 
     def _base_ps_to_pdf_run(self, stem: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
@@ -597,7 +619,6 @@ class PdfLatexConverter(BaseConverter):
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         cmd_log = os.path.join(in_dir, f"{self.stem}.log")
         run = self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, cmd_log)
-        run = self.check_missing(in_dir, run, "pdf")
         return run
 
     def converter_name(self) -> str:

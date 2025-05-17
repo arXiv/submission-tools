@@ -154,6 +154,18 @@ def test_api_smoke(docker_container):
     assert meta is None
     assert status == 500
 
+@pytest.mark.integration
+def test_api_git_hash(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("version_info") is not None
+    assert meta.get("version_info") != ""
+    assert meta.get("version_info") != "tex2pdf:(unknown)"
+    assert meta.get("version_info").startswith("tex2pdf:")
+
 
 @pytest.mark.integration
 def test_api_test2(docker_container):
@@ -271,3 +283,32 @@ def test_api_missing_graphics(docker_container):
     assert meta is not None
     # compilation must fail on missing files
     assert meta.get("status") == "fail"
+
+@pytest.mark.integration
+def test_api_missing_glo(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-glo/test-missing-glo.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-missing-glo.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # compilation must succeed
+    assert meta.get("status") == "success"
+    # we need two runs, the first one creates the glossary entry
+    assert len(meta.get("converters")[0].get("runs")) == 2
+    # the first run should have exit code 1, since it misses the not-available glo entry
+    assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1
+
+@pytest.mark.integration
+def test_api_broken_tex(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-broken-tex/test-broken-tex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-broken-tex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # compilation must succeed
+    assert meta.get("status") == "fail"
+    # we need two runs, the first one creates the glossary entry
+    assert len(meta.get("converters")[0].get("runs")) == 2
+    # the first run should have exit code 1, since it misses the not-available glo entry
+    assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1
+    assert meta.get("converters")[0].get("runs")[1].get("return_code") == 1

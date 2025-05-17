@@ -44,6 +44,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(False, zzrm.nohyperref)
 
     def test_zzrm_v2_syntax_error(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_syntax_error")
