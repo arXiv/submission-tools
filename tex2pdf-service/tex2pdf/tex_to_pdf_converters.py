@@ -1,6 +1,4 @@
-"""
-This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
-"""
+"""This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF."""
 
 import hashlib
 import os
@@ -30,23 +28,25 @@ EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
 
 
 class NoTexFile(Exception):
-    """No tex file found in the tarball"""
+    """No tex file found in the tarball."""
 
     pass
 
 
 class RunFail(Exception):
-    """pdflatex/bibtex run failed"""
+    """pdflatex/bibtex run failed."""
 
     pass
+
 
 class CompilerNotSpecified(Exception):
-    """cannot detect compiler"""
+    """cannot detect compiler."""
 
     pass
 
+
 class ImplementationError(Exception):
-    """Bug!?"""
+    """General implementation error (or bug)."""
 
     pass
 
@@ -83,7 +83,7 @@ class BaseConverter:
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
-        except:
+        except Exception:
             default_max = 595
             pass
         self.max_time_budget = default_max if max_time_budget is None else max_time_budget
@@ -91,11 +91,11 @@ class BaseConverter:
 
     @classmethod
     def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+        """TeX Compiler."""
         return "Unknown"
 
     def time_left(self) -> float:
-        """Returns the time left before the timeout"""
+        """Return the time left before the timeout."""
         return self.max_time_budget - (time.perf_counter() - self.init_time)
 
     def is_internal_converter(self) -> bool:
@@ -160,7 +160,7 @@ class BaseConverter:
                     os.unlink(artifact_file)
                     run[base_format] = file_props(artifact_file)
                 outcome.update(
-                    {"status": "fail", "step": step, "reason": f"compiler run returned error code", "runs": self.runs}
+                    {"status": "fail", "step": step, "reason": "compiler run returned error code", "runs": self.runs}
                 )
                 return outcome
             status = "success"
@@ -187,7 +187,7 @@ class BaseConverter:
     def _exec_cmd(
         self, args: list[str], child_dir: str, work_dir: str, extra: dict | None = None
     ) -> tuple[dict[str, typing.Any], str, str]:
-        """Run the command and return the result"""
+        """Run the command and return the result."""
         logger = get_logger()
         worker_args = self.decorate_args(args)
         extra = self.log_extra if extra is None else self.log_extra | extra
@@ -273,7 +273,7 @@ class BaseConverter:
     def _report_run(
         self, run: dict, out: str, err: str, step: str, in_dir: str, out_dir: str, output_tag: str, output_file: str
     ) -> None:
-        """Standard command run reporting to the run-dict, and append it to the runs."""
+        """Report a standard command run to the run-dict, and append it to the runs."""
         logger = get_logger()
         out_stat = file_props(output_file)
         out_size = out_stat["size"]
@@ -314,7 +314,6 @@ class BaseConverter:
             with open(aux_file, "rb") as fd:
                 self.aux_hashes.append(hashlib.sha256(fd.read()).hexdigest())
 
-
     def decorate_args(self, args: list[str]) -> list[str]:
         """Adjust the command args for TexLive commands.
 
@@ -322,35 +321,37 @@ class BaseConverter:
         in docker.
         """
         if local_exec:
-            return ["/usr/local/bin/docker_pdflatex.sh"] + args
+            return ["/usr/local/bin/docker_pdflatex.sh", *args]
         return args
 
     @abstractmethod
     def converter_name(self) -> str:
-        """Brief descripton of the converter"""
+        """Brief descripton of the converter."""
         pass
 
     def is_fallback(self) -> bool:
-        """Is the converter used for fallback? (obsolete, but you can dig out the fallbach
-        converter from the repo if you need.)
+        """Check whether the converter is used for fallback.
+
+        (obsolete, but you can dig out the fallback converter from the repo if you need.)
         """
         return False
 
     @classmethod
     def order_tex_files(cls, tex_files: list[str]) -> list[str]:
-        """Order the tex files so that the main tex file comes first"""
+        """Order the tex files so that the main tex file comes first."""
         return tex_files
 
     @classmethod
     def yes_pix(cls) -> bool:
         """Append the extra pics in included submission. Default is False.
+
         This corresponds to "Separate figures with LaTeX submissions"
         https://info.arxiv.org/help/submit_tex.html#separate-figures-with-latex-submissions
         """
         return False
 
     def _check_cmd_run(self, run: dict, artifact: str) -> None:
-        """Check the tex command run and kill the artifact when the tex command failed"""
+        """Check the tex command run and kill the artifact when the tex command failed."""
         return_code = run.get("return_code")
         logger = get_logger()
         if return_code is None or return_code == -9:
@@ -366,7 +367,7 @@ class BaseConverter:
     def _to_pdf_run(
         self, args: list[str], stem: str, step: str, work_dir: str, in_dir: str, out_dir: str, log_file: str
     ) -> dict:
-        """Run a command to generate a pdf"""
+        """Run a command to generate a pdf."""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
         aux_filename = os.path.join(in_dir, f"{stem}.aux")
@@ -430,9 +431,7 @@ class BaseDviConverter(BaseConverter):
     def _two_try_dvi_to_ps_run(
         self, outcome: dict[str, typing.Any], stem: str, work_dir: str, in_dir: str, out_dir: str
     ) -> tuple[dict[str, typing.Any], dict[str, typing.Any]]:
-        """Run dvips twice. The first run with hyperdvi. If success, it stops. If not, the
-        2nd run without hyperdvi.
-        """
+        """Run dvips twice. The first run with hyperdvi. If success, it stops. If not, the 2nd run without hyperdvi."""
         run = {}
         for hyperdvi in [True, False]:
             run = self._base_dvi_to_ps_run(stem, work_dir, in_dir, out_dir, hyperdvi=hyperdvi)
@@ -471,7 +470,7 @@ class BaseDviConverter(BaseConverter):
         if hyperdvi:
             dvi_options.append("-z")
             pass
-        args = ["/usr/bin/dvips"] + dvi_options + ["-o", f"{stem}.ps", dvi_file]
+        args = ["/usr/bin/dvips", *dvi_options, "-o", f"{stem}.ps", dvi_file]
 
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": tag})
         ps_filename = os.path.join(in_dir, f"{stem}.ps")
@@ -480,7 +479,7 @@ class BaseDviConverter(BaseConverter):
         return run
 
     def _base_to_dvi_run(self, step: str, stem: str, args: list[str], work_dir: str, in_dir: str) -> dict:
-        """Runs the given command to generate dvi file and returns the run result."""
+        """Run the given command to generate dvi file and returns the run result."""
         run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
         aux_filename = os.path.join(in_dir, f"{stem}.aux")
@@ -495,14 +494,14 @@ class BaseDviConverter(BaseConverter):
         return run
 
     def _base_ps_to_pdf_run(self, stem: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Runs ps2pdf command"""
+        """Run ps2pdf command."""
         step = "ps_to_pdf"
         args = ["/usr/bin/ps2pdf", f"{stem}.ps", f"./{stem}.pdf"]
         return self._to_pdf_run(args, stem, step, work_dir, in_dir, out_dir, "")
 
 
 class LatexConverter(BaseDviConverter):
-    """Runs latex (not pdflatex) command"""
+    """Runs latex (not pdflatex) command."""
 
     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
         super().__init__(conversion_tag, **kwargs)
@@ -510,11 +509,11 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+        """TeX Compiler."""
         return "latex"
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
+        """Produce PDF.
 
         NOTE: It is important to return the outcome so that you can troubleshoot.
         Do not exception out.
@@ -555,7 +554,7 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def order_tex_files(cls, tex_files: list[str]) -> list[str]:
-        """Order the tex files so that the main tex file comes first"""
+        """Order the tex files so that the main tex file comes first."""
         if "ms.tex" in tex_files:
             tex_files.remove("ms.tex")
             tex_files.insert(0, "ms.tex")
@@ -564,14 +563,14 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def yes_pix(cls) -> bool:
-        """Append the extra pics in included submission"""
+        """Append the extra pics in included submission."""
         return True
 
     pass
 
 
 class PdfLatexConverter(BaseConverter):
-    """Runs pdflatex command"""
+    """Runs pdflatex command."""
 
     to_pdf_args: list[str]
     pdfoutput_1_seen: bool
@@ -584,12 +583,12 @@ class PdfLatexConverter(BaseConverter):
 
     @classmethod
     def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+        """TeX Compiler."""
         return "pdflatex"
 
     def _get_pdflatex_args(self, tex_file: str) -> list[str]:
-        """Return the pdflatex command line arguments"""
-        args = ["/usr/bin/pdflatex",  *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
+        """Return the pdflatex command line arguments."""
+        args = ["/usr/bin/pdflatex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         # You need this sometimes, and harmful sometimes.
         if not self.pdfoutput_1_seen:
             args.append("-output-format=pdf")
@@ -599,7 +598,7 @@ class PdfLatexConverter(BaseConverter):
         return args
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
+        """Produce PDF.
 
         NOTE: It is important to return the outcome so that you can troubleshoot.
         Do not exception out.
@@ -622,7 +621,7 @@ class PdfLatexConverter(BaseConverter):
         return run
 
     def converter_name(self) -> str:
-        return "%s: %s" % (self.tex_compiler_name(), shlex.join(self.to_pdf_args))
+        return f"{self.tex_compiler_name()}: {shlex.join(self.to_pdf_args)}"
 
     pass
 
@@ -698,7 +697,7 @@ class PdfLatexConverter(BaseConverter):
 
 
 class VanillaTexConverter(BaseDviConverter):
-    """Runs tex command"""
+    """Runs tex command."""
 
     _args: list[str]
 
@@ -709,11 +708,11 @@ class VanillaTexConverter(BaseDviConverter):
 
     @classmethod
     def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+        """TeX Compiler."""
         return "tex"
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
+        """Produce PDF.
 
         NOTE: It is important to return the outcome so that you can troubleshoot.
         Do not exception out.
@@ -767,11 +766,11 @@ class VanillaTexConverter(BaseDviConverter):
         return self._base_dvi_to_ps_run(self.stem, work_dir, in_dir, _out_dir, hyperdvi=hyperdvi)
 
     def _ps_to_pdf_run(self, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Runs ps2pdf command"""
+        """Run ps2pdf command."""
         return super()._base_ps_to_pdf_run(self.stem, work_dir, in_dir, out_dir)
 
     def converter_name(self) -> str:
-        return "tex: %s" % (shlex.join(self._args))
+        return f"tex: {shlex.join(self._args)}"
 
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Plain tex is not latex."""

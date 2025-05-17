@@ -1,5 +1,5 @@
 """
-compile_submissions:
+compile_submissions.
 
 Given submissions directory, sends them to tex2pdf API, gets the outcome back and
 writes it out to "outcomes" subdirectory of give submissions directory.
@@ -43,10 +43,11 @@ thread_local = threading.local()
 
 
 def score_db(score_path: str) -> Connection:
-    """Open scorecard database"""
+    """Open scorecard database."""
     db = sqlite3.connect(score_path)
     db.execute(
-        "create table if not exists score (source varchar primary key, outcome TEXT, arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, pdfchecksum TEXT, status int, success bool)"
+        "create table if not exists score (source varchar primary key, outcome TEXT, "
+        "arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, pdfchecksum TEXT, status int, success bool)"
     )
     db.execute("create table if not exists touched (filename varchar primary key)")
     return db
@@ -126,13 +127,17 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
 @click.option("--post-timeout", default=600, help="timeout for the complete post")
 @click.option("--threads", default=64, help="Number of threads requested for threadpool")
 @click.option("--auto-detect", is_flag=True, help="Auto detect ZZRM")
-def compile(submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int, auto_detect: bool) -> None:
+def compile(
+    submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int, auto_detect: bool
+) -> None:
     """Compile submissions in a directory."""
 
     def local_submit_tarball(tarball: str) -> None:
         outcome_file = tarball_to_outcome_path(tarball)
         try:
-            service_process_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect=auto_detect)
+            service_process_tarball(
+                service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect=auto_detect
+            )
         except FileExistsError:
             logging.info(f"Not recreating already existing {outcome_file}.")
             pass
@@ -200,8 +205,11 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         cursor = sdb.cursor()
         cursor.execute("begin")
         cursor.execute(
-            "insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, pdfchecksum, success) values (?, ?, ?, ?, ?, ?, ?, ?)"
-            " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles, clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf, pdfchecksum=excluded.pdfchecksum, success=excluded.success",
+            "insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, pdfchecksum, success)"
+            " values (?, ?, ?, ?, ?, ?, ?, ?)"
+            " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles,"
+            " clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf,"
+            " pdfchecksum=excluded.pdfchecksum, success=excluded.success",
             (
                 tarball_path,
                 json.dumps(meta, indent=2),

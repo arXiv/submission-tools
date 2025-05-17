@@ -22,7 +22,13 @@ def get_outcome_meta(outcome_file: str) -> dict:
 
 
 def service_process_tarball(
-    service: str, tarball: str, outcome_file: str, tex2pdf_timeout: int, post_timeout: int, auto_detect: bool = False, hide_anc_dir: bool = False
+    service: str,
+    tarball: str,
+    outcome_file: str,
+    tex2pdf_timeout: int,
+    post_timeout: int,
+    auto_detect: bool = False,
+    hide_anc_dir: bool = False,
 ) -> bool:
     """Submit tarball to compilation service and receive result."""
     if os.path.exists(outcome_file):
