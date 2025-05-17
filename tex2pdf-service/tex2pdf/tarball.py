@@ -15,13 +15,13 @@ from .service_logger import get_logger
 
 
 class UnsupportedArchive(Exception):
-    """Submitted archive file extension is not recognized"""
+    """Submitted archive file extension is not recognized."""
 
     pass
 
 
 class RemovedSubmission(Exception):
-    """Submitted archive contains the removed.txt and cannot proceed"""
+    """Submitted archive contains the removed.txt and cannot proceed."""
 
     pass
 
@@ -39,7 +39,7 @@ class ZZRMUnsupportedCompiler(Exception):
 
 
 def chmod_775(root_dir: str) -> None:
-    """Recursively chmod 775 the directory"""
+    """Recursively chmod 775 the directory."""
     for dirpath, _dirnames, filenames in os.walk(root_dir):
         os.chmod(dirpath, 0o0775)
         for filename in filenames:
@@ -55,7 +55,7 @@ def chmod_775(root_dir: str) -> None:
 
 
 def prep_tempdir(tempdir: str) -> tuple[str, str]:
-    """Prepare the tempdir for unpacking the archive file"""
+    """Prepare the tempdir for unpacking the archive file."""
     in_dir = os.path.join(tempdir, "in")
     out_dir = os.path.join(tempdir, "out")
     os.mkdir(in_dir, mode=0o0775)
@@ -66,6 +66,7 @@ def prep_tempdir(tempdir: str) -> tuple[str, str]:
 
 async def save_stream(in_dir: str, incoming: UploadFile, filename: str, _log_extra: dict) -> None:
     """Save the incoming stream to a file. Used for receiving the submission archive file.
+
     Technically
     """
     local_file = os.path.join(in_dir, filename)
@@ -77,7 +78,7 @@ async def save_stream(in_dir: str, incoming: UploadFile, filename: str, _log_ext
 
 
 def unpack_tarball(in_dir: str, filename: str, log_extra: dict) -> None:
-    """Unpack the submission archive file"""
+    """Unpack the submission archive file."""
     if filename.endswith(".tar.gz"):
         args = ["tar", "xzf", filename]
     elif filename.endswith(".tar"):

@@ -34,7 +34,7 @@ def correct_graphicspath(line: str) -> str:
     corrected_paths = []
     for path in paths:
         if path.startswith("./"):
-            path = path[2:]
+            path = path[2:]  # noqa: PLW2901
         corrected_paths.append(path)
         if not path.endswith("/"):
             corrected = path + "/"
@@ -49,6 +49,7 @@ def correct_graphicspath(line: str) -> str:
 
 def remove_auto_pst_pdf(line: str) -> str:
     """Remove auto-pst-pdf from the given line. This package runs latex, dvips, and ps2pdf.
+
     Not only this is unnecessary, this only works with shell escape, which is not allowed.
     """
     if line.find("auto-pst-pdf") != -1:
@@ -58,7 +59,7 @@ def remove_auto_pst_pdf(line: str) -> str:
 
 
 def set_overleafhome_and_homepath(line: str) -> str:
-    """If you find a tex line setting \\overleafhome, set \\homepath as well"""
+    r"""If you find a tex line setting \overleafhome, set \homepath as well."""
     if line.find(r"\def\overleafhome{") != -1:
         matched = re.search(r"\\overleafhome\{([^}]*)\}", line)
         if matched:

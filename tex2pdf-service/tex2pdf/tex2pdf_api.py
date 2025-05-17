@@ -1,6 +1,4 @@
-"""
-Tex2PDF FastAPI.
-"""
+"""Tex2PDF FastAPI."""
 
 import os
 import subprocess
@@ -61,12 +59,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # make it more obious if a validation error happened
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse(
         status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "HTTP exception: " + str(exc.detail)}
     )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -76,25 +76,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 class Message(BaseModel):
-    """Message DTO"""
+    """Message DTO."""
 
     message: str
 
 
 class BinaryData(BaseModel):
-    """Binary data DTO"""
+    """Binary data DTO."""
 
     pass
 
 
 class PDFResponse(StreamingResponse):
-    """PDF response"""
+    """PDF response."""
 
     media_type = "application/pdf"
 
 
 class GzipResponse(StreamingResponse):
-    """gzip response"""
+    """gzip response."""
 
     media_type = "application/gzip"
 
@@ -142,9 +142,7 @@ async def convert_pdf(
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
 ) -> Response:
-    """
-    get a tarball, and convert to PDF
-    """
+    """Get a tarball, and convert to PDF."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()
@@ -270,9 +268,7 @@ async def convert_pdf(
 
 @app.get("/texlive/info")
 async def texlive_info() -> FileResponse:
-    """
-    texlive info
-    """
+    """Get TeX Live info."""
     # note that this is run in /home/worker and we don't have write permissions
     # to /usr/local/texlive/... - thus, save the file simply in CWD.
     tlmgr_info = "tlmgr-info.json"
@@ -292,9 +288,7 @@ async def texlive_info() -> FileResponse:
 
 @app.get("/robots.txt", summary="robots.txt", include_in_schema=False)
 async def robots_txt() -> Response:
-    """
-    robots.txt
-    """
+    """robots.txt."""
     go_away_robots = "User-agent: *\nDisallow: /\n"
     return Response(go_away_robots, media_type="text/plain")
 

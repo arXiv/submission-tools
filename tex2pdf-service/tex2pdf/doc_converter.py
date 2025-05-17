@@ -1,6 +1,4 @@
-"""
-Turn multiple documents into one PDF.
-"""
+"""Turn multiple documents into one PDF."""
 
 import os
 import shlex
@@ -100,7 +98,8 @@ def combine_documents(
         "-dBATCH",
         "-dSAFER",
         f"-sOutputFile={output_path}",
-    ] + effective_pdf_list
+        *effective_pdf_list,
+    ]
     logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
     # exception handing is done in convert_driver:_finalize_pdf
     ret = subprocess.run(gs_cmd, capture_output=True, timeout=60, check=True, text=True)

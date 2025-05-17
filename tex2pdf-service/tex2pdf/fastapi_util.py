@@ -1,6 +1,4 @@
-"""
-FastAPI utilities
-"""
+"""FastAPI utilities."""
 
 from io import BufferedIOBase
 from typing import BinaryIO, TextIO

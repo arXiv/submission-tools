@@ -1,6 +1,4 @@
-"""
-tex2pdf: FastAPI to compile arXiv submissions to PDF.
-"""
+"""tex2pdf: FastAPI to compile arXiv submissions to PDF."""
 
 import os
 import stat
@@ -31,8 +29,9 @@ MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 
 GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
 
+
 class CustomJsonFormatter(JsonFormatter):
-    """Logging formatter to play nice with JSON logger"""
+    """Logging formatter to play nice with JSON logger."""
 
     def __init__(self, *args: list, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs, rename_fields={"levelname": LOG_LEVEL_NAME, "asctime": "time"})  # type:ignore[no-untyped-call]
@@ -64,14 +63,12 @@ def file_props(filename: str) -> dict:
 
 
 def file_props_in_dir(a_dir: str) -> list:
-    """Runs the file prots to each file in a directory."""
+    """Run the file prots to each file in a directory."""
     return [file_props(os.path.join(a_dir, filename)) for filename in os.listdir(a_dir)]
 
 
 def catalog_files(root_dir: str) -> dict[str, Any]:
-    """
-    catalog the files in the root_dir
-    """
+    """Catalog the files in the root_dir."""
     catalog = {}
     for a_dir, _dirs, files in os.walk(root_dir):
         for filename in files:
