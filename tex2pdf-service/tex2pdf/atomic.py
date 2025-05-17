@@ -1,12 +1,10 @@
-"""
-Atomic: sugar for threading
-"""
+"""Atomic: sugar for threading."""
 
 import threading
 
 
 class AtomicInteger:
-    """Atomic integer increment/decrement variable"""
+    """Atomic integer increment/decrement variable."""
 
     def __init__(self, value: int = 0):
         self._value = int(value)
@@ -32,7 +30,7 @@ class AtomicInteger:
 
 
 class AtomicStrings:
-    """Atomic String List"""
+    """Atomic String List."""
 
     _value: list[str]
 

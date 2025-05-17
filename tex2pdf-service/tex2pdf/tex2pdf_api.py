@@ -1,6 +1,4 @@
-"""
-Tex2PDF FastAPI.
-"""
+"""Tex2PDF FastAPI."""
 
 import os
 import re
@@ -9,6 +7,8 @@ import tempfile
 import traceback
 import typing
 
+from arxiv.identifier import Identifier as arXivID
+from arxiv.identifier import IdentifierException
 from fastapi import FastAPI, Query, UploadFile
 from fastapi import status as STATCODE
 from fastapi.exceptions import RequestValidationError
@@ -19,10 +19,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse
 
-from arxiv.identifier import Identifier as arXivID, IdentifierException
-
 from . import MAX_APPENDING_FILES, MAX_TIME_BUDGET, MAX_TOPLEVEL_TEX_FILES, USE_ADDON_TREE
-from .converter_driver import ConversionOutcomeMaker, ConverterDriver, PreflightVersion, AutoTeXConverterDriver
+from .converter_driver import AutoTeXConverterDriver, ConversionOutcomeMaker, ConverterDriver, PreflightVersion
 from .fastapi_util import closer
 from .pdf_watermark import Watermark
 from .service_logger import get_logger
@@ -64,12 +62,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # make it more obious if a validation error happened
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse(
         status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "HTTP exception: " + str(exc.detail)}
     )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -79,25 +79,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 class Message(BaseModel):
-    """Message DTO"""
+    """Message DTO."""
 
     message: str
 
 
 class BinaryData(BaseModel):
-    """Binary data DTO"""
+    """Binary data DTO."""
 
     pass
 
 
 class PDFResponse(StreamingResponse):
-    """PDF response"""
+    """PDF response."""
 
     media_type = "application/pdf"
 
 
 class GzipResponse(StreamingResponse):
-    """gzip response"""
+    """gzip response."""
 
     media_type = "application/gzip"
 
@@ -145,9 +145,7 @@ async def convert_pdf(
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
 ) -> Response:
-    """
-    get a tarball, and convert to PDF
-    """
+    """Get a tarball, and convert to PDF."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()
@@ -270,21 +268,21 @@ async def convert_pdf(
         }
         return GzipResponse(content, headers=headers, background=closer(content, filename, log_extra))
 
-@app.post('/autotex/',
-          responses={
-              STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}},
-                                     "description": "Conversion result"},
-              STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
-              STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
-              STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message}
-          })
-async def autotex_pdf(incoming: UploadFile,
-                      arxivid: typing.Annotated[
-                          str | None, Query(title="arXiv ID", description="arXiv identifier")
-                      ] = None,
-                      timeout: typing.Annotated[int | None,
-                        Query(title="Time out", description="Time out in seconds.")] = None,
-                      ) -> Response:
+
+@app.post(
+    "/autotex/",
+    responses={
+        STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}}, "description": "Conversion result"},
+        STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
+        STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+        STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message},
+    },
+)
+async def autotex_pdf(
+    incoming: UploadFile,
+    arxivid: typing.Annotated[str | None, Query(title="arXiv ID", description="arXiv identifier")] = None,
+    timeout: typing.Annotated[int | None, Query(title="Time out", description="Time out in seconds.")] = None,
+) -> Response:
     """Get a tarball, and convert to PDF using autotex."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
@@ -321,12 +319,16 @@ async def autotex_pdf(incoming: UploadFile,
                 arxiv_identifier = arXivID(tag)
                 arxiv_identifier_id = arxiv_identifier.id
             except IdentifierException:
-                return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
-                                    content={"message": "Cannot determine arXiv identifier."})
+                return JSONResponse(
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    content={"message": "Cannot determine arXiv identifier."},
+                )
     if arxiv_identifier_id is None:
         # this should not happen, but I don't want an assertion here
-        return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                            content={"message": "Unexpected internal error, please report - arxivid is None."})
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Unexpected internal error, please report - arxivid is None."},
+        )
     # now we have and arxiv_identifier!
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
@@ -344,13 +346,15 @@ async def autotex_pdf(incoming: UploadFile,
         except RemovedSubmission:
             # TODO how can we detect this???
             logger.info("Archive is marked deleted.")
-            return JSONResponse(status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
-                                content={"message": "The source is marked deleted."})
+            return JSONResponse(
+                status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
+            )
 
         except Exception as exc:
-            logger.error(f"Exception %s", str(exc), exc_info=True)
-            return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                                content={"message": traceback.format_exc()})
+            logger.error("Exception %s", str(exc), exc_info=True)
+            return JSONResponse(
+                status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": traceback.format_exc()}
+            )
 
         out_dir_files = os.listdir(out_dir)
         outcome_maker = ConversionOutcomeMaker(tempdir, tag)
@@ -362,16 +366,12 @@ async def autotex_pdf(incoming: UploadFile,
             "Content-Type": "application/gzip",
             "Content-Disposition": f"attachment; filename={filename}",
         }
-        return GzipResponse(content, headers=headers,
-                            background=closer(content, filename, log_extra))
-
+        return GzipResponse(content, headers=headers, background=closer(content, filename, log_extra))
 
 
 @app.get("/texlive/info")
 async def texlive_info() -> FileResponse:
-    """
-    texlive info
-    """
+    """Get TeX Live info."""
     # note that this is run in /home/worker and we don't have write permissions
     # to /usr/local/texlive/... - thus, save the file simply in CWD.
     tlmgr_info = "tlmgr-info.json"
@@ -391,9 +391,7 @@ async def texlive_info() -> FileResponse:
 
 @app.get("/robots.txt", summary="robots.txt", include_in_schema=False)
 async def robots_txt() -> Response:
-    """
-    robots.txt
-    """
+    """robots.txt."""
     go_away_robots = "User-agent: *\nDisallow: /\n"
     return Response(go_away_robots, media_type="text/plain")
 

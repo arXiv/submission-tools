@@ -154,6 +154,7 @@ def test_api_smoke(docker_container):
     assert meta is None
     assert status == 500
 
+
 @pytest.mark.integration
 def test_api_git_hash(docker_container):
     url = docker_container + "/convert"
@@ -206,6 +207,7 @@ def test_api_test4(docker_container):
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
 
+
 @pytest.mark.integration
 def test_api_test_anc_ignore(docker_container):
     url = docker_container + "/convert"
@@ -214,6 +216,7 @@ def test_api_test_anc_ignore(docker_container):
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
     assert meta is not None
     assert meta.get("status") == "fail"
+
 
 @pytest.mark.integration
 def test_api_test_anc_ignore_no_ancfiles(docker_container):
@@ -226,6 +229,7 @@ def test_api_test_anc_ignore_no_ancfiles(docker_container):
     assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
     assert len(meta.get("converters", [])) == 2
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
+
 
 @pytest.mark.integration
 def test_api_preflight(docker_container):
@@ -269,10 +273,13 @@ def test_remote2023_anc_ignore(docker_container) -> None:
     url = docker_container + "/convert/"
     tag = os.path.basename(tarball)
     shutil.rmtree(out_dir, ignore_errors=True)
-    converter = RemoteConverterDriver(url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True, hide_anc_dir=True)
+    converter = RemoteConverterDriver(
+        url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True, hide_anc_dir=True
+    )
     pdf = converter.generate_pdf()
     assert pdf is None
     assert os.path.isfile(f"{out_dir}/test-anc-ignore.tar.gz-outcome.tar.gz")
+
 
 @pytest.mark.integration
 def test_api_missing_graphics(docker_container):
@@ -283,6 +290,7 @@ def test_api_missing_graphics(docker_container):
     assert meta is not None
     # compilation must fail on missing files
     assert meta.get("status") == "fail"
+
 
 @pytest.mark.integration
 def test_api_missing_glo(docker_container):
@@ -297,6 +305,7 @@ def test_api_missing_glo(docker_container):
     assert len(meta.get("converters")[0].get("runs")) == 2
     # the first run should have exit code 1, since it misses the not-available glo entry
     assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1
+
 
 @pytest.mark.integration
 def test_api_broken_tex(docker_container):

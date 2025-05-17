@@ -1,6 +1,4 @@
-"""
-This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
-"""
+"""This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF."""
 
 import io
 import json
@@ -15,11 +13,11 @@ from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
-from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe, ZZRMKeyError, ZZRMInvalidFormatError
+from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
 from . import (
-    ID_TAG,
     GIT_COMMIT_HASH,
+    ID_TAG,
     MAX_TIME_BUDGET,
     catalog_files,
     file_props,
@@ -33,7 +31,7 @@ from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, chmod_775, unpack_tarball
 from .tex_patching import fix_tex_sources
-from .tex_to_pdf_converters import BaseConverter, select_converter_class, CompilerNotSpecified
+from .tex_to_pdf_converters import BaseConverter, CompilerNotSpecified, select_converter_class
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
 winded_message = (
@@ -53,13 +51,14 @@ class PreflightVersion(Enum):
 
 
 class AssemblingFileNotFound(Exception):
-    """Designated file in assembling is not found"""
+    """Designated file in assembling is not found."""
 
     pass
 
 
 class ConverterDriver:
     """Drives the Tex converter.
+
     - Drives to pick a converter class
     - Sets up the work dir
     - Picks TeX files to convert
@@ -136,7 +135,7 @@ class ConverterDriver:
         return "\n".join(self.converter_logs) if self.converter_logs else self.note
 
     def _find_anc_rename_directory(self, ancdir: str) -> str | None:
-        target: str|None = None
+        target: str | None = None
         if os.path.isdir(ancdir):
             target = f"{self.in_dir}/_anc"
             assert target is not None  # placate stupid mypy
@@ -157,7 +156,6 @@ class ConverterDriver:
                 else:
                     target = new_target
         return target
-
 
     def generate_pdf(self) -> str | None:
         """We have the beef."""
@@ -230,10 +228,7 @@ class ConverterDriver:
             self.zzrm.find_metadata(tex_file).usage = FileUsageType.ignore
 
         if not self.tex_files:
-            in_file: dict
-            in_files = [
-                "%s (%s)" % (in_file["name"], str(in_file["size"])) for in_file in self.outcome.get("in_files", [])
-            ]
+            in_files = [f"""{in_file["name"]} ({in_file["size"]})""" for in_file in self.outcome.get("in_files", [])]
             self.note = "No tex file found. " + ", ".join(in_files)
             logger.error("Cannot find tex file for %s.", self.tag, extra=self.log_extra)
             self.outcome.update({"status": "fail", "tex_file": None, "in_files": file_props_in_dir(self.in_dir)})
@@ -246,7 +241,7 @@ class ConverterDriver:
             # self.outcome["reason"] = "nohyperref is not supported yet"
             # self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         # Deal with ignoring of anc directory, if requested
-        target: str|None = None
+        target: str | None = None
         if self.hide_anc_dir:
             ancdir = f"{self.in_dir}/anc"
             if os.path.isdir(ancdir):
@@ -385,7 +380,8 @@ class ConverterDriver:
         outcome["total_cpu_time"] = time.process_time() - start_process_time
 
     def unused_pics(self) -> list[str]:
-        """Returns the list of unused pics
+        """Return the list of unused pics.
+
         return the path, not the file name
         """
         return [
@@ -396,13 +392,15 @@ class ConverterDriver:
 
     def _finalize_pdf(self) -> None:
         """TeX has done its work. It may still need some things added to the PDF.
+
         First, we say the top-level graphics files appended.
         Second, we want the PDF watermarked.
 
         Note that, 00README.XXX can suppress the graphics addition, and watermarking.
 
         https://info.arxiv.org/help/submit_tex.html#latex
-        Note that adding a 00README.XXX with a toplevelfile directive will only effect the processing order and not the final assembly order of the pdf.
+        Note that adding a 00README.XXX with a toplevelfile directive will only effect the processing order
+        and not the final assembly order of the pdf.
 
         This is true for V1. When using v2 00README, the doc order honors the order of compiled texs.
         """
@@ -464,8 +462,14 @@ class ConverterDriver:
             logger.warning("Failed combining PDFs: %s", exc, extra=self.log_extra)
             pass
         except Exception as exc:
-            if isinstance(exc, (subprocess.TimeoutExpired, subprocess.CalledProcessError)):
-                logger.warning("Failed combining PDFs: %s (stdout=%s, stderr=%s)", exc, exc.stdout, exc.stderr, extra=self.log_extra)
+            if isinstance(exc, subprocess.TimeoutExpired | subprocess.CalledProcessError):
+                logger.warning(
+                    "Failed combining PDFs: %s (stdout=%s, stderr=%s)",
+                    exc,
+                    exc.stdout,
+                    exc.stderr,
+                    extra=self.log_extra,
+                )
                 outcome["gs"] = {}
                 if isinstance(exc, subprocess.CalledProcessError):
                     outcome["gs"]["return_code"] = exc.returncode
@@ -546,7 +550,8 @@ class ConversionOutcomeMaker:
         more_files: list[str] | None = None,
     ) -> None:
         """
-        works as the visitor to the converter to generate outcome and upload.
+        Work as the visitor to the converter to generate outcome and upload.
+
         work_dir/
             outcome-{tag}.json
             {converter.out_dir}/
@@ -606,7 +611,7 @@ class ConversionOutcomeMaker:
         taring = more_files + [f"{bod}/{fname}" for fname in outcome_files]
         # double-check the files exist
         taring = [ofile for ofile in taring if os.path.exists(os.path.join(self.work_dir, ofile))]
-        tar_cmd = ["tar", "czf", self.outcome_file, outcome_meta_file] + taring
+        tar_cmd = ["tar", "czf", self.outcome_file, outcome_meta_file, *taring]
         logger.debug(f"Creating outcome: {shlex.join(tar_cmd)}", extra=self.log_extra)
         subprocess.call(tar_cmd, cwd=self.work_dir)
         return
@@ -659,7 +664,13 @@ class RemoteConverterDriver(ConverterDriver):
 
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
         success = service_process_tarball(
-            self.service, local_tarball, outcome_file, int(self.max_time_budget), self.post_timeout, self.auto_detect, self.hide_anc_dir
+            self.service,
+            local_tarball,
+            outcome_file,
+            int(self.max_time_budget),
+            self.post_timeout,
+            self.auto_detect,
+            self.hide_anc_dir,
         )
 
         if not success:
@@ -697,6 +708,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         return self.outcome.get("pdf_file")
 
+
 class AutoTeXConverterDriver(ConverterDriver):
     """Uses autotex for conversion."""
 
@@ -705,7 +717,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
         self.zzrm = ZeroZeroReadMe()
 
-    def generate_pdf(self) -> str|None:
+    def generate_pdf(self) -> str | None:
         """We have the beef."""
         logger = get_logger()
         t0 = time.perf_counter()
@@ -719,13 +731,28 @@ class AutoTeXConverterDriver(ConverterDriver):
         arxivID = self.tag
         # maybe it is already source
         worker_args = [
-            "autotex.pl", "-f", "fInm", "-q",
-            "-S", self.in_dir,  # here the original tarball has been dumped
-            "-W", self.out_dir,  # work_dir/out where we expect files
-                                 # TODO currently autotex.pl DOES NOT HONOR THIS!!!
-            "-v", "-Z", "-p", arxivID ]
-        with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
-                              cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
+            "autotex.pl",
+            "-f",
+            "fInm",
+            "-q",
+            "-S",
+            self.in_dir,  # here the original tarball has been dumped
+            "-W",
+            self.out_dir,  # work_dir/out where we expect files
+            # TODO currently autotex.pl DOES NOT HONOR THIS!!!
+            "-v",
+            "-Z",
+            "-p",
+            arxivID,
+        ]
+        with subprocess.Popen(
+            worker_args,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            cwd="/autotex",
+            encoding="iso-8859-1",
+            env=cmdenv,
+        ) as child:
             process_completion = False
             try:
                 (out, err) = child.communicate(timeout=self.max_time_budget)
@@ -755,7 +782,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         # we use glob here, since we will need to rename the autotex.log created
         # by autotex.pl to arxivID.log *within* autotex.log
         log_files = glob(f"{self.in_dir}/tex_logs/autotex.log")
-        log: str|bytes|None = None
+        log: str | bytes | None = None
         if not log_files:
             logger.warning(f"No log files found for {arxivID}")
             log = None
@@ -778,26 +805,31 @@ class AutoTeXConverterDriver(ConverterDriver):
         # This is unfortunately not well documented and has severe duplication of entries
         self.outcome = {
             ID_TAG: self.tag,
-            "converters": [ {
-                "pdf_file": pdf_file,
-                "runs": [ {
-                    "args": worker_args,
-                    "stdout": out,
-                    "stderr": err,
-                    "return_code": child.returncode,
-                    "run_env": cmdenv,
-                    "start_time": t0, "end_time": t1,
-                    "elapse_time": elapse_time,
-                    "process_completion": process_completion,
-                    "PATH": PATH,
-                    "arxiv_id": arxivID,
-                    "log": log
-                }]
-            } ],
+            "converters": [
+                {
+                    "pdf_file": pdf_file,
+                    "runs": [
+                        {
+                            "args": worker_args,
+                            "stdout": out,
+                            "stderr": err,
+                            "return_code": child.returncode,
+                            "run_env": cmdenv,
+                            "start_time": t0,
+                            "end_time": t1,
+                            "elapse_time": elapse_time,
+                            "process_completion": process_completion,
+                            "PATH": PATH,
+                            "arxiv_id": arxivID,
+                            "log": log,
+                        }
+                    ],
+                }
+            ],
             "start_time": str(t0),
             "timeout": str(self.max_time_budget),
             "total_time": elapse_time,
-            "pdf_files": [ pdf_file ],
+            "pdf_files": [pdf_file],
             "pdf_file": pdf_file,
             "status": "success" if pdf_file else "fail",
         }
@@ -810,4 +842,3 @@ class AutoTeXConverterDriver(ConverterDriver):
             logger.debug("self.zzrm = %s", self.zzrm)
 
         return self.outcome.get("pdf_file")
-

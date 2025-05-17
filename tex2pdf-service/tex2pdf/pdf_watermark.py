@@ -1,6 +1,4 @@
-"""
-Adding the watermark string to the PDF file.
-"""
+"""Adding the watermark string to the PDF file."""
 
 import collections
 import io
@@ -12,7 +10,7 @@ Watermark = collections.namedtuple("Watermark", ["text", "link"])
 
 
 def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, out_pdf: str | io.FileIO) -> None:
-    """combines/overlays the watermark PDF with the source PDF"""
+    """combines/overlays the watermark PDF with the source PDF."""
     fname = "Times-Roman"
     fsize = 20
 
