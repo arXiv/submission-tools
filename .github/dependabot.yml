@@ -1,0 +1,11 @@
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directories:
+      - "/tex2pdf-service"
+      - "/tex2pdf-tools"
+      - "/pdf_profle"
+    schedule:
+      interval: "weekly"
+    versioning-strategy: increase
