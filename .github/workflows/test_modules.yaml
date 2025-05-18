@@ -34,9 +34,15 @@ jobs:
         cd tex2pdf-tools
         python -m pip install --upgrade pip
         pip install pytest poetry
-        poetry install
+        poetry install --with=dev
     - name: pytest for tools
       run: |
         cd tex2pdf-tools
         export PYTHONPATH=$PWD
         poetry run pytest tests
+    - name: ruff check
+      run: |
+        cd tex2pdf-tools
+        export PYTHONPATH=$PWD
+        poetry run ruff check .
+

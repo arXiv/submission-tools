@@ -27,6 +27,8 @@ lint.ignore = [
     "D107", # no docstring in __init__
 ]
 
+extend-exclude = ["*.ipynb"]
+
 output-format = "grouped"
 
 # Assume Python 3.11
