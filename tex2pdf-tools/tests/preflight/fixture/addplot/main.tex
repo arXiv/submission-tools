@@ -1,0 +1,22 @@
+\documentclass{article}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.7}
+\begin{document}
+Hello World
+\begin{tikzpicture}
+  \begin{axis}
+    \addplot [blue]
+    table {data1.txt};
+  \end{axis}
+
+  some other tikz commmand
+
+  \begin{axis}
+    \addplot+ [red]
+    table {data2.txt};
+  \end{axis}
+\end{tikzpicture}
+Finished
+\end{document}

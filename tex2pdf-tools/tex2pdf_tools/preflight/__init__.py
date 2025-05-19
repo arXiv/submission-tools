@@ -511,6 +511,16 @@ class ParsedTeXFile(BaseModel):
             self._graphicspath = gp_entries
             logging.debug("Setting graphicspath to %s", self._graphicspath)
 
+        # deal with some specially tricky commands
+        for i in re.findall(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*({[^}]+})", data, re.MULTILINE):
+            logging.debug("%s regex found %s", self.filename, i)
+            try:
+                ii = [x.decode("utf-8") for x in i]
+                self.collect_included_files(ii)
+            except UnicodeDecodeError:
+                # TODO can we do more here?
+                logging.warning("Cannot decode argument: %s", i)
+
         # check for the rest of include commands
         for i in re.findall(ARGS_INCLUDE_REGEX.encode("utf-8"), data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
@@ -524,6 +534,7 @@ class ParsedTeXFile(BaseModel):
 
     def collect_included_files(self, inc: list[str]) -> None:
         """Determine actually included files from the list of regex group captures."""
+        inclen = len(inc)
         # every inc has four matching groups
         # inc[0] ... command
         # inc[1] ... options (if present)
@@ -542,11 +553,11 @@ class ParsedTeXFile(BaseModel):
             include_argument = inc[2]
         else:
             include_argument = "{}"
-        if inc[3]:
+        if inclen > 3 and inc[3]:
             include_extra_argument = inc[3]
         else:
             include_extra_argument = "{}"
-        if inc[4]:
+        if inclen > 4 and inc[4]:
             include_extra2_argument = inc[4]
         else:
             include_extra2_argument = "{}"
@@ -995,6 +1006,7 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="makeindex", source="index", type=FileType.idx),
     IncludeSpec(cmd="printindex", source="index", type=FileType.ind),
     IncludeSpec(cmd="overpic", source="overpic", type=FileType.other, extensions=IMAGE_EXTENSIONS),
+    IncludeSpec(cmd="addplot", source="pgfplots", type=FileType.other),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
