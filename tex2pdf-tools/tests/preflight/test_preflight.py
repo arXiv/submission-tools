@@ -416,3 +416,78 @@ class TestPreflight(unittest.TestCase):
                 found_main = True
                 self.assertEqual(sorted(tf.used_other_files), ["bla bla.jpg", "foo.png"])
         assert found_main
+
+    def test_bbl_bib(self):
+        """Test submission with bbl and bib present."""
+        dir_path = os.path.join(self.fixture_dir, "bbl-bib")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertTrue(tf.process.bibliography.pre_generated)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, ["xxx.bib"])
+        self.assertEqual(tf.used_other_files, ["main.bbl"])
+
+    def test_bbl_no_bib(self):
+        """Test submission with bbl but without bib present."""
+        dir_path = os.path.join(self.fixture_dir, "bbl-no-bib")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertTrue(tf.process.bibliography.pre_generated)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, [])
+        self.assertEqual(tf.used_other_files, ["main.bbl"])
+
+    def test_bib_no_bbl(self):
+        """Test submission with bib but without bbl present."""
+        dir_path = os.path.join(self.fixture_dir, "bib-no-bbl")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertFalse(tf.process.bibliography.pre_generated)
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.bbl_file_missing)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, ["xxx.bib"])
+        self.assertEqual(tf.used_other_files, [])
+
+    def test_no_bbl_no_bib(self):
+        """Test submission with no bib nor bbl present."""
+        dir_path = os.path.join(self.fixture_dir, "no-bbl-no-bib")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertFalse(tf.process.bibliography.pre_generated)
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.bbl_file_missing)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, [])
+        self.assertEqual(tf.used_other_files, [])
+
+    def test_biber_bibtex_mix(self):
+        """Test submission with no bib nor bbl present."""
+        dir_path = os.path.join(self.fixture_dir, "bibtex-and-biber")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.multiple_bibliography_types)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, ["xxx.bib", "xxx.bib"])
+        self.assertEqual(tf.used_other_files, [])
