@@ -321,3 +321,29 @@ def test_api_broken_tex(docker_container):
     # the first run should have exit code 1, since it misses the not-available glo entry
     assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1
     assert meta.get("converters")[0].get("runs")[1].get("return_code") == 1
+
+
+@pytest.mark.integration
+def test_bbl_32(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-bbl-32.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test-bbl-32.pdf"
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 3
+    assert "/usr/local/texlive/texmf-biblatex-33" not in meta["converters"][0]["runs"][2].get("log")
+
+
+@pytest.mark.integration
+def test_bbl_33(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-33/test-bbl-33.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-bbl-33.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test-bbl-33.pdf"
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 3
+    assert "/usr/local/texlive/texmf-biblatex-33" in meta["converters"][0]["runs"][2].get("log")
