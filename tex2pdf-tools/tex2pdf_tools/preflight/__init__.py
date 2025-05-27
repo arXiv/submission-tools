@@ -699,10 +699,17 @@ class ParsedTeXFile(BaseModel):
         # the filearg could be very strange stuff, like when \includegraphics is redefined
         # \def\includegraphics{....}
         # in the case of agutexSI2019.cls, the .... even includes a \n
+        # also normalize // to / for keys
         file_incspec_cleaned: dict[str, dict[str, IncludeSpec]] = {}
         for k, v in file_incspec.items():
-            k_cleaned = k.encode("unicode_escape").decode("utf-8")
+            k_cleaned = k.encode("unicode_escape").decode("utf-8").replace("//", "/")
             file_incspec_cleaned[k_cleaned] = v
+        # clean mentioned files from double //
+        new_mentioned_files: dict[str, dict[str, IncludeSpec]] = {}
+        for k, v in self.mentioned_files.items():
+            kk = k.replace("//", "/")
+            new_mentioned_files[kk] = v
+        self.mentioned_files = new_mentioned_files
         for k, v in file_incspec_cleaned.items():
             if k in self.mentioned_files:
                 self.mentioned_files[k] |= file_incspec_cleaned[k]
