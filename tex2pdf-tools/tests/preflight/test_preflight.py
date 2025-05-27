@@ -491,3 +491,23 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(len(tf.issues), 0)
         self.assertEqual(tf.used_bib_files, ["xxx.bib", "xxx.bib"])
         self.assertEqual(tf.used_other_files, [])
+
+    def test_double_slash_normalization(self):
+        """Test double slash normalization present."""
+        dir_path = os.path.join(self.fixture_dir, "double-slash-normalization")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        found_main = False
+        found_sub = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_other_files), ["subdir/img.png"])
+                self.assertEqual(sorted(tf.used_tex_files), ["subdir/bla.tex"])
+            if tf.filename == "subdir/bla.tex":
+                found_sub = True
+        assert found_main
+        assert found_sub
+
