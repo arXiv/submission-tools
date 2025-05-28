@@ -185,7 +185,7 @@ class BaseConverter:
         return outcome
 
     def _exec_cmd(
-        self, args: list[str], child_dir: str, work_dir: str, extra: dict | None = None
+        self, args: list[str], stem: str, child_dir: str, work_dir: str, extra: dict | None = None
     ) -> tuple[dict[str, typing.Any], str, str]:
         """Run the command and return the result."""
         logger = get_logger()
@@ -227,12 +227,34 @@ class BaseConverter:
         for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE"]:
             if os.getenv(senv):
                 cmdenv[senv] = os.getenv(senv, "")  # the "" is only here to placate mypy :-(
+        # try detecting incompatible bbl version and adjust TEXMFAUXTREES to make it compile
+        bbl_file_full_path = os.path.join(child_dir, f"{stem}.bbl")
+        if os.path.exists(bbl_file_full_path):
+            with open(bbl_file_full_path, "rb") as bblfn:
+                # try to read up to three lines from the .bbl file
+                # This may fail for empty .bbl files or files containing less than three lines
+                # in this case the next throws the StopIteration exception
+                try:
+                    head = [next(bblfn).strip() for _ in range(3)]
+                except StopIteration:
+                    head = [b""]
+            if head[0] == b"% $ biblatex auxiliary file $":
+                if head[1].startswith(b"% $ biblatex bbl format version "):
+                    bbl_version = head[1].removeprefix(b"% $ biblatex bbl format version ").removesuffix(b" $")
+                    if bbl_version == b"3.3":
+                        logger.debug("bbl version 3.3 found, activating biblatex extra tree", extra=extra)
+                        cmdenv["TEXMFAUXTREES"] = "/usr/local/texlive/texmf-biblatex-33,"  # we need a final comma!
         # get location of addon trees
         if self.use_addon_tree:
             kpsewhich = self.decorate_args(["/usr/bin/kpsewhich", "-var-value", "SELFAUTOPARENT"])
             sap = subprocess.run(kpsewhich, capture_output=True, text=True, check=False).stdout.rstrip()
             addon_tree = os.path.join(sap, "texmf-arxiv")
-            cmdenv["TEXMFAUXTREES"] = addon_tree + ","  # we need a final comma!
+            if "TEXMFAUXTREES" in cmdenv:
+                # if TEXMFAUXTREES is already set, append the addon tree to it
+                cmdenv["TEXMFAUXTREES"] += f"{addon_tree},"  # we need a final comma!
+            else:
+                # if TEXMFAUXTREES is not set, create it
+                cmdenv["TEXMFAUXTREES"] = f"{addon_tree},"  # we need a final comma!
         with subprocess.Popen(
             worker_args,
             stderr=subprocess.PIPE,
@@ -368,7 +390,7 @@ class BaseConverter:
         self, args: list[str], stem: str, step: str, work_dir: str, in_dir: str, out_dir: str, log_file: str
     ) -> dict:
         """Run a command to generate a pdf."""
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
+        run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
         aux_filename = os.path.join(in_dir, f"{stem}.aux")
         self._check_cmd_run(run, pdf_filename)
@@ -472,7 +494,7 @@ class BaseDviConverter(BaseConverter):
             pass
         args = ["/usr/bin/dvips", *dvi_options, "-o", f"{stem}.ps", dvi_file]
 
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": tag})
+        run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": tag})
         ps_filename = os.path.join(in_dir, f"{stem}.ps")
         self._check_cmd_run(run, ps_filename)
         self._report_run(run, out, err, tag, in_dir, work_dir, "ps", ps_filename)
@@ -480,7 +502,7 @@ class BaseDviConverter(BaseConverter):
 
     def _base_to_dvi_run(self, step: str, stem: str, args: list[str], work_dir: str, in_dir: str) -> dict:
         """Run the given command to generate dvi file and returns the run result."""
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
+        run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
         aux_filename = os.path.join(in_dir, f"{stem}.aux")
         self._check_cmd_run(run, dvi_filename)

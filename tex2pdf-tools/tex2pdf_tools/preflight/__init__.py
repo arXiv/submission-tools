@@ -49,7 +49,10 @@ HTML_SUBMISSION_STRING = "html_submission"
 # biber 2.19
 # biblatex 3.19
 # bbl format: 3.2
-CURRENT_ARXIV_TEX_BBL_VERSION = "3.2"
+
+# we only support 3.2 and 3.3 via the extra tree
+# this needs to be bytes since we read files in byte mode!
+CURRENT_ARXIV_TEX_BBL_VERSIONS = [b"3.2", b"3.3"]
 
 #
 # CLASSES AND TYPES
@@ -1650,12 +1653,13 @@ def deal_with_bibliographies(
                 else:
                     if head[1].startswith(b"% $ biblatex bbl format version "):
                         bbl_version = head[1].removeprefix(b"% $ biblatex bbl format version ").removesuffix(b" $")
-                        if bbl_version != CURRENT_ARXIV_TEX_BBL_VERSION.encode("ascii"):
+                        if bbl_version not in CURRENT_ARXIV_TEX_BBL_VERSIONS:
                             bbl_version_utf8 = bbl_version.decode("utf-8")
+                            good_versions = [x.decode("ascii") for x in CURRENT_ARXIV_TEX_BBL_VERSIONS]
                             node.issues.append(
                                 TeXFileIssue(
                                     IssueType.bbl_version_mismatch,
-                                    f"Expected {CURRENT_ARXIV_TEX_BBL_VERSION} but got {bbl_version_utf8}",
+                                    f"Expected one of {good_versions} but got {bbl_version_utf8}",
                                     bbl_file,
                                 )
                             )
