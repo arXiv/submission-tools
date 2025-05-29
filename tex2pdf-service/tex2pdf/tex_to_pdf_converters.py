@@ -313,10 +313,22 @@ class BaseConverter:
             f"{step} result: return code: {run['return_code']}",
             extra={ID_TAG: self.conversion_tag, "step": step, "run": run},
         )
-
-        if err or out_size is None:
+        err_lines = err.splitlines()
+        err_lines_not_ignored = []
+        for el in err_lines:
+            if el.startswith("libxpdf: Syntax Warning: Bad annotation destination"):
+                # ignore this warning, it is not important
+                continue
+            if not el.strip():
+                # ignore empty lines
+                continue
+            if el.startswith("kpathsea: Running mktex"):
+                # ignore tfm or pk builds
+                continue
+            err_lines_not_ignored.append(el)
+        if err_lines_not_ignored or out_size is None:
             logger.warning(
-                f"{step}: {output_tag} size = {out_size!s} - {err!s}",
+                f"{step}: {output_tag} size = {out_size!s} - {err_lines_not_ignored!s}",
                 extra={ID_TAG: self.conversion_tag, "step": step, "stdout": out, "stderr": err},
             )
             pass
