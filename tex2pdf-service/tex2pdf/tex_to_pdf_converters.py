@@ -322,7 +322,7 @@ class BaseConverter:
             if not el.strip():
                 # ignore empty lines
                 continue
-            if el.strip("kpathsea: Running mktex"):
+            if el.startswith("kpathsea: Running mktex"):
                 # ignore tfm or pk builds
                 continue
             err_lines_not_ignored.append(el)
