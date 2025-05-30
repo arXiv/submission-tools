@@ -100,9 +100,25 @@ def combine_documents(
         f"-sOutputFile={output_path}",
         *effective_pdf_list,
     ]
+    pdftk_cmd = [
+        "pdftk",
+        *effective_pdf_list,
+        "cat",
+        "output",
+        output_path,
+    ]
     logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
     # exception handing is done in convert_driver:_finalize_pdf
-    ret = subprocess.run(gs_cmd, capture_output=True, timeout=120, check=True, text=True)
+    try:
+        ret = subprocess.run(gs_cmd, capture_output=True, timeout=60, check=True, text=True)
+    except subprocess.TimeoutExpired as e:
+        logger.warning("gs command timed out, trying pdftk: %s", e, extra=log_extra)
+        logger.debug("Running pdftk to combine pdfs: %s", shlex.join(pdftk_cmd), extra=log_extra)
+        try:
+            ret = subprocess.run(pdftk_cmd, capture_output=True, timeout=60, check=True, text=True)
+        except subprocess.TimeoutExpired as e2:
+            logger.error("pdftk command timed out: %s", e2, extra=log_extra)
+            raise
     addon_outcome["gs"] = {}
     addon_outcome["gs"]["stdout"] = ret.stdout
     addon_outcome["gs"]["stderr"] = ret.stderr
