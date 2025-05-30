@@ -102,7 +102,7 @@ def combine_documents(
     ]
     logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
     # exception handing is done in convert_driver:_finalize_pdf
-    ret = subprocess.run(gs_cmd, capture_output=True, timeout=60, check=True, text=True)
+    ret = subprocess.run(gs_cmd, capture_output=True, timeout=120, check=True, text=True)
     addon_outcome["gs"] = {}
     addon_outcome["gs"]["stdout"] = ret.stdout
     addon_outcome["gs"]["stderr"] = ret.stderr
