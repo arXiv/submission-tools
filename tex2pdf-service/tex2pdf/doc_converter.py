@@ -115,7 +115,7 @@ def combine_documents(
         logger.warning("gs command timed out, trying pdftk: %s", e, extra=log_extra)
         logger.debug("Running pdftk to combine pdfs: %s", shlex.join(pdftk_cmd), extra=log_extra)
         try:
-            ret = subprocess.run(pdftk_cmd, capture_output=True, timeout=60, check=True, text=True)
+            ret = subprocess.run(pdftk_cmd, capture_output=True, timeout=120, check=True, text=True)
         except subprocess.TimeoutExpired as e2:
             logger.error("pdftk command timed out: %s", e2, extra=log_extra)
             raise
