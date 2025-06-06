@@ -66,6 +66,55 @@ def submit_tarball(
     return meta, status_code
 
 
+def submit_file(
+    service: str,
+    fname: str,
+    outcome_file: str,
+    tex2pdf_timeout: int = 30,
+    post_timeout: int = 10,
+    json_response: bool = False,
+    api_args: dict = {},
+) -> int:
+    params_dict = {}
+    params_dict.update(api_args)
+    params = urllib.parse.urlencode(params_dict)
+    url = f"{service}/?{params}"
+    with open(fname, "rb") as data_fd:
+        uploading = {"incoming": (os.path.basename(fname), data_fd, "application/pdf")}
+        while True:
+            try:
+                res = requests.post(url, files=uploading, timeout=post_timeout, allow_redirects=False)
+                status_code = res.status_code
+                if status_code == 504:
+                    logging.warning("Got 504 for %s", service)
+                    time.sleep(1)
+                    continue
+
+                if status_code == 200:
+                    if res.content:
+                        if json_response:
+                            return json.loads(res.content), 200
+                        else:
+                            os.makedirs(os.path.dirname(outcome_file), exist_ok=True)
+                            with open(outcome_file, "wb") as out:
+                                out.write(res.content)
+
+                else:
+                    logging.warning("%s: status code %d", url, status_code)
+
+            except TimeoutError:
+                logging.warning("%s: Connection timed out", fname)
+                status_code = 500
+
+            except Exception as exc:
+                logging.warning("%s: %s", fname, str(exc))
+                status_code = 500
+
+            break
+
+    return status_code
+
+
 @pytest.fixture(scope="module")
 def docker_container(request):
     global PORT  # noqa: PLW0603
@@ -73,7 +122,7 @@ def docker_container(request):
     url = f"http://localhost:{PORT}"
 
     if not request.config.getoption("--no-docker-setup"):
-        image_name = "public-tex2pdf-app-2024-2024-07-21"
+        image_name = "public-tex2pdf-app-2023-2023-05-21"
         container_name = "test-arxiv-tex2pdf"
         dockerport = "8080"
 
@@ -347,3 +396,30 @@ def test_bbl_33(docker_container):
     assert len(meta.get("converters", [])) == 1
     assert len(meta["converters"][0]["runs"]) == 3
     assert "/usr/local/texlive/texmf-biblatex-33" in meta["converters"][0]["runs"][2].get("log")
+
+
+@pytest.mark.integration
+def test_stamp_good(docker_container):
+    url = docker_container + "/stamp"
+    infile = os.path.join(SELF_DIR, "fixture/tarballs/stamp-good/good.pdf")
+    outcome = os.path.join(SELF_DIR, "output/stamp-good.pdf")
+    status = submit_file(url, infile, outcome, api_args={"watermark_text": "Hello World"})
+    assert status == 200
+
+
+@pytest.mark.integration
+def test_stamp_missing_watermark_text(docker_container):
+    url = docker_container + "/stamp"
+    infile = os.path.join(SELF_DIR, "fixture/tarballs/stamp-good/good.pdf")
+    outcome = os.path.join(SELF_DIR, "output/stamp-good.pdf")
+    status = submit_file(url, infile, outcome)
+    assert status == 400
+
+
+@pytest.mark.integration
+def test_stamp_not_rec_file(docker_container):
+    url = docker_container + "/stamp"
+    infile = os.path.join(SELF_DIR, "fixture/tarballs/stamp-not-rec-file/random.pdf")
+    outcome = os.path.join(SELF_DIR, "output/stamp-random.pdf")
+    status = submit_file(url, infile, outcome)
+    assert status == 400

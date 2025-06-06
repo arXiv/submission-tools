@@ -25,7 +25,7 @@ from . import (
     test_file_extent,
 )
 from .doc_converter import combine_documents
-from .pdf_watermark import Watermark, add_watermark_text_to_pdf
+from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, chmod_775, unpack_tarball
@@ -516,9 +516,12 @@ class ConverterDriver:
             try:
                 add_watermark_text_to_pdf(self.water, pdf_file, watered)
                 output = watered
+            except WatermarkError as _exc:
+                logger.warning("Failed watermarking %s", pdf_file, exc_info=True, extra=self.log_extra)
+                output = pdf_file
             except Exception as _exc:
-                logger.warning("Failed creating %s", watered, exc_info=True, extra=self.log_extra)
-                pass
+                logger.error("Exception in watermarking %s", pdf_file, exc_info=True, extra=self.log_extra)
+                output = pdf_file
             pass
         return output
 
