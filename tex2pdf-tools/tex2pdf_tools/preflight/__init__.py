@@ -428,15 +428,19 @@ class ParsedTeXFile(BaseModel):
         # certain values, switch to either TEX or LATEX only
         # we check for \bye first, so that if a file contains both
         # \documentclass and \bye (which is a syntax error!)
+        logging.debug("Detecting language for: %s", self.filename)
         self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
+            logging.debug("Found .sty, setting language to latex")
             self.language = LanguageType.latex
-        if re.search(rb"^[^%\n]*(\\text(bf|it|sl)|\\section|\\chapter)", self._data, re.MULTILINE):
-            self.language = LanguageType.latex
+        # this is too dangerous, several plain tex macro packages define \section or \chapter
+        # if re.search(rb"^[^%\n]*(\\text(bf|it|sl)|\\section|\\chapter)", self._data, re.MULTILINE):
+        #    self.language = LanguageType.latex
         if re.search(rb"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
             self.language = LanguageType.tex
             self.contains_bye = True
         if re.search(rb"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
+            logging.debug("Found documentclass, setting language to latex")
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
                 self.issues.append(
