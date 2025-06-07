@@ -1503,9 +1503,11 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
             candidate_compilers.difference_update(PDF_COMPILERS_STR)
 
         # check for fontspec.sty to determine xetex/luatex
+        is_unicode_tex = False
         for fn in tl_n.used_system_files + tl_n.used_tex_files:
             if fn.endswith("/fontspec.sty"):
                 candidate_compilers.intersection_update(FONTSPEC_ALLOWED_COMPILERS_STR)
+                is_unicode_tex = True
 
         # check all other files
         all_other = tl_n.recursive_collect_files(FileType.other)
@@ -1573,12 +1575,21 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         if not possible_compiler_strings:
             issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "compiler cannot be determined"))
         elif not supported_compiler_strings:
-            issues.append(
-                TeXFileIssue(
-                    IssueType.unsupported_compiler_type,
-                    f"compiler(s) {sorted(possible_compiler_strings)} not supported",
+            # try to give a good hint why this does not work:
+            if is_unicode_tex:
+                issues.append(
+                    TeXFileIssue(
+                        IssueType.unsupported_compiler_type,
+                        "Unicode TeX engine (XeTeX or LuaTeX) is required, but currently not supported.",
+                    )
                 )
-            )
+            else:
+                issues.append(
+                    TeXFileIssue(
+                        IssueType.unsupported_compiler_type,
+                        "Probable mix of eps and png/jpg/pdf images, which is currently not supported.",
+                    )
+                )
 
         # if there are multiple supported compilers, search for the first
         # according to the order in SUPPORTED_COMPILERS
