@@ -78,8 +78,8 @@ def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, 
                 with open(out_pdf, "wb") as fd:
                     source.save(fd)
     except pymupdf.FileDataError as exc:
-        logger.error("Failed to open PDF file: %s - %s", in_pdf, exc)
+        logger.error("Failed to open PDF file: %s - %s", in_pdf, exc, exc_info=True)
         raise WatermarkFileTypeError()
     except Exception as exc:
-        logger.error("Failed to open PDF file: %s - %s", in_pdf, exc)
+        logger.error("Failed to open PDF file: %s - %s", in_pdf, exc, exc_info=True)
         raise WatermarkError()
