@@ -778,24 +778,24 @@ class ParsedTeXFile(BaseModel):
         return ret
 
     # TODO rewrite using _generic_walk_document_tree
-    def find_entry_in_subgraph(
+    def compute_language_of_graph(
         self,
     ) -> tuple[LanguageType, list[TeXFileIssue]]:
         """Walk a subgraph to search for properties."""
-        return self._find_entry_in_subgraph({})
+        return self._compute_language_of_graph({})
 
-    def _find_entry_in_subgraph(self, visited: dict[str, bool]) -> tuple[LanguageType, list[TeXFileIssue]]:
+    def _compute_language_of_graph(self, visited: dict[str, bool]) -> tuple[LanguageType, list[TeXFileIssue]]:
         """Walk a subgraph to search for properties."""
         issues = []
         found_language: LanguageType = self.language
-        logging.debug("find_entry_in_subgraph: %s", self.filename)
+        logging.debug("compute_language_of_graph: %s, start lang = %s", self.filename, found_language)
         for n in self.children:
             if n.filename in visited:
-                logging.debug("find_entry_in_subgraph: revisiting %s", n.filename)
+                logging.debug("compute_language_of_graph: revisiting %s", n.filename)
                 continue
-            logging.debug("find_entry_in_subgraph: recursively calling into %s", n.filename)
+            logging.debug("compute_language_of_graph: recursively calling into %s", n.filename)
             visited[n.filename] = True
-            kid_language, kid_issues = n._find_entry_in_subgraph(visited)
+            kid_language, kid_issues = n._compute_language_of_graph(visited)
             if found_language == LanguageType.unknown:
                 found_language = kid_language
             elif found_language == LanguageType.tex:
@@ -803,8 +803,11 @@ class ParsedTeXFile(BaseModel):
                     issues.append(
                         TeXFileIssue(IssueType.conflicting_file_type, "conflicting lang types of main and subfiles")
                     )
-                # always upgrade to LaTeX
-                found_language = LanguageType.latex
+                elif kid_language == LanguageType.unknown or kid_language == LanguageType.tex:
+                    # don't change found_language which is tex
+                    pass
+                else:
+                    raise PreflightException(f"Unknown kid LanguageType {kid_language}")
             elif found_language == LanguageType.latex:
                 if kid_language == LanguageType.tex:
                     issues.append(
@@ -1488,7 +1491,8 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         # CompilerSpec is not hashable, so we cannot directly use it as set elements
         candidate_compilers = set(ALL_COMPILERS_STR)
 
-        found_language, issues = tl_n.find_entry_in_subgraph()
+        found_language, issues = tl_n.compute_language_of_graph()
+        logging.debug("guess_compilation_parameters: found language %s", found_language)
 
         contains_pdfoutput_true = tl_n.generic_walk_document_tree(
             lambda x: x.contains_pdfoutput_true, lambda x, y: x or y

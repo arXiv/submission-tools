@@ -524,3 +524,16 @@ class TestPreflight(unittest.TestCase):
         assert found_main
         assert found_sub
 
+    def test_plain_tex_sub(self):
+        """Test plain tex files with sub files."""
+        dir_path = os.path.join(self.fixture_dir, "plain-tex-sub")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "dvi")
+        self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
+
