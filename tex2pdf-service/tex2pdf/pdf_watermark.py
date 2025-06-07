@@ -36,7 +36,20 @@ def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, 
     try:
         logger.debug("Trying to open PDF file: %s", in_pdf)
         with pymupdf.open(in_pdf) as source:
-            logger.debug("PDF open file succeeded")
+            logger.debug("pymupdf open file succeeded")
+            # pymupdf.open() can open multiple file types, including PDF, XPS, and EPUB.
+            # When a non-PDF is submitted, raise an error.
+            if not source.is_pdf:
+                logger.error("Passed file is not a PDF: %s", in_pdf)
+                raise WatermarkFileTypeError()
+            # do not stamp PDFs that look like PDF/A files
+            # see https://github.com/pymupdf/PyMuPDF/discussions/2169#discussioncomment-4657130
+            catalog = source.pdf_catalog()
+            output_intents_xref = source.xref_get_key(catalog, "OutputIntents")
+            if output_intents_xref and output_intents_xref[0] == "array":
+                logger.warning("Passed PDF file looks like PDF/A, not stamping: %s", in_pdf)
+                return
+            # do the work
             page = source[0]
             page_size = page.mediabox_size
             wm_length = pymupdf.get_text_length(watermark.text, fontname=fname, fontsize=fsize)

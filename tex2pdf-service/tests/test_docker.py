@@ -423,3 +423,12 @@ def test_stamp_not_rec_file(docker_container):
     outcome = os.path.join(SELF_DIR, "output/stamp-random.pdf")
     status = submit_file(url, infile, outcome)
     assert status == 400
+
+
+@pytest.mark.integration
+def test_stamp_pdfa(docker_container):
+    url = docker_container + "/stamp"
+    infile = os.path.join(SELF_DIR, "fixture/tarballs/stamp-pdfa/main.pdf")
+    outcome = os.path.join(SELF_DIR, "output/stamp-pdfa.pdf")
+    status = submit_file(url, infile, outcome)
+    assert status == 400
