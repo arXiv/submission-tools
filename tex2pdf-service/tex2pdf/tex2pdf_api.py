@@ -12,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
+from starlette.background import BackgroundTasks
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse
@@ -19,7 +20,7 @@ from starlette.responses import FileResponse, HTMLResponse
 from . import MAX_APPENDING_FILES, MAX_TIME_BUDGET, MAX_TOPLEVEL_TEX_FILES, USE_ADDON_TREE
 from .converter_driver import ConversionOutcomeMaker, ConverterDriver, PreflightVersion
 from .fastapi_util import closer
-from .pdf_watermark import Watermark
+from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
 from .service_logger import get_logger
 from .tarball import (
     RemovedSubmission,
@@ -264,6 +265,69 @@ async def convert_pdf(
             "Content-Disposition": f"attachment; filename={filename}",
         }
         return GzipResponse(content, headers=headers, background=closer(content, filename, log_extra))
+
+
+@app.post(
+    "/stamp/",
+    responses={
+        STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}}, "description": "Conversion result"},
+        STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
+        STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message},
+    },
+)
+async def stamp_pdf(
+    background_tasks: BackgroundTasks,
+    incoming: UploadFile,
+    watermark_text: str | None = None,
+    watermark_link: str | None = None,
+) -> Response:
+    """Get a PDF and return the PDF with a watermark."""
+    filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
+    log_extra = {"in_pdf": filename}
+    logger = get_logger()
+    logger.info("Stamping incoming pdf: %s", incoming.filename)
+    tag = os.path.basename(filename)
+
+    if watermark_text is None or not watermark_text.strip():
+        logger.warning("No watermark text provided", extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "No watermark text provided"}
+        )
+
+    tempdir = tempfile.TemporaryDirectory(prefix=tag)
+    in_dir, out_dir = prep_tempdir(tempdir.name)
+    await save_stream(in_dir, incoming, filename, log_extra)
+    in_file = os.path.join(in_dir, filename)
+    out_file = os.path.join(out_dir, filename)
+
+    watermark = Watermark(watermark_text, watermark_link)
+    try:
+        add_watermark_text_to_pdf(watermark, in_file, out_file)
+    except WatermarkFileTypeError as exc:
+        logger.warning("Failed watermarking - input file type error %s: %s", filename, exc, extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "input file type not supported"}
+        )
+    except WatermarkError as exc:
+        logger.warning("Failed watermarking - other error %s: %s", filename, exc, extra=log_extra)
+        return JSONResponse(status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "failed to watermark PDF"})
+    except Exception as exc:
+        logger.error("Exception while watermarking: %s", str(exc), exc_info=True)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": "internal server error"}
+        )
+    if not os.path.exists(out_file):
+        logger.warning("Watermarked file %s does not exist after watermarking", out_file, extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Watermarked file does not exist"},
+        )
+    headers = {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": f"attachment; filename={filename}",
+    }
+    background_tasks.add_task(tempdir.cleanup)
+    return FileResponse(out_file, headers=headers)
 
 
 @app.get("/texlive/info")
