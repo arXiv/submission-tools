@@ -20,7 +20,7 @@ from starlette.responses import FileResponse, HTMLResponse
 from tex2pdf_tools.preflight import generate_preflight_response
 
 from . import MAX_APPENDING_FILES, MAX_TIME_BUDGET, MAX_TOPLEVEL_TEX_FILES, USE_ADDON_TREE
-from .converter_driver import ConversionOutcomeMaker, ConverterDriver
+from .converter_driver import ConversionOutcomeMaker, ConverterDriver, TimeStampProvider
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
 from .service_logger import get_logger
@@ -112,6 +112,19 @@ class PreflightVersion(Enum):
     V2 = 2
 
 
+class DummyTimeStampProvider(TimeStampProvider):
+    """Dummy TimeStampProvider for testing purposes."""
+
+    def __init__(self, identifier: str):
+        """Initialize with a dummy identifier."""
+        super().__init__(identifier)
+        self.identifier = identifier
+
+    def get_timestamp(self) -> int | None:
+        """Return a dummy timestamp."""
+        return None
+
+
 @app.get("/", response_class=HTMLResponse)
 def healthcheck() -> str:
     """Health check endpoint."""
@@ -150,6 +163,43 @@ async def convert_pdf(
     preflight: typing.Annotated[
         str | None, Query(title="Preflight", description="Do preflight check, currently only supports v2")
     ] = None,
+    identifier: typing.Annotated[
+        str | None,
+        Query(
+            title="ID",
+            description="String that can be converted to a TimeStampProvider.",
+        ),
+    ] = None,
+    watermark_text: str | None = None,
+    watermark_link: str | None = None,
+    auto_detect: bool = False,
+    hide_anc_dir: bool = False,
+) -> Response:
+    return await _convert_pdf(
+        DummyTimeStampProvider,
+        incoming,
+        use_addon_tree,
+        timeout,
+        max_tex_files,
+        max_appending_files,
+        preflight,
+        identifier,
+        watermark_text,
+        watermark_link,
+        auto_detect,
+        hide_anc_dir,
+    )
+
+
+async def _convert_pdf(
+    TimeStampProviderClass: type[TimeStampProvider],
+    incoming: UploadFile,
+    use_addon_tree: bool,
+    timeout: int | None,
+    max_tex_files: int | None,
+    max_appending_files: int | None,
+    preflight: str | None,
+    identifier: str | None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
@@ -173,6 +223,10 @@ async def convert_pdf(
 
     if max_appending_files is None:
         max_appending_files = MAX_APPENDING_FILES
+
+    ts_identifier: TimeStampProviderClass | None = None
+    if identifier is not None:
+        ts_identifier = TimeStampProviderClass(identifier)
 
     preflight_version: PreflightVersion
     if preflight is None:
@@ -224,6 +278,13 @@ async def convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
+        timestamp = ts_identifier.get_timestamp()
+        if timestamp is None:
+            logger.debug("Timestamp is None, using builtin conversion driver.")
+        else:
+            logger.debug("Using timestamp %s for conversion driver.", timestamp)
+            # TODO use timestamp to determine the conversion driver (local/remote)
+
         driver = ConverterDriver(
             tempdir,
             filename,
@@ -233,6 +294,7 @@ async def convert_pdf(
             max_time_budget=timeout_secs,
             max_tex_files=max_tex_files,
             max_appending_files=max_appending_files,
+            identifier=None,
             auto_detect=auto_detect,
             hide_anc_dir=hide_anc_dir,
         )
