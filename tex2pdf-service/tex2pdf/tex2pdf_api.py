@@ -117,7 +117,6 @@ class DummyTimeStampProvider(TimeStampProvider):
 
     def __init__(self, identifier: str):
         """Initialize with a dummy identifier."""
-        super().__init__(identifier)
         self.identifier = identifier
 
     def get_timestamp(self) -> int | None:
@@ -191,8 +190,11 @@ async def convert_pdf(
     )
 
 
+T = typing.TypeVar("T", bound=TimeStampProvider)
+
+
 async def _convert_pdf(
-    TimeStampProviderClass: type[TimeStampProvider],
+    TimeStampProviderClass: type[T],
     incoming: UploadFile,
     use_addon_tree: bool,
     timeout: int | None,
@@ -224,7 +226,7 @@ async def _convert_pdf(
     if max_appending_files is None:
         max_appending_files = MAX_APPENDING_FILES
 
-    ts_identifier: TimeStampProviderClass | None = None
+    ts_identifier: T | None = None
     if identifier is not None:
         ts_identifier = TimeStampProviderClass(identifier)
 

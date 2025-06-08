@@ -526,7 +526,7 @@ class ConverterDriver:
         # Format of CUTOVERXXX: epoch seconds!
         # all of the following is only necessary if we actually have multiple
         # TeX systems running
-        if TEX2PDF_SCOPES != "":
+        if TEX2PDF_SCOPES != "" and self.identifier is not None:
             scope_list: list[str] = TEX2PDF_SCOPES.split(":")
             if len(scope_list) % 2:
                 # uneven length is not good
@@ -540,7 +540,10 @@ class ConverterDriver:
                 if curr_date < last_date:
                     raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
                 last_date = curr_date
-            submission_date: int = self.identifier.get_timestamp()
+            submission_date: int | None = self.identifier.get_timestamp()
+            # if we have no identifier, we can only use the current system
+            if submission_date is None:
+                return "current"
             tex_system_key: str | None = None
             for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
                 logger.debug("Checking submission date against curdate: %s", cut_of_day)
