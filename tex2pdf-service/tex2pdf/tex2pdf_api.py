@@ -278,7 +278,7 @@ async def _convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
-        timestamp = ts_identifier.get_timestamp()
+        timestamp = None if ts_identifier is None else ts_identifier.get_timestamp()
         if timestamp is None:
             logger.debug("Timestamp is None, using builtin conversion driver.")
         else:

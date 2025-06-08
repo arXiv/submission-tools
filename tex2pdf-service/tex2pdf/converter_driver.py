@@ -18,6 +18,8 @@ from . import (
     GIT_COMMIT_HASH,
     ID_TAG,
     MAX_TIME_BUDGET,
+    TEX2PDF_KEYS_TO_URLS,
+    TEX2PDF_SCOPES,
     catalog_files,
     file_props,
     file_props_in_dir,
@@ -507,6 +509,58 @@ class ConverterDriver:
         return output
 
     pass
+
+    def _determine_compilation_system(self) -> str:
+        """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
+        logger = get_logger()
+        # we need to look into self.identifier
+        # and select either local _generate_pdf or remote depending on the
+        # time frame
+        # Input comes from an environment variable
+        # TEX2PDF_DATE_SCOPES="tetex2:CUTOF1:tetex3:CUTOF1:tl2009:...:CUTOFN:tl2023"
+        # with the interpretations:
+        # - submission date < CUTOF1 -> use tetex2
+        # - CUTOF1 <= submission date < CUTOF2 -> use tetex3
+        # ...
+        # - CUTOFEND <= submission date -> use tl2023
+        # Format of CUTOVERXXX: epoch seconds!
+        # all of the following is only necessary if we actually have multiple
+        # TeX systems running
+        if TEX2PDF_SCOPES != "":
+            scope_list: list[str] = TEX2PDF_SCOPES.split(":")
+            if len(scope_list) % 2:
+                # uneven length is not good
+                raise ValueError(f"Invalid scope definition: {scope_list}")
+            # check for correct format and ordering!
+            last_date: float = 0
+            for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
+                if tex_key not in TEX2PDF_KEYS_TO_URLS.keys():
+                    raise ValueError(f"Invalid tex key: {tex_key}")
+                curr_date: float = float(cut_of_day)
+                if curr_date < last_date:
+                    raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
+                last_date = curr_date
+            submission_date: int = self.identifier.get_timestamp()
+            tex_system_key: str | None = None
+            for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
+                logger.debug("Checking submission date against curdate: %s", cut_of_day)
+                curr_date = float(cut_of_day)
+                if submission_date < curr_date:
+                    tex_system_key = tex_key
+                    break
+            if tex_system_key is None:
+                tex_system_key = "current"
+        else:
+            # no compilation services defined, we always use current
+            tex_system_key = "current"
+        logger.debug("Detected tex system: %s", tex_system_key)
+        if tex_system_key == "current":
+            compile_service = tex_system_key
+        else:
+            # we already checked above that all entries in the scope list are
+            # available in the GEN_PDF_KEYS_TO_URLS hash.
+            compile_service = TEX2PDF_KEYS_TO_URLS[tex_system_key]
+        return compile_service
 
 
 class ConversionOutcomeMaker:
