@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import traceback
 import typing
+from enum import Enum
 
 from fastapi import FastAPI, Query, UploadFile
 from fastapi import status as STATCODE
@@ -16,9 +17,10 @@ from starlette.background import BackgroundTasks
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse
+from tex2pdf_tools.preflight import generate_preflight_response
 
 from . import MAX_APPENDING_FILES, MAX_TIME_BUDGET, MAX_TOPLEVEL_TEX_FILES, USE_ADDON_TREE
-from .converter_driver import ConversionOutcomeMaker, ConverterDriver, PreflightVersion
+from .converter_driver import ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
 from .service_logger import get_logger
@@ -27,8 +29,10 @@ from .tarball import (
     UnsupportedArchive,
     ZZRMUnderspecified,
     ZZRMUnsupportedCompiler,
+    chmod_775,
     prep_tempdir,
     save_stream,
+    unpack_tarball,
 )
 
 log_level = os.environ.get("LOGLEVEL", "INFO").upper()
@@ -98,6 +102,14 @@ class GzipResponse(StreamingResponse):
     """gzip response."""
 
     media_type = "application/gzip"
+
+
+class PreflightVersion(Enum):
+    """Possible values of preflight version."""
+
+    NONE = 0
+    V1 = 1
+    V2 = 2
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -191,6 +203,27 @@ async def convert_pdf(
             except ValueError:
                 pass
             pass
+
+        # deal with preflight computation
+        if preflight_version is not PreflightVersion.NONE:
+            logger.debug("[convert_pdf] running preflight version %s", preflight_version)
+            if preflight_version == PreflightVersion.V1:
+                # should not happen, we bail out already at the API entry point.
+                raise ValueError("Preflight v1 is not supported anymore")
+            elif preflight_version == PreflightVersion.V2:
+                local_tarball = os.path.join(in_dir, filename)
+                unpack_tarball(in_dir, local_tarball, log_extra)
+                chmod_775(tempdir)
+                rep = generate_preflight_response(in_dir, json=True)
+                return Response(
+                    status_code=STATCODE.HTTP_200_OK,
+                    headers={"Content-Type": "application/json"},
+                    content=rep,
+                )
+            else:
+                # Should not happen, we check this already on entrance of API call
+                raise ValueError(f"Invalid PreflightVersion: {preflight}")
+
         driver = ConverterDriver(
             tempdir,
             filename,
@@ -200,7 +233,6 @@ async def convert_pdf(
             max_time_budget=timeout_secs,
             max_tex_files=max_tex_files,
             max_appending_files=max_appending_files,
-            preflight=preflight_version,
             auto_detect=auto_detect,
             hide_anc_dir=hide_anc_dir,
         )
@@ -237,19 +269,6 @@ async def convert_pdf(
             return JSONResponse(
                 status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": traceback.format_exc()}
             )
-
-        if preflight_version == PreflightVersion.V2:
-            if "preflight_v2" in driver.outcome:
-                return Response(
-                    status_code=STATCODE.HTTP_200_OK,
-                    headers={"Content-Type": "application/json"},
-                    content=driver.outcome["preflight_v2"],
-                )
-            else:
-                return JSONResponse(
-                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"message": "Preflight v2 data not found"},
-                )
 
         more_files: list[str] = []
         # if pdf_file:
