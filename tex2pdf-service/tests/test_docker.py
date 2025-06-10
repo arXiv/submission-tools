@@ -432,3 +432,16 @@ def test_stamp_pdfa(docker_container):
     outcome = os.path.join(SELF_DIR, "output/stamp-pdfa.pdf")
     status = submit_file(url, infile, outcome)
     assert status == 400
+
+
+@pytest.mark.integration
+def test_always_changing_labels(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-always-changing-labels/test-always-changing-labels.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-always-changing-labels.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test-always-changing-labels.pdf"
+    assert meta.get("tex_files") == ["main.tex"]
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 7  # latex, latex, latex, latex, latex, dvi2ps, ps2pdf
