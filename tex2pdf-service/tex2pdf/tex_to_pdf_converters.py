@@ -780,9 +780,6 @@ class VanillaTexConverter(BaseDviConverter):
             if os.path.exists(dvi_file):
                 os.unlink(dvi_file)
             run["dvi"] = file_props(dvi_file)
-            outcome.update(
-                {"status": "fail", "step": step, "reason": "compiler run returned error code", "runs": self.runs}
-            )
             return outcome
 
         # dvi run
