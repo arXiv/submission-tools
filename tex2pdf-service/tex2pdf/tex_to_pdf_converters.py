@@ -139,7 +139,8 @@ class BaseConverter:
 
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
-        for iteration in range(MAX_LATEX_RUNS - 1):
+        iteration_list = range(MAX_LATEX_RUNS - 1)
+        for iteration in iteration_list:
             logger.debug("Starting %s run", iteration + 1)
             step = f"second_run:{iteration}"
             run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
@@ -170,13 +171,23 @@ class BaseConverter:
                 # if the checksum hasn't changed, this is promising
                 if self.aux_hashes[-1] != self.aux_hashes[-2]:
                     logger.debug("Aux file size changed, need to rerun")
-                    status = "fail"
+                    if iteration == iteration_list[-1]:
+                        # we are in the last iteration, and labels are still changing
+                        # In line with autotex, let us accept this as a success.
+                        logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                    else:
+                        status = "fail"
             for line in run["log"].splitlines():
                 if line.find(rerun_needle) >= 0:
                     # Need retry
                     logger.debug("Found rerun needle")
-                    status = "fail"
-                    break
+                    if iteration == iteration_list[-1]:
+                        # we are in the last iteration, and labels are still changing
+                        # In line with autotex, let us accept this as a success.
+                        logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        # don't break here so that we get to a successful outcome
+                    else:
+                        status = "fail"
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
