@@ -3,10 +3,12 @@
 import os
 import subprocess
 import tempfile
+import time
 import traceback
 import typing
 from enum import Enum
 
+import requests
 from fastapi import FastAPI, Query, UploadFile
 from fastapi import status as STATCODE
 from fastapi.exceptions import RequestValidationError
@@ -19,7 +21,14 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse
 from tex2pdf_tools.preflight import generate_preflight_response
 
-from . import MAX_APPENDING_FILES, MAX_TIME_BUDGET, MAX_TOPLEVEL_TEX_FILES, USE_ADDON_TREE
+from . import (
+    MAX_APPENDING_FILES,
+    MAX_TIME_BUDGET,
+    MAX_TOPLEVEL_TEX_FILES,
+    TEX2PDF_KEYS_TO_URLS,
+    TEX2PDF_SCOPES,
+    USE_ADDON_TREE,
+)
 from .converter_driver import ConversionOutcomeMaker, ConverterDriver, TimeStampProvider
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
@@ -124,6 +133,62 @@ class DummyTimeStampProvider(TimeStampProvider):
         return None
 
 
+def determine_compilation_system(identifier: TimeStampProvider | None) -> str:
+    """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
+    logger = get_logger()
+    # we need to look into identifier
+    # and select either local _generate_pdf or remote depending on the
+    # time frame
+    # Input comes from an environment variable
+    # TEX2PDF_DATE_SCOPES="tetex2:CUTOF1:tetex3:CUTOF1:tl2009:...:CUTOFN:tl2023"
+    # with the interpretations:
+    # - submission date < CUTOF1 -> use tetex2
+    # - CUTOF1 <= submission date < CUTOF2 -> use tetex3
+    # ...
+    # - CUTOFEND <= submission date -> use tl2023
+    # Format of CUTOVERXXX: epoch seconds!
+    # all of the following is only necessary if we actually have multiple
+    # TeX systems running
+    if TEX2PDF_SCOPES != "" and identifier is not None:
+        scope_list: list[str] = TEX2PDF_SCOPES.split(":")
+        if len(scope_list) % 2:
+            # uneven length is not good
+            raise ValueError(f"Invalid scope definition: {scope_list}")
+        # check for correct format and ordering!
+        last_date: float = 0
+        for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
+            if tex_key not in TEX2PDF_KEYS_TO_URLS.keys():
+                raise ValueError(f"Invalid tex key: {tex_key}")
+            curr_date: float = float(cut_of_day)
+            if curr_date < last_date:
+                raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
+            last_date = curr_date
+        submission_date: int | None = identifier.get_timestamp()
+        # if we have no identifier, we can only use the current system
+        if submission_date is None:
+            return "current"
+        tex_system_key: str | None = None
+        for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
+            logger.debug("Checking submission date against curdate: %s", cut_of_day)
+            curr_date = float(cut_of_day)
+            if submission_date < curr_date:
+                tex_system_key = tex_key
+                break
+        if tex_system_key is None:
+            tex_system_key = "current"
+    else:
+        # no compilation services defined, we always use current
+        tex_system_key = "current"
+    logger.debug("Detected tex system: %s", tex_system_key)
+    if tex_system_key == "current":
+        compile_service = tex_system_key
+    else:
+        # we already checked above that all entries in the scope list are
+        # available in the GEN_PDF_KEYS_TO_URLS hash.
+        compile_service = TEX2PDF_KEYS_TO_URLS[tex_system_key]
+    return compile_service
+
+
 @app.get("/", response_class=HTMLResponse)
 def healthcheck() -> str:
     """Health check endpoint."""
@@ -226,7 +291,7 @@ async def _convert_pdf(
     if max_appending_files is None:
         max_appending_files = MAX_APPENDING_FILES
 
-    ts_identifier: T | None = None
+    ts_identifier: TimeStampProvider | None = None
     if identifier is not None:
         ts_identifier = TimeStampProviderClass(identifier)
 
@@ -234,7 +299,6 @@ async def _convert_pdf(
     if preflight is None:
         preflight_version = PreflightVersion.NONE
     elif preflight == "v1" or preflight == "V1":
-        preflight_version = PreflightVersion.V1
         logger.info("Preflight version 1 not supported anymore.")
         return JSONResponse(
             status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "Preflight version 1 not supported anymore."}
@@ -280,74 +344,224 @@ async def _convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
-        timestamp = None if ts_identifier is None else ts_identifier.get_timestamp()
-        if timestamp is None:
-            logger.debug("Timestamp is None, using builtin conversion driver.")
+        compile_service = determine_compilation_system(identifier=ts_identifier)
+
+        if compile_service == "current":
+            logger.info("Using current compilation service.")
+            return _convert_pdf_current(
+                tempdir=tempdir,
+                in_dir=in_dir,
+                out_dir=out_dir,
+                tag=tag,
+                source=filename,
+                use_addon_tree=use_addon_tree,
+                timeout=timeout_secs,
+                max_tex_files=max_tex_files,
+                max_appending_files=max_appending_files,
+                watermark_text=watermark_text,
+                watermark_link=watermark_link,
+                auto_detect=auto_detect,
+                hide_anc_dir=hide_anc_dir,
+                log_extra=log_extra,
+            )
         else:
-            logger.debug("Using timestamp %s for conversion driver.", timestamp)
-            # TODO use timestamp to determine the conversion driver (local/remote)
+            logger.info("Using RemoteConverterDriver")
+            return _convert_pdf_remote(
+                compile_service=compile_service,
+                tempdir=tempdir,
+                in_dir=in_dir,
+                tag=tag,
+                source=filename,
+                use_addon_tree=use_addon_tree,
+                timeout=timeout_secs,
+                max_tex_files=max_tex_files,
+                max_appending_files=max_appending_files,
+                watermark_text=watermark_text,
+                watermark_link=watermark_link,
+                auto_detect=auto_detect,
+                hide_anc_dir=hide_anc_dir,
+                log_extra=log_extra,
+            )
 
-        driver = ConverterDriver(
-            tempdir,
-            filename,
-            use_addon_tree=use_addon_tree,
-            tag=tag,
-            watermark=Watermark(watermark_text, watermark_link),
-            max_time_budget=timeout_secs,
-            max_tex_files=max_tex_files,
-            max_appending_files=max_appending_files,
-            identifier=None,
-            auto_detect=auto_detect,
-            hide_anc_dir=hide_anc_dir,
+
+def _convert_pdf_remote(
+    compile_service: str,
+    tempdir: str,
+    in_dir: str,
+    tag: str,
+    source: str,
+    use_addon_tree: bool,
+    timeout: float | None,
+    max_tex_files: int | None,
+    max_appending_files: int | None,
+    watermark_text: str | None = None,
+    watermark_link: str | None = None,
+    auto_detect: bool = False,
+    hide_anc_dir: bool = False,
+    log_extra: dict[str, typing.Any] = {},
+) -> Response:
+    logger = get_logger()
+    tarball = os.path.join(in_dir, source)
+    with open(tarball, "rb") as data_fd:
+        uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
+        retries = 2
+        for attempt in range(1 + retries):
+            try:
+                args_dict = {
+                    "timeout": timeout,
+                    "use_addon_tree": use_addon_tree,
+                    "max_tex_files": max_tex_files,
+                    "max_appending_files": max_appending_files,
+                    "watermark_text": watermark_text,
+                    "watermark_link": watermark_link,
+                    "auto_detect": auto_detect,
+                    "hide_anc_dir": hide_anc_dir,
+                }
+                logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
+                logger.debug("uploading = %s", uploading, extra=log_extra)
+                res = requests.post(
+                    compile_service,
+                    files=uploading,
+                    timeout=timeout,
+                    allow_redirects=False,
+                    json=args_dict,
+                )
+                status_code = res.status_code
+                if status_code == 504:
+                    # This is the only place we retry, and at most 3 times in total.
+                    logger.warning("Got 504 for %s", compile_service, extra=log_extra)
+                    time.sleep(1)
+                    continue
+
+                if status_code == 200:
+                    # it would be better to forward the streaming response directly to the caller
+                    # one approach is explained here: https://stackoverflow.com/a/73299661
+                    if res.content:
+                        out_filename = f"{tag}-outcome.tar.gz"
+                        out_path = os.path.join(tempdir, out_filename)
+                        with open(out_path, "wb") as out_file:
+                            out_file.write(res.content)
+                        headers = {
+                            "Content-Type": "application/gzip",
+                            "Content-Disposition": f"attachment; filename={out_filename}",
+                        }
+                        content = open(out_path, "rb")
+                        return GzipResponse(content, headers=headers, background=closer(content, source, log_extra))
+                    else:
+                        logger.warning(
+                            "Failed to submit tarball %s to %s, status code: %d, %s",
+                            tarball,
+                            compile_service,
+                            status_code,
+                            res.text,
+                            extra=log_extra,
+                        )
+                        return JSONResponse(
+                            status_code=status_code,
+                            content={"message": f"Failed to submit tarball: {res.text}"},
+                        )
+            except TimeoutError:
+                logger.warning("%s: Connection to %s timed out", tarball, compile_service, extra=log_extra)
+                return JSONResponse(
+                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={"message": "Timeout contacting remote service"},
+                )
+            except Exception as exc:
+                logger.warning("Exception submitting tarball: %s", exc, extra=log_extra)
+                logger.warning("%s: %s", tarball, str(exc), extra=log_extra)
+                return JSONResponse(
+                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={"message": "General exception: " + traceback.format_exc()},
+                )
+        logger.error(
+            "Failed to submit tarball %s to %s after %d attempts", tarball, compile_service, retries, extra=log_extra
         )
-        try:
-            _pdf_file = driver.generate_pdf()
-        except RemovedSubmission:
-            logger.info("Archive is marked deleted.")
-            return JSONResponse(
-                status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
-            )
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to submit tarball after multiple attempts"},
+        )
 
-        except ZZRMUnsupportedCompiler:
-            logger.info("ZZRM selected compiler is not supported.")
-            return JSONResponse(
-                status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"message": "ZZRM selected compiler is not supported."},
-            )
 
-        except ZZRMUnderspecified:
-            logger.info("ZZRM missing or underspecified.")
-            return JSONResponse(
-                status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"message": "ZZRM missing or underspecified."},
-            )
+def _convert_pdf_current(
+    tempdir: str,
+    in_dir: str,
+    out_dir: str,
+    tag: str,
+    source: str,
+    use_addon_tree: bool,
+    timeout: float | None,
+    max_tex_files: int,
+    max_appending_files: int,
+    watermark_text: str | None = None,
+    watermark_link: str | None = None,
+    auto_detect: bool = False,
+    hide_anc_dir: bool = False,
+    log_extra: dict[str, typing.Any] = {},
+) -> Response:
+    """Convert source to PDF using the built-in TeX system."""
+    driver = ConverterDriver(
+        work_dir=tempdir,
+        source=source,
+        use_addon_tree=use_addon_tree,
+        tag=tag,
+        watermark=Watermark(watermark_text, watermark_link),
+        max_time_budget=timeout,
+        max_tex_files=max_tex_files,
+        max_appending_files=max_appending_files,
+        identifier=None,
+        auto_detect=auto_detect,
+        hide_anc_dir=hide_anc_dir,
+    )
+    logger = get_logger()
+    logger.debug("XXXX work_dir: %s; source: %s", in_dir, source, extra=log_extra)
+    try:
+        _pdf_file = driver.generate_pdf()
+    except RemovedSubmission:
+        logger.info("Archive is marked deleted.", extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
+        )
 
-        except UnsupportedArchive:
-            logger.info("Archive is not supported")
-            return JSONResponse(
-                status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "The archive is unsupported"}
-            )
+    except ZZRMUnsupportedCompiler:
+        logger.info("ZZRM selected compiler is not supported.", extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"message": "ZZRM selected compiler is not supported."},
+        )
 
-        except Exception as exc:
-            logger.error("Exception %s", str(exc), exc_info=True)
-            return JSONResponse(
-                status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": traceback.format_exc()}
-            )
+    except ZZRMUnderspecified:
+        logger.info("ZZRM missing or underspecified.", extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"message": "ZZRM missing or underspecified."},
+        )
 
-        more_files: list[str] = []
-        # if pdf_file:
-        #     more_files.append(pdf_file)
-        out_dir_files = os.listdir(out_dir)
-        outcome_maker = ConversionOutcomeMaker(tempdir, tag)
-        outcome_maker.create_outcome(driver, driver.outcome, more_files=more_files, outcome_files=out_dir_files)
+    except UnsupportedArchive:
+        logger.info("Archive is not supported", extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "The archive is unsupported"}
+        )
 
-        content = open(os.path.join(tempdir, outcome_maker.outcome_file), "rb")
-        filename = os.path.basename(outcome_maker.outcome_file)
-        headers = {
-            "Content-Type": "application/gzip",
-            "Content-Disposition": f"attachment; filename={filename}",
-        }
-        return GzipResponse(content, headers=headers, background=closer(content, filename, log_extra))
+    except Exception as exc:
+        logger.error("Exception %s", str(exc), exc_info=True, extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": traceback.format_exc()}
+        )
+
+    more_files: list[str] = []
+    # if pdf_file:
+    #     more_files.append(pdf_file)
+    out_dir_files = os.listdir(out_dir)
+    outcome_maker = ConversionOutcomeMaker(tempdir, tag)
+    outcome_maker.create_outcome(driver, driver.outcome, more_files=more_files, outcome_files=out_dir_files)
+
+    content = open(os.path.join(tempdir, outcome_maker.outcome_file), "rb")
+    filename = os.path.basename(outcome_maker.outcome_file)
+    headers = {
+        "Content-Type": "application/gzip",
+        "Content-Disposition": f"attachment; filename={filename}",
+    }
+    return GzipResponse(content, headers=headers, background=closer(content, filename, log_extra))
 
 
 @app.post(
