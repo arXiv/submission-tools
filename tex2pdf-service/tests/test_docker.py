@@ -432,3 +432,17 @@ def test_stamp_pdfa(docker_container):
     outcome = os.path.join(SELF_DIR, "output/stamp-pdfa.pdf")
     status = submit_file(url, infile, outcome)
     assert status == 400
+
+
+@pytest.mark.integration
+def test_latex_as_tex_fails(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/latex-as-tex-fails/latex-as-tex-fails.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-latex-as-tex-fails.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert meta is not None
+    # compilation must succeed
+    assert meta.get("status") == "fail"
+    assert len(meta.get("converters")[0].get("runs")) == 1
+    # the first run should have exit code 1, since it misses the not-available glo entry
+    assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1
