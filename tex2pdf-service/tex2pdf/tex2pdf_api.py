@@ -226,34 +226,6 @@ async def convert_pdf(
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
 ) -> Response:
-    return await _convert_pdf(
-        incoming,
-        use_addon_tree,
-        timeout,
-        max_tex_files,
-        max_appending_files,
-        preflight,
-        ts,
-        watermark_text,
-        watermark_link,
-        auto_detect,
-        hide_anc_dir,
-    )
-
-
-async def _convert_pdf(
-    incoming: UploadFile,
-    use_addon_tree: bool,
-    timeout: int | None,
-    max_tex_files: int | None,
-    max_appending_files: int | None,
-    preflight: str | None,
-    ts: int | None,
-    watermark_text: str | None = None,
-    watermark_link: str | None = None,
-    auto_detect: bool = False,
-    hide_anc_dir: bool = False,
-) -> Response:
     """Get a tarball, and convert to PDF."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
@@ -381,7 +353,7 @@ def _convert_pdf_remote(
     logger = get_logger()
     tarball = os.path.join(in_dir, source)
     with open(tarball, "rb") as data_fd:
-        uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
+        uploading = {"incoming": (source, data_fd, "application/gzip")}
         retries = 2
         for attempt in range(1 + retries):
             try:
@@ -402,13 +374,17 @@ def _convert_pdf_remote(
                     files=uploading,
                     timeout=timeout,
                     allow_redirects=False,
-                    json=args_dict,
+                    params=args_dict,
                 )
                 status_code = res.status_code
+                logger.debug("After POST to %s", res.url, extra=log_extra)
                 if status_code == 504:
                     # This is the only place we retry, and at most 3 times in total.
                     logger.warning("Got 504 for %s", compile_service, extra=log_extra)
                     time.sleep(1)
+                    # we need to rewind the data_fd otherwise the next request will send
+                    # an empty file.
+                    data_fd.seek(0)
                     continue
 
                 if status_code == 200:
