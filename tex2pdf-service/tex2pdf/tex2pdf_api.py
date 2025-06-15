@@ -29,7 +29,7 @@ from . import (
     TEX2PDF_SCOPES,
     USE_ADDON_TREE,
 )
-from .converter_driver import ConversionOutcomeMaker, ConverterDriver, TimeStampProvider
+from .converter_driver import ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
 from .service_logger import get_logger
@@ -121,19 +121,7 @@ class PreflightVersion(Enum):
     V2 = 2
 
 
-class DummyTimeStampProvider(TimeStampProvider):
-    """Dummy TimeStampProvider for testing purposes."""
-
-    def __init__(self, identifier: str):
-        """Initialize with a dummy identifier."""
-        self.identifier = identifier
-
-    def get_timestamp(self) -> int | None:
-        """Return a dummy timestamp."""
-        return None
-
-
-def determine_compilation_system(identifier: TimeStampProvider | None) -> str:
+def determine_compilation_system(ts: int | None) -> str:
     """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
     logger = get_logger()
     # we need to look into identifier
@@ -149,7 +137,7 @@ def determine_compilation_system(identifier: TimeStampProvider | None) -> str:
     # Format of CUTOVERXXX: epoch seconds!
     # all of the following is only necessary if we actually have multiple
     # TeX systems running
-    if TEX2PDF_SCOPES != "" and identifier is not None:
+    if TEX2PDF_SCOPES != "" and ts is not None:
         scope_list: list[str] = TEX2PDF_SCOPES.split(":")
         if len(scope_list) % 2:
             # uneven length is not good
@@ -163,15 +151,14 @@ def determine_compilation_system(identifier: TimeStampProvider | None) -> str:
             if curr_date < last_date:
                 raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
             last_date = curr_date
-        submission_date: int | None = identifier.get_timestamp()
-        # if we have no identifier, we can only use the current system
-        if submission_date is None:
+        # if we have no ts, we can only use the current system
+        if ts is None:
             return "current"
         tex_system_key: str | None = None
         for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
             logger.debug("Checking submission date against curdate: %s", cut_of_day)
             curr_date = float(cut_of_day)
-            if submission_date < curr_date:
+            if ts < curr_date:
                 tex_system_key = tex_key
                 break
         if tex_system_key is None:
@@ -227,11 +214,11 @@ async def convert_pdf(
     preflight: typing.Annotated[
         str | None, Query(title="Preflight", description="Do preflight check, currently only supports v2")
     ] = None,
-    identifier: typing.Annotated[
-        str | None,
+    ts: typing.Annotated[
+        int | None,
         Query(
-            title="ID",
-            description="String that can be converted to a TimeStampProvider.",
+            title="Timestamp",
+            description="Timestamp to determine compilation system.",
         ),
     ] = None,
     watermark_text: str | None = None,
@@ -240,14 +227,13 @@ async def convert_pdf(
     hide_anc_dir: bool = False,
 ) -> Response:
     return await _convert_pdf(
-        DummyTimeStampProvider,
         incoming,
         use_addon_tree,
         timeout,
         max_tex_files,
         max_appending_files,
         preflight,
-        identifier,
+        ts,
         watermark_text,
         watermark_link,
         auto_detect,
@@ -255,18 +241,14 @@ async def convert_pdf(
     )
 
 
-T = typing.TypeVar("T", bound=TimeStampProvider)
-
-
 async def _convert_pdf(
-    TimeStampProviderClass: type[T],
     incoming: UploadFile,
     use_addon_tree: bool,
     timeout: int | None,
     max_tex_files: int | None,
     max_appending_files: int | None,
     preflight: str | None,
-    identifier: str | None,
+    ts: int | None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
@@ -290,10 +272,6 @@ async def _convert_pdf(
 
     if max_appending_files is None:
         max_appending_files = MAX_APPENDING_FILES
-
-    ts_identifier: TimeStampProvider | None = None
-    if identifier is not None:
-        ts_identifier = TimeStampProviderClass(identifier)
 
     preflight_version: PreflightVersion
     if preflight is None:
@@ -344,7 +322,7 @@ async def _convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
-        compile_service = determine_compilation_system(identifier=ts_identifier)
+        compile_service = determine_compilation_system(ts)
 
         if compile_service == "current":
             logger.info("Using current compilation service.")
@@ -508,7 +486,7 @@ def _convert_pdf_current(
         max_time_budget=timeout,
         max_tex_files=max_tex_files,
         max_appending_files=max_appending_files,
-        identifier=None,
+        ts=None,
         auto_detect=auto_detect,
         hide_anc_dir=hide_anc_dir,
     )

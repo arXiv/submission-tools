@@ -8,7 +8,6 @@ import shlex
 import subprocess
 import time
 import typing
-from abc import ABC, abstractmethod
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -39,16 +38,6 @@ winded_message = (
     "have been resolved by find_primary_tex()."
     " In any rate, the tarball needs clarification."
 )
-
-
-class TimeStampProvider(ABC):
-    @abstractmethod
-    def get_timestamp(self) -> int | None:
-        pass
-
-    @abstractmethod
-    def __init__(self, idstr: str):
-        pass
 
 
 class AssemblingFileNotFound(Exception):
@@ -85,7 +74,7 @@ class ConverterDriver:
     max_tex_files: int
     max_appending_files: int
     water: Watermark
-    identifier: TimeStampProvider | None
+    ts: int | None
     auto_detect: bool = False
     hide_anc_dir: bool = False
 
@@ -99,7 +88,7 @@ class ConverterDriver:
         max_time_budget: float | None = None,
         max_tex_files: int = 1,
         max_appending_files: int = 0,
-        identifier: TimeStampProvider | None = None,
+        ts: int | None = None,
         auto_detect: bool = False,
         hide_anc_dir: bool = False,
     ):
@@ -121,7 +110,7 @@ class ConverterDriver:
         self.use_addon_tree = use_addon_tree if use_addon_tree else False
         self.max_tex_files = max_tex_files
         self.max_appending_files = max_appending_files
-        self.identifier = identifier
+        self.ts = ts
         self.auto_detect = auto_detect
         self.hide_anc_dir = hide_anc_dir
         self.zzrm = None
