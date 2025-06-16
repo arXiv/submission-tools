@@ -16,6 +16,9 @@ PORT_2023 = 33031
 PORT_2025 = 8080
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
+TL2023_CUTOFF = 1748736000
+TL2023_TS = TL2023_CUTOFF - 100
+
 
 def submit_tarball(
     service: str,
@@ -29,13 +32,16 @@ def submit_tarball(
     meta = None
     params_dict = {"timeout": tex2pdf_timeout}
     params_dict.update(api_args)
-    params = urllib.parse.urlencode(params_dict)
-    url = f"{service}/?{params}"
+    url = f"{service}/"
+    logging.debug(f"Submitting {service} with params {params_dict} and tarball {tarball}")
     with open(tarball, "rb") as data_fd:
         uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
         while True:
             try:
-                res = requests.post(url, files=uploading, timeout=post_timeout, allow_redirects=False)
+                res = requests.post(
+                    url, files=uploading, timeout=post_timeout, allow_redirects=False, params=params_dict
+                )
+                print(f"POSTED TO {res.url}")
                 status_code = res.status_code
                 if status_code == 504:
                     logging.warning("Got 504 for %s", service)
@@ -192,7 +198,7 @@ def docker_container(request):
                 "--network",
                 "host",
                 "--env",
-                "TEX2PDF_SCOPES=tl2023:1748736000",
+                f"TEX2PDF_SCOPES=tl2023:{TL2023_CUTOFF}",
                 "--env",
                 f"TEX2PDF_KEYS_TO_URLS_tl2023=http://localhost:{PORT_2023}/convert/",
             ],
@@ -225,6 +231,7 @@ def test_api_hello(docker_container):
     pass
 
 
+# this test doesn't work with the remote compilation since the status changes from 500 to 400 ???
 @pytest.mark.integration
 def test_api_smoke(docker_container):
     """00README.XXX is bad, so make sure it does not die or anything."""
@@ -237,11 +244,12 @@ def test_api_smoke(docker_container):
 
 
 @pytest.mark.integration
-def test_api_git_hash(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_git_hash(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("version_info") is not None
     assert meta.get("version_info") != ""
@@ -250,11 +258,12 @@ def test_api_git_hash(docker_container):
 
 
 @pytest.mark.integration
-def test_api_test2(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_test2(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
     assert meta.get("tex_files") == ["fake-file-2.tex"]
@@ -263,11 +272,12 @@ def test_api_test2(docker_container):
 
 
 @pytest.mark.integration
-def test_api_test3(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_test3(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
     assert meta.get("tex_files") == ["fake-file-2.tex", "fake-file-1.tex", "fake-file-3.tex"]
@@ -277,11 +287,12 @@ def test_api_test3(docker_container):
 
 
 @pytest.mark.integration
-def test_api_test4(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_test4(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
@@ -290,21 +301,27 @@ def test_api_test4(docker_container):
 
 
 @pytest.mark.integration
-def test_api_test_anc_ignore(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_test_anc_ignore(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-anc-ignore.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    meta, status = submit_tarball(
+        url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true", "ts": ts}
+    )
     assert meta is not None
     assert meta.get("status") == "fail"
 
 
 @pytest.mark.integration
-def test_api_test_anc_ignore_no_ancfiles(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_test_anc_ignore_no_ancfiles(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true"})
+    meta, status = submit_tarball(
+        url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true", "ts": ts}
+    )
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
@@ -313,11 +330,12 @@ def test_api_test_anc_ignore_no_ancfiles(docker_container):
 
 
 @pytest.mark.integration
-def test_api_preflight(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_preflight(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2"})
+    meta, status = submit_tarball(url, tarball, outcome, json_response=True, api_args={"preflight": "v2", "ts": ts})
     assert meta is not None
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
@@ -363,22 +381,24 @@ def test_remote2023_anc_ignore(docker_container) -> None:
 
 
 @pytest.mark.integration
-def test_api_missing_graphics(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_missing_graphics(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-img/test-missing-img.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-missing-img.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     # compilation must fail on missing files
     assert meta.get("status") == "fail"
 
 
 @pytest.mark.integration
-def test_api_missing_glo(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_missing_glo(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-glo/test-missing-glo.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-missing-glo.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "success"
@@ -389,11 +409,12 @@ def test_api_missing_glo(docker_container):
 
 
 @pytest.mark.integration
-def test_api_broken_tex(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_api_broken_tex(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-broken-tex/test-broken-tex.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-broken-tex.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "fail"
@@ -405,11 +426,12 @@ def test_api_broken_tex(docker_container):
 
 
 @pytest.mark.integration
-def test_bbl_32(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_bbl_32(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-32.pdf"
     assert len(meta.get("converters", [])) == 1
@@ -423,7 +445,7 @@ def test_bbl_33(docker_container):
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-33/test-bbl-33.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-33.outcome.tar.gz")
     # need to send this tl tl2023 container, thus give timestamp according to TEX2PDF_SCOPES
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": 1746057600})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": TL2023_TS})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-33.pdf"
     assert len(meta.get("converters", [])) == 1
