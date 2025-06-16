@@ -503,11 +503,12 @@ def test_always_changing_labels(docker_container):
 
 
 @pytest.mark.integration
-def test_latex_as_tex_fails(docker_container):
+@pytest.mark.parametrize("ts", [None, TL2023_TS])
+def test_latex_as_tex_fails(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/latex-as-tex-fails/latex-as-tex-fails.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-latex-as-tex-fails.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": TL2023_TS})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "fail"
