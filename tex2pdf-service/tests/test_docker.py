@@ -188,7 +188,14 @@ def docker_container(request):
             image_2025_name,
             container_2025_name,
             PORT_2025,
-            ["--network", "host", "--env-file", "tests/local-proxy-test.env"],
+            [
+                "--network",
+                "host",
+                "--env",
+                "TEX2PDF_SCOPES=tl2023:1748736000",
+                "--env",
+                f"TEX2PDF_KEYS_TO_URLS_tl2023=http://localhost:{PORT_2023}/convert/",
+            ],
         )
 
     _check_docker_api_ready(container_2023_name, PORT_2023)
@@ -415,7 +422,8 @@ def test_bbl_33(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-33/test-bbl-33.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-33.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    # need to send this tl tl2023 container, thus give timestamp according to TEX2PDF_SCOPES
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": 1746057600})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-33.pdf"
     assert len(meta.get("converters", [])) == 1
