@@ -8,7 +8,6 @@ import shlex
 import subprocess
 import time
 import typing
-from enum import Enum
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -39,14 +38,6 @@ winded_message = (
     "have been resolved by find_primary_tex()."
     " In any rate, the tarball needs clarification."
 )
-
-
-class PreflightVersion(Enum):
-    """Possible values of preflight version."""
-
-    NONE = 0
-    V1 = 1
-    V2 = 2
 
 
 class AssemblingFileNotFound(Exception):
@@ -82,10 +73,8 @@ class ConverterDriver:
     use_addon_tree: bool
     max_tex_files: int
     max_appending_files: int
-    artifact_order: dict
-    today: str | None
     water: Watermark
-    preflight: PreflightVersion
+    ts: int | None
     auto_detect: bool = False
     hide_anc_dir: bool = False
 
@@ -99,7 +88,7 @@ class ConverterDriver:
         max_time_budget: float | None = None,
         max_tex_files: int = 1,
         max_appending_files: int = 0,
-        preflight: PreflightVersion = PreflightVersion.NONE,
+        ts: int | None = None,
         auto_detect: bool = False,
         hide_anc_dir: bool = False,
     ):
@@ -121,8 +110,7 @@ class ConverterDriver:
         self.use_addon_tree = use_addon_tree if use_addon_tree else False
         self.max_tex_files = max_tex_files
         self.max_appending_files = max_appending_files
-        self.today = None
-        self.preflight = preflight
+        self.ts = ts
         self.auto_detect = auto_detect
         self.hide_anc_dir = hide_anc_dir
         self.zzrm = None
@@ -179,11 +167,6 @@ class ConverterDriver:
             self.outcome["watermark"] = self.water
         # Find the starting point
         fix_tex_sources(self.in_dir)
-
-        if self.preflight is not PreflightVersion.NONE:
-            logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
-            self.report_preflight()
-            return None
 
         if not self.zzrm.is_ready_for_compilation:
             if not self.auto_detect:
@@ -270,19 +253,6 @@ class ConverterDriver:
         else:
             self.outcome["status"] = "fail"
         return self.outcome.get("pdf_file")
-
-    def report_preflight(self) -> None:
-        """Set the values to zzrm."""
-        if self.preflight == PreflightVersion.V1:
-            # should not happen, we bail out already at the API entry point.
-            raise ValueError("Preflight v1 is not supported anymore")
-        elif self.preflight == PreflightVersion.V2:
-            # we might have already computed preflight, don't recompute it again
-            if "preflight_v2" not in self.outcome:
-                self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
-        else:
-            # Should not happen, we check this already on entrance of API call
-            raise ValueError(f"Invalid PreflightVersion: {self.preflight}")
 
     def _run_tex_commands(self) -> None:
         logger = get_logger()
