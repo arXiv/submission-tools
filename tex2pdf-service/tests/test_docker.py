@@ -11,7 +11,9 @@ import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.converter_driver import RemoteConverterDriver
 
-PORT = 33031
+PORT_2023 = 33031
+# since we run --network host for tl2025 docker, the app listens on the internal port
+PORT_2025 = 8080
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -115,51 +117,36 @@ def submit_file(
     return status_code
 
 
-@pytest.fixture(scope="module")
-def docker_container(request):
-    global PORT  # noqa: PLW0603
-    PORT = request.config.getoption("--docker-port")
-    url = f"http://localhost:{PORT}"
+def _start_docker_container(
+    image_name: str, container_name: str, external_port: int, extra_args: list[str] = [], internal_port: int = 8080
+):
+    """Start the docker container if it is not already running."""
+    # Start the container
+    args = [
+        "docker",
+        "run",
+        "--security-opt",
+        "no-new-privileges=true",
+        "--cpus",
+        "1",
+        "--rm",
+        "-d",
+        "-p",
+        f"{external_port}:{internal_port}",
+        "-e",
+        f"PORT={internal_port}",
+        *extra_args,
+        "--name",
+        container_name,
+        image_name,
+    ]
+    docker = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
+    if docker.returncode != 0:
+        logging.error(f"tex2pdf container {container_name} did not start")
 
-    if not request.config.getoption("--no-docker-setup"):
-        image_name = "public-tex2pdf-app-2023-2023-05-21"
-        container_name = "test-arxiv-tex2pdf"
-        dockerport = "8080"
 
-        subprocess.call(["docker", "kill", container_name])
-
-        # Make sure the container is the latest
-        args = ["make", "app.docker"]
-        make = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
-        if make.returncode != 0:
-            print(make.stdout)
-            print(make.stderr)
-            pass
-
-        # Start the container
-        args = [
-            "docker",
-            "run",
-            "--security-opt",
-            "no-new-privileges=true",
-            "--cpus",
-            "1",
-            "--rm",
-            "-d",
-            "-p",
-            f"{PORT}:{dockerport}",
-            "-e",
-            f"PORT={dockerport}",
-            "--name",
-            container_name,
-            image_name,
-        ]
-        docker = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
-        if docker.returncode != 0:
-            logging.error("tex2pdf container did not start")
-            pass
-
-    # Wait for the API to be ready
+def _check_docker_api_ready(container_name: str, external_port: int):
+    url = f"http://localhost:{external_port}"
     for _ in range(60):  # retries for 60 seconds
         try:
             response = requests.get(url)
@@ -169,17 +156,55 @@ def docker_container(request):
             pass
         time.sleep(1)
     else:
-        with open("tex2pdf.log", "w", encoding="utf-8") as log:
+        with open(f"{container_name}.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
-        raise RuntimeError("API did not start in time")
+        raise RuntimeError(f"API at {container_name} did not start in time")
 
-    yield url
+
+@pytest.fixture(scope="module")
+def docker_container(request):
+    global PORT_2023  # noqa: PLW0603
+    PORT_2023 = request.config.getoption("--docker-port")
+
+    image_2023_name = "public-tex2pdf-app-2023-2023-05-21"
+    image_2025_name = "public-tex2pdf-app-2025-2025-05-11"
+    container_2023_name = "test-arxiv-tex2pdf-2023"
+    container_2025_name = "test-arxiv-tex2pdf-2025"
+
+    if not request.config.getoption("--no-docker-setup"):
+        subprocess.call(["docker", "kill", container_2023_name])
+        subprocess.call(["docker", "kill", container_2025_name])
+
+        # Make sure the container is the latest
+        args = ["make", "app.docker"]
+        make = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
+        if make.returncode != 0:
+            print(make.stdout)
+            print(make.stderr)
+            pass
+
+        _start_docker_container(image_2023_name, container_2023_name, PORT_2023)
+        _start_docker_container(
+            image_2025_name,
+            container_2025_name,
+            PORT_2025,
+            ["--network", "host", "--env-file", "tests/local-proxy-test.env"],
+        )
+
+    _check_docker_api_ready(container_2023_name, PORT_2023)
+    _check_docker_api_ready(container_2025_name, PORT_2025)
+
+    # we test with 2025 as default entry point, and 2023 as fallback
+    yield f"http://localhost:{PORT_2025}"
 
     if not request.config.getoption("--no-docker-setup") and not request.config.getoption("--keep-docker-running"):
         # Stop the container after tests
-        with open("tex2pdf.log", "w", encoding="utf-8") as log:
-            subprocess.call(["docker", "logs", container_name], stdout=log, stderr=log)
-        subprocess.call(["docker", "kill", container_name])
+        with open(f"{container_2023_name}.log", "w", encoding="utf-8") as log:
+            subprocess.call(["docker", "logs", container_2023_name], stdout=log, stderr=log)
+        with open(f"{container_2025_name}.log", "w", encoding="utf-8") as log:
+            subprocess.call(["docker", "logs", container_2025_name], stdout=log, stderr=log)
+        subprocess.call(["docker", "kill", container_2023_name])
+        subprocess.call(["docker", "kill", container_2025_name])
 
 
 @pytest.mark.integration
