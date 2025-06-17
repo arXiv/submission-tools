@@ -525,3 +525,15 @@ def test_latex_as_tex_fails(docker_container, ts):
     assert len(meta.get("converters")[0].get("runs")) == 1
     # the first run should have exit code 1, since it misses the not-available glo entry
     assert meta.get("converters")[0].get("runs")[0].get("return_code") == 1
+
+
+@pytest.mark.integration
+def test_api_texlive_version(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-texlive-version/test-texlive-version.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # that is not the best test, since both the proxy and the target is TL2025
+    # But it can be manually checked in the logfile test-arxiv-tex2pdf-2025.log
+    assert meta.get("pdf_file") == "test-texlive-version.pdf"
