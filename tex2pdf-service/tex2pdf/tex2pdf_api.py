@@ -265,7 +265,7 @@ async def convert_pdf(
 
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
-        await save_stream(in_dir, incoming, filename, log_extra)
+        await save_stream(tempdir, incoming, filename, log_extra)
         timeout_secs = float(MAX_TIME_BUDGET)
         if timeout is not None:
             try:
@@ -274,6 +274,11 @@ async def convert_pdf(
                 pass
             pass
 
+        # unpack the tarball
+        local_tarball = os.path.join(tempdir, filename)
+        unpack_tarball(in_dir, local_tarball, log_extra)
+        chmod_775(tempdir)
+
         # deal with preflight computation
         if preflight_version is not PreflightVersion.NONE:
             logger.debug("[convert_pdf] running preflight version %s", preflight_version)
@@ -281,9 +286,6 @@ async def convert_pdf(
                 # should not happen, we bail out already at the API entry point.
                 raise ValueError("Preflight v1 is not supported anymore")
             elif preflight_version == PreflightVersion.V2:
-                local_tarball = os.path.join(in_dir, filename)
-                unpack_tarball(in_dir, local_tarball, log_extra)
-                chmod_775(tempdir)
                 rep = generate_preflight_response(in_dir, json=True)
                 return Response(
                     status_code=STATCODE.HTTP_200_OK,
@@ -351,7 +353,7 @@ def _convert_pdf_remote(
     log_extra: dict[str, typing.Any] = {},
 ) -> Response:
     logger = get_logger()
-    tarball = os.path.join(in_dir, source)
+    tarball = os.path.join(tempdir, source)
     with open(tarball, "rb") as data_fd:
         uploading = {"incoming": (source, data_fd, "application/gzip")}
         retries = 2
