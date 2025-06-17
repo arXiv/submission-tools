@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse
 from tex2pdf_tools.preflight import generate_preflight_response
+from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMException
 
 from . import (
     MAX_APPENDING_FILES,
@@ -121,9 +122,21 @@ class PreflightVersion(Enum):
     V2 = 2
 
 
-def determine_compilation_system(ts: int | None) -> str:
+def determine_compilation_system(ts: int | None, texlive_version: int | None) -> str:
     """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
     logger = get_logger()
+    # texlive_version takes priority:
+    if texlive_version is not None:
+        # if we have a texlive version, we can use it to determine the
+        # compilation system.
+        # We assume that our keys are called "tl2025" etc
+        tlver = f"tl{texlive_version}"
+        logger.debug("Using texlive version %s to determine compilation system", texlive_version)
+        if tlver in TEX2PDF_KEYS_TO_URLS:
+            return TEX2PDF_KEYS_TO_URLS[tlver]
+        else:
+            # TODO - what should we do if the specified TL version is NOT found?
+            logger.warning("Unknown texlive version %s, using current", texlive_version)
     # we need to look into identifier
     # and select either local _generate_pdf or remote depending on the
     # time frame
@@ -296,7 +309,14 @@ async def convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
-        compile_service = determine_compilation_system(ts)
+        # load ZZRM and check whether a texlive version is set
+        try:
+            zzrm = ZeroZeroReadMe(in_dir)
+        except ZZRMException:
+            # TODO what to do here?
+            zzrm = ZeroZeroReadMe()
+            logger.warning("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
+        compile_service = determine_compilation_system(ts, zzrm.texlive_version)
 
         if compile_service == "current":
             logger.info("Using current compilation service.")
