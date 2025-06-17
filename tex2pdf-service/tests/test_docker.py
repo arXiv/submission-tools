@@ -12,8 +12,9 @@ from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.converter_driver import RemoteConverterDriver
 
 PORT_2023 = 33031
-PORT_2025 = 33032  # this is the default port for tl2025, but we override it in the fixture
-# since we run --network host for tl2025 docker, the app listens on the internal port
+PORT_2025 = 33032
+# default proxy is TL2024
+# since we run --network host for tl2024 docker, the app listens on the internal port
 PORT_DEFAULT = 8080
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -176,16 +177,16 @@ def docker_container(request):
     PORT_2025 = request.config.getoption("--docker-port-2025")
 
     image_2023_name = "public-tex2pdf-app-2023-2023-05-21"
+    image_2024_name = "public-tex2pdf-app-2024-2024-12-29"
     image_2025_name = "public-tex2pdf-app-2025-2025-05-11"
-    image_default_name = "public-tex2pdf-app-2025-2025-05-11"
     container_2023_name = "test-arxiv-tex2pdf-2023"
+    container_2024_name = "test-arxiv-tex2pdf-2024"
     container_2025_name = "test-arxiv-tex2pdf-2025"
-    container_default_name = "test-arxiv-tex2pdf-default"
 
     if not request.config.getoption("--no-docker-setup"):
         subprocess.call(["docker", "kill", container_2023_name])
+        subprocess.call(["docker", "kill", container_2024_name])
         subprocess.call(["docker", "kill", container_2025_name])
-        subprocess.call(["docker", "kill", container_default_name])
 
         # Make sure the container is the latest
         args = ["make", "app.docker"]
@@ -199,7 +200,7 @@ def docker_container(request):
         _start_docker_container(image_2025_name, container_2025_name, PORT_2025)
         # fmt: off
         _start_docker_container(
-            image_default_name, container_default_name, PORT_DEFAULT,
+            image_2024_name, container_2024_name, PORT_DEFAULT,
             [
                 "--network", "host",
                 "--env",     "TEX2PDF_PROXY_RELEASE=1",
@@ -211,23 +212,23 @@ def docker_container(request):
         # fmt: on
 
     _check_docker_api_ready(container_2023_name, PORT_2023)
+    _check_docker_api_ready(container_2024_name, PORT_DEFAULT)
     _check_docker_api_ready(container_2025_name, PORT_2025)
-    _check_docker_api_ready(container_default_name, PORT_DEFAULT)
 
-    # we test with 2025 as default entry point, and 2023 as fallback
+    # we test with 2024 as default entry point, and 2023 as fallback
     yield f"http://localhost:{PORT_DEFAULT}"
 
     if not request.config.getoption("--no-docker-setup") and not request.config.getoption("--keep-docker-running"):
         # Stop the container after tests
         with open(f"{container_2023_name}.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_2023_name], stdout=log, stderr=log)
+        with open(f"{container_2024_name}.log", "w", encoding="utf-8") as log:
+            subprocess.call(["docker", "logs", container_2024_name], stdout=log, stderr=log)
         with open(f"{container_2025_name}.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_2025_name], stdout=log, stderr=log)
-        with open(f"{container_default_name}.log", "w", encoding="utf-8") as log:
-            subprocess.call(["docker", "logs", container_default_name], stdout=log, stderr=log)
         subprocess.call(["docker", "kill", container_2023_name])
+        subprocess.call(["docker", "kill", container_2024_name])
         subprocess.call(["docker", "kill", container_2025_name])
-        subprocess.call(["docker", "kill", container_default_name])
 
 
 @pytest.mark.integration
@@ -534,6 +535,6 @@ def test_api_texlive_version(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
-    # that is not the best test, since both the proxy and the target is TL2025
-    # But it can be manually checked in the logfile test-arxiv-tex2pdf-2025.log
-    assert meta.get("pdf_file") == "test-texlive-version.pdf"
+    # since the default proxy is TL2024, and we explicitely request TL2025 in the ZZRM here,
+    # check that a 2025 TeX Live is actually used
+    assert "TeX Live 2025" in meta["converters"][0]["runs"][1].get("log")
