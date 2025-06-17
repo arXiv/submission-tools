@@ -143,6 +143,7 @@ class ZeroZeroReadMe:
         self.sources: OrderedDict[str, UserFile] = OrderedDict()
         self.stamp: bool | None = True
         self.nohyperref: bool | None = None
+        self.texlive_version: int | None = None
         if dir_or_file is None:
             return
         elif os.path.isdir(dir_or_file):
@@ -386,6 +387,20 @@ class ZeroZeroReadMe:
                     self.nohyperref = v
                 else:
                     self.nohyperref = string_to_bool(v)
+            elif k == "texlive_version" or k == "texlive-version":
+                if isinstance(v, int):
+                    self.texlive_version = v
+                elif isinstance(v, str):
+                    try:
+                        self.texlive_version = int(v)
+                    except ValueError:
+                        if v.startswith("tl") or v.startswith("TL"):
+                            try:
+                                self.texlive_version = int(v[2:])
+                            except ValueError:
+                                raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
+                else:
+                    raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
             else:
                 raise ZZRMParseError(f"Invalid key for 00README: {k}")
 
