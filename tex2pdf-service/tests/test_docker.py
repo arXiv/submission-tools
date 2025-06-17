@@ -190,19 +190,17 @@ def docker_container(request):
             pass
 
         _start_docker_container(image_2023_name, container_2023_name, PORT_2023)
+        # fmt: off
         _start_docker_container(
-            image_2025_name,
-            container_2025_name,
-            PORT_2025,
+            image_2025_name, container_2025_name, PORT_2025,
             [
-                "--network",
-                "host",
-                "--env",
-                f"TEX2PDF_SCOPES=tl2023:{TL2023_CUTOFF}",
-                "--env",
-                f"TEX2PDF_KEYS_TO_URLS_tl2023=http://localhost:{PORT_2023}/convert/",
+                "--network", "host",
+                "--env",     "TEX2PDF_PROXY_RELEASE=1",
+                "--env",     f"TEX2PDF_SCOPES=tl2023:{TL2023_CUTOFF}",
+                "--env",     f"TEX2PDF_KEYS_TO_URLS_tl2023=http://localhost:{PORT_2023}/convert/",
             ],
         )
+        # fmt: on
 
     _check_docker_api_ready(container_2023_name, PORT_2023)
     _check_docker_api_ready(container_2025_name, PORT_2025)
