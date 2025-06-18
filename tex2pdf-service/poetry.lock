@@ -49,8 +49,8 @@ tomli_w = "^1.0"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "texlive-version-zzrm"
-resolved_reference = "e021ebd9b0263b87dbc10d432bd6244b7009892e"
+reference = "HEAD"
+resolved_reference = "6ca41afdcbb59a638f0ba74e80437f7289465379"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -1381,4 +1381,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "90309e8da3d98d415d5b31a23831ebf38a769b1fdb0e65436842376c7817c2f8"
+content-hash = "a895f29b5d9f33838e8400795bac06509e91c794dd83f5b8e5b3d69757c6ab96"
