@@ -20,7 +20,7 @@ psutil = "^5.9.8"
 arxiv-tex2pdf-tools = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex2pdf-tools" }
 hypercorn = {extras = ["h2"], version = "^0.16.0"}
 pymupdf = "^1.24.10"
-requests = "^2.32.0"
+requests = "^2.32.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
