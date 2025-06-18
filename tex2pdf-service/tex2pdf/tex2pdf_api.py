@@ -27,6 +27,7 @@ from . import (
     MAX_TIME_BUDGET,
     MAX_TOPLEVEL_TEX_FILES,
     TEX2PDF_KEYS_TO_URLS,
+    TEX2PDF_PROXY_RELEASE,
     TEX2PDF_SCOPES,
     USE_ADDON_TREE,
 )
@@ -309,14 +310,20 @@ async def convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
-        # load ZZRM and check whether a texlive version is set
-        try:
-            zzrm = ZeroZeroReadMe(in_dir)
-        except ZZRMException:
-            # TODO what to do here?
-            zzrm = ZeroZeroReadMe()
-            logger.warning("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
-        compile_service = determine_compilation_system(ts, zzrm.texlive_version)
+        # if we proxying is permitted, check ZZRM for the texlive version
+        if TEX2PDF_PROXY_RELEASE == "1":
+            # load ZZRM and check whether a texlive version is set
+            try:
+                zzrm = ZeroZeroReadMe(in_dir)
+            except ZZRMException:
+                # TODO what to do here?
+                zzrm = ZeroZeroReadMe()
+                logger.warning("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
+            compile_service = determine_compilation_system(ts, zzrm.texlive_version)
+        else:
+            # we are not proxying, so we always use the current compilation service
+            compile_service = "current"
+        logger.debug("compile_service: %s", compile_service, extra=log_extra)
 
         if compile_service == "current":
             logger.info("Using current compilation service.")
@@ -492,28 +499,28 @@ def _convert_pdf_current(
     logger.debug("XXXX work_dir: %s; source: %s", in_dir, source, extra=log_extra)
     try:
         _pdf_file = driver.generate_pdf()
-    except RemovedSubmission:
-        logger.info("Archive is marked deleted.", extra=log_extra)
+    except RemovedSubmission as exc:
+        logger.info("Archive is marked deleted: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
             status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
         )
 
-    except ZZRMUnsupportedCompiler:
-        logger.info("ZZRM selected compiler is not supported.", extra=log_extra)
+    except ZZRMUnsupportedCompiler as exc:
+        logger.error("ZZRM selected compiler is not supported: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
             status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
             content={"message": "ZZRM selected compiler is not supported."},
         )
 
-    except ZZRMUnderspecified:
-        logger.info("ZZRM missing or underspecified.", extra=log_extra)
+    except ZZRMUnderspecified as exc:
+        logger.error("ZZRM missing or underspecified: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
             status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
             content={"message": "ZZRM missing or underspecified."},
         )
 
-    except UnsupportedArchive:
-        logger.info("Archive is not supported", extra=log_extra)
+    except UnsupportedArchive as exc:
+        logger.info("Archive is not supported: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
             status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "The archive is unsupported"}
         )

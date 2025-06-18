@@ -31,12 +31,13 @@ GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
 
 # The default TeX Live version to use for compilation
 # Default is empty, so use the current built-in version.
+TEX2PDF_PROXY_RELEASE = os.environ.get("TEX2PDF_PROXY_RELEASE", "0")
 _DEFAULT_TEX2PDF_SCOPES: str = ""
 TEX2PDF_SCOPES: str = _DEFAULT_TEX2PDF_SCOPES
 TEX2PDF_KEYS_TO_URLS: dict[str, str] = {}
 # check whether deployment is a proxy deployment
 # only if TEX2PDF_PROXY_RELEASE is set to 1 we allow for proxy setup
-if os.environ.get("TEX2PDF_PROXY_RELEASE", "0") == "1":
+if TEX2PDF_PROXY_RELEASE == "1":
     TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", _DEFAULT_TEX2PDF_SCOPES)
     # initialize TEX2PDF_KEYS_TO_URLS from env vars
     #   TEX2PDF_KEYS_TO_URLS_<key> = <url>
