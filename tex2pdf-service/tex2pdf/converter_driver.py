@@ -27,7 +27,7 @@ from .doc_converter import combine_documents
 from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
-from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, chmod_775, unpack_tarball
+from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
 from .tex_patching import fix_tex_sources
 from .tex_to_pdf_converters import BaseConverter, CompilerNotSpecified, select_converter_class
 
@@ -149,7 +149,6 @@ class ConverterDriver:
         logger = get_logger()
         self.t0 = time.perf_counter()
 
-        self._unpack_tarball()
         # this might raise various exceptions, that should be reported to the API down the line
         self.zzrm = ZeroZeroReadMe(self.in_dir)
 
@@ -467,13 +466,6 @@ class ConverterDriver:
                 pass
             pass
         return
-
-    def _unpack_tarball(self) -> None:
-        """Unpack the tarballs. Make sure the permissions - tar can set nasty perms."""
-        local_tarball = os.path.join(self.in_dir, self.source)
-        unpack_tarball(self.in_dir, local_tarball, self.log_extra)
-        chmod_775(self.work_dir)
-        pass
 
     def _watermark(self, pdf_file: str, watered: str | None = None) -> str:
         """Watermark the PDF file. Watered is the result filename."""

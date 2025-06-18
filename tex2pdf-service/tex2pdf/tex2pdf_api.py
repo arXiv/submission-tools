@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse
 from tex2pdf_tools.preflight import generate_preflight_response
+from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMException
 
 from . import (
     MAX_APPENDING_FILES,
@@ -121,9 +122,21 @@ class PreflightVersion(Enum):
     V2 = 2
 
 
-def determine_compilation_system(ts: int | None) -> str:
+def determine_compilation_system(ts: int | None, texlive_version: int | None) -> str:
     """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
     logger = get_logger()
+    # texlive_version takes priority:
+    if texlive_version is not None:
+        # if we have a texlive version, we can use it to determine the
+        # compilation system.
+        # We assume that our keys are called "tl2025" etc
+        tlver = f"tl{texlive_version}"
+        logger.debug("Using texlive version %s to determine compilation system", texlive_version)
+        if tlver in TEX2PDF_KEYS_TO_URLS:
+            return TEX2PDF_KEYS_TO_URLS[tlver]
+        else:
+            # TODO - what should we do if the specified TL version is NOT found?
+            logger.warning("Unknown texlive version %s, using current", texlive_version)
     # we need to look into identifier
     # and select either local _generate_pdf or remote depending on the
     # time frame
@@ -265,7 +278,7 @@ async def convert_pdf(
 
     with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
         in_dir, out_dir = prep_tempdir(tempdir)
-        await save_stream(in_dir, incoming, filename, log_extra)
+        await save_stream(tempdir, incoming, filename, log_extra)
         timeout_secs = float(MAX_TIME_BUDGET)
         if timeout is not None:
             try:
@@ -274,6 +287,11 @@ async def convert_pdf(
                 pass
             pass
 
+        # unpack the tarball
+        local_tarball = os.path.join(tempdir, filename)
+        unpack_tarball(in_dir, local_tarball, log_extra)
+        chmod_775(tempdir)
+
         # deal with preflight computation
         if preflight_version is not PreflightVersion.NONE:
             logger.debug("[convert_pdf] running preflight version %s", preflight_version)
@@ -281,9 +299,6 @@ async def convert_pdf(
                 # should not happen, we bail out already at the API entry point.
                 raise ValueError("Preflight v1 is not supported anymore")
             elif preflight_version == PreflightVersion.V2:
-                local_tarball = os.path.join(in_dir, filename)
-                unpack_tarball(in_dir, local_tarball, log_extra)
-                chmod_775(tempdir)
                 rep = generate_preflight_response(in_dir, json=True)
                 return Response(
                     status_code=STATCODE.HTTP_200_OK,
@@ -294,7 +309,14 @@ async def convert_pdf(
                 # Should not happen, we check this already on entrance of API call
                 raise ValueError(f"Invalid PreflightVersion: {preflight}")
 
-        compile_service = determine_compilation_system(ts)
+        # load ZZRM and check whether a texlive version is set
+        try:
+            zzrm = ZeroZeroReadMe(in_dir)
+        except ZZRMException:
+            # TODO what to do here?
+            zzrm = ZeroZeroReadMe()
+            logger.warning("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
+        compile_service = determine_compilation_system(ts, zzrm.texlive_version)
 
         if compile_service == "current":
             logger.info("Using current compilation service.")
@@ -351,7 +373,7 @@ def _convert_pdf_remote(
     log_extra: dict[str, typing.Any] = {},
 ) -> Response:
     logger = get_logger()
-    tarball = os.path.join(in_dir, source)
+    tarball = os.path.join(tempdir, source)
     with open(tarball, "rb") as data_fd:
         uploading = {"incoming": (source, data_fd, "application/gzip")}
         retries = 2

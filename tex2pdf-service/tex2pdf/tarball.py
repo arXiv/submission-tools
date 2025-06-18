@@ -91,7 +91,7 @@ def unpack_tarball(in_dir: str, filename: str, log_extra: dict) -> None:
     logger.debug(f"Unpacking: {shlex.join(args)}", extra=log_extra)
     subprocess.call(args, cwd=in_dir)
     logger.debug(f"in_dir: {in_dir}: " + repr(os.listdir(in_dir)), extra=log_extra)
-    os.unlink(filename)
+    # os.unlink(filename)
     if "removed.txt" in os.listdir(in_dir):
         raise RemovedSubmission("This archive cannot be processed.")
     pass

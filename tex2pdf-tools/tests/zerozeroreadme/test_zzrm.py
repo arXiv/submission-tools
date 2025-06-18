@@ -184,3 +184,8 @@ fontmaps = [
     "stamp": false
 }"""
         self.assertEqual(expected, data)
+
+    def test_zzrm_texlive_version(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_texlive_version")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(2024, zzrm.texlive_version)
