@@ -406,7 +406,7 @@ def _convert_pdf_remote(
                     params=args_dict,
                 )
                 status_code = res.status_code
-                logger.debug("After POST to %s", res.url, extra=log_extra)
+                logger.debug("Received status code %d from POST to %s", status_code, res.url, extra=log_extra)
                 if status_code == 504:
                     # This is the only place we retry, and at most 3 times in total.
                     logger.warning("Got 504 for %s", compile_service, extra=log_extra)
@@ -416,7 +416,22 @@ def _convert_pdf_remote(
                     data_fd.seek(0)
                     continue
 
-                if status_code == 200:
+                # Deal with failures
+                if status_code == 400 or status_code == 422 or status_code == 500:
+                    logger.warning(
+                        "Failed to submit tarball %s to %s, status code: %d, %s",
+                        tarball,
+                        compile_service,
+                        status_code,
+                        res.text,
+                        extra=log_extra,
+                    )
+                    return JSONResponse(
+                        status_code=status_code,
+                        content={"message": f"Failed to submit tarball: {res.text}"},
+                    )
+
+                elif status_code == 200:
                     # it would be better to forward the streaming response directly to the caller
                     # one approach is explained here: https://stackoverflow.com/a/73299661
                     if res.content:
@@ -443,6 +458,19 @@ def _convert_pdf_remote(
                             status_code=status_code,
                             content={"message": f"Failed to submit tarball: {res.text}"},
                         )
+                else:
+                    logger.warning(
+                        "Unexpected status code %d from %s: %s",
+                        status_code,
+                        compile_service,
+                        res.text,
+                        extra=log_extra,
+                    )
+                    return JSONResponse(
+                        status_code=status_code,
+                        content={"message": f"Unexpected status code: {status_code}"},
+                    )
+
             except TimeoutError:
                 logger.warning("%s: Connection to %s timed out", tarball, compile_service, extra=log_extra)
                 return JSONResponse(

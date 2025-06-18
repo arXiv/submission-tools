@@ -538,3 +538,12 @@ def test_api_texlive_version(docker_container):
     # since the default proxy is TL2024, and we explicitely request TL2025 in the ZZRM here,
     # check that a 2025 TeX Live is actually used
     assert "TeX Live 2025" in meta["converters"][0]["runs"][1].get("log")
+
+
+@pytest.mark.integration
+def test_api_texlive_version_error(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-texlive-version/test-texlive-version.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 422
