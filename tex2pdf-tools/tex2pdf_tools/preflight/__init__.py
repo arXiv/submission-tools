@@ -622,7 +622,7 @@ class ParsedTeXFile(BaseModel):
         elif incdef.cmd == "usetikzlibrary":
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
-                file_incspec[f"""tikzlibrary{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
+                file_incspec[f"""{{tikz,pgf}}library{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
             # assume for now that users are using bibtex since we don't run it ourselves anyway
             # TODO needs to be changed for supporting bibtex8 etc
@@ -1324,7 +1324,7 @@ def kpse_search_files(
 
     logging.debug("kpse_find_input_data ===%s===", kpse_find_input_data)
 
-    debug_args = ["-v"] if logging.root.level == logging.DEBUG else []
+    debug_args = ["-vv"] if logging.root.level == logging.DEBUG else []
     p = subprocess.run(
         ["texlua", f"{MODULE_PATH}/kpse_search.lua", *debug_args, "-mark-sys-files", basedir],
         input=kpse_find_input_data_prefix + kpse_find_input_data,
@@ -1337,6 +1337,7 @@ def kpse_search_files(
     # lua script ships out debug output using DEBUG: header per line
     lines_stdout = p.stdout.splitlines()
     lines = [line for line in lines_stdout if line[:7] != "DEBUG: "]
+    logging.debug("Return lines from kpse_find.lua: ===\n%s\n===", lines)
     for line in lines_stdout:
         if line[:7] == "DEBUG: ":
             logging.debug(f"kpse_find.lua {line}")

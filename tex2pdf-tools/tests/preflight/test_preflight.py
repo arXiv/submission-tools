@@ -537,3 +537,76 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.process.compiler.output, "dvi")
         self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
 
+    def test_tikz_pgf_library_0(self):
+        """Test tikzlibrary loading system pgfarrow.meta."""
+        dir_path = os.path.join(self.fixture_dir, "arrowmeta")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+
+    def test_tikz_pgf_library_1(self):
+        """Test tikzlibrary loading tikzfoobar.code.tex."""
+        dir_path = os.path.join(self.fixture_dir, "tikzlib-1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        found_main = False
+        found_tikz = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["tikzlibraryfoobar.code.tex"])
+            if tf.filename == "tikzlibraryfoobar.code.tex":
+                found_tikz = True
+        assert found_main
+        assert found_tikz
+
+    def test_tikz_pgf_library_2(self):
+        """Test tikzlibrary loading pgffoobar.code.tex."""
+        dir_path = os.path.join(self.fixture_dir, "tikzlib-2")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        found_main = False
+        found_tikz = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["pgflibraryfoobar.code.tex"])
+            if tf.filename == "pgflibraryfoobar.code.tex":
+                found_tikz = True
+        assert found_main
+        assert found_tikz
+
+    def test_tikz_pgf_library_3(self):
+        """Test tikzlibrary loading tikzfoobar.code.tex when both present."""
+        dir_path = os.path.join(self.fixture_dir, "tikzlib-3")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 3)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        found_main = False
+        found_tikz = False
+        found_pgf = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["tikzlibraryfoobar.code.tex"])
+            if tf.filename == "pgflibraryfoobar.code.tex":
+                found_pgf = True
+            if tf.filename == "tikzlibraryfoobar.code.tex":
+                found_tikz = True
+        assert found_main
+        assert found_tikz
+        assert found_pgf
