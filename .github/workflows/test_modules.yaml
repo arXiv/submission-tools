@@ -29,6 +29,7 @@ jobs:
           amsmath
           csquotes
           biblatex
+          tikz
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools

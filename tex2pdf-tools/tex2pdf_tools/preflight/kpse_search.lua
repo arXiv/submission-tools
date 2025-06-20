@@ -86,6 +86,36 @@ local function read_files_and_exts()
     return fileexts
 end
 
+local function braceexpand(s)
+    -- do minimal brace expansion
+    -- no fancy .. support etc
+    -- prefix and postfix are supported
+    local result = {}
+    local i = string.find(s, "{")
+    if i == nil then
+        -- no braces, just return the string
+        return {s}
+    end
+    local pre = string.sub(s, 1, i - 1)
+    local ext_post = string.sub(s, i + 1)
+    local j = string.find(ext_post, "}")
+    if j == nil then
+        -- no closing brace, just return the string
+        return {s}
+    end
+    local post = string.sub(ext_post, j + 1)
+    local inner = string.sub(ext_post, 1, j - 1)
+    -- now do the expansion of inner
+    for item in string.gmatch(inner, "[^,]+") do
+        item = string.gsub(item, "^%s*(.-)%s*$", "%1") -- trim whitespace
+        if item ~= "" then
+            -- print(pre .. item .. post)
+            table.insert(result, pre .. item .. post)
+        end
+    end
+    return result
+end
+
 
 local cur_arg = 1
 while cur_arg <= #arg do
@@ -133,52 +163,59 @@ end
 
 -- search for all files with possible extensions given
 -- in addition, search also in entries of graphicspath
-for path, subv in pairs(fileexts) do
-    _ddebug("path = " .. path)
+for _path, subv in pairs(fileexts) do
+    _ddebug("path = " .. _path)
+    expansion = braceexpand(_path)
     for exts, val in pairs(subv) do
         local result
         local saved_exts
-        _ddebug("Entering search for " .. path)
-        saved_exts = exts
-        _ddebug("exts = " .. exts)
-        _ddebug("val = " .. val)
-        -- loop over the graphicspath entries. We have at least one
-        -- empty match to search as is
-        for gp in string.gmatch(graphicspath, "[^:]*") do
-            _ddebug("Entering gp search for " .. gp .. path)
-            -- if we have an extension, search for the file as is first
-            if path:match("^.+(%..+)$") then
-                _debug("Found an extension")
-                -- Note that graphicspath entries need a final /
-                result = kpse.find_file(gp .. path)
-                if result then
-                    _ddebug("Found it! A")
-                    goto end_of_loops
-                end
-            end
-            -- print("found " .. (result or "nothing"))
-            -- if we don't have a result, that is:
-            -- * either file didn't have an extension to begin with
-            -- * or we didn't find anything as is
-            -- then search for the file with extension
-            if not result then
-                for ext in string.gmatch(exts, "[^%s]+") do
-                    _ddebug("searching for " .. gp .. path .. "." .. ext)
-                    result = kpse.find_file(gp .. path .. "." .. ext)
+        for i = 1, #expansion do
+            local path = expansion[i]
+            _ddebug("Entering search for " .. path)
+            saved_exts = exts
+            _ddebug("exts = " .. exts)
+            _ddebug("val = " .. val)
+            -- loop over the graphicspath entries. We have at least one
+            -- empty match to search as is
+            for gp in string.gmatch(graphicspath, "[^:]*") do
+                _ddebug("Entering gp search for " .. gp .. path)
+                -- if we have an extension, search for the file as is first
+                if path:match("^.+(%..+)$") then
+                    _debug("Found an extension")
+                    -- Note that graphicspath entries need a final /
+                    result = kpse.find_file(gp .. path)
                     if result then
-                        _ddebug("Found it! B")
+                        _ddebug("Found it! A")
                         goto end_of_loops
+                    end
+                end
+                -- print("found " .. (result or "nothing"))
+                -- if we don't have a result, that is:
+                -- * either file didn't have an extension to begin with
+                -- * or we didn't find anything as is
+                -- then search for the file with extension
+                if not result then
+                    for ext in string.gmatch(exts, "[^%s]+") do
+                        _ddebug("searching for " .. gp .. path .. "." .. ext)
+                        result = kpse.find_file(gp .. path .. "." .. ext)
+                        if result then
+                            _ddebug("Found it! B")
+                            goto end_of_loops
+                        end
                     end
                 end
             end
         end
         ::end_of_loops::
+        _ddebug("After end of loop _path = " .. _path)
+        _ddebug("After end of loop saved_exts = " .. saved_exts)
+        _ddebug("After end of loop result = " .. (result or "nil"))
         if result and not mark_sys_files then
             if string.startswith(result, selfautoparent) then
                 result = "SYSTEM:" .. result
             end
         end
-        print(path)
+        print(_path)
         print(saved_exts)
         if result then
             print(result)
