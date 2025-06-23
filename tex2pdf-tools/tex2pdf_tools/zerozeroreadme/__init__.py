@@ -25,6 +25,12 @@ from ..preflight import (
     string_to_bool,
 )
 
+# the 00README specification version
+# Version history:
+# - Version 1: everything before introducing the version parameter, but json/yaml/... format
+# - Version 2: added `version` and `texlive_version`
+ZZRM_CURRENT_VERSION: int = 2
+
 # 00README extensions
 ZZRM_V1_EXTS: list[str] = [".xxx"]
 ZZRM_V2_EXTS: list[str] = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml"]
@@ -137,6 +143,7 @@ class ZeroZeroReadMe:
 
     def __init__(self, dir_or_file: str | None = None, filetype_version: int = 1):
         self.filetype_version: int = filetype_version  # classic 00README.XXX is v1, dict i/o is v2.
+        self.version: int = 1  # we default to version 1 (no version specified in the zzrm file)
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
         self.process: MainProcessSpec = MainProcessSpec()
@@ -344,6 +351,10 @@ class ZeroZeroReadMe:
         if zzrm:
             self.filetype_version = 2
             self.from_dict(zzrm)
+            # Version consistency check
+            if self.version == 1:
+                if self.texlive_version is not None:
+                    raise ZZRMInvalidFormatError("Version 1 ZZRM with texlive_version set")
 
     def from_dict(self, zzrm: dict) -> None:
         """Initialize a ZZRM from a dictionary."""
@@ -387,6 +398,14 @@ class ZeroZeroReadMe:
                     self.nohyperref = v
                 else:
                     self.nohyperref = string_to_bool(v)
+            elif k == "version":
+                if isinstance(v, int):
+                    self.version = v
+                elif isinstance(v, str):
+                    try:
+                        self.version = int(v)
+                    except ValueError:
+                        raise ZZRMParseError(f"Invalid version: {v}")
             elif k == "texlive_version" or k == "texlive-version":
                 if isinstance(v, int):
                     self.texlive_version = v
