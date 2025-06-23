@@ -25,6 +25,12 @@ from ..preflight import (
     string_to_bool,
 )
 
+# the 00README specification version
+# Version history:
+# - Version 1: everything before introducing the version parameter, but json/yaml/... format
+# - Version 2: added `version` and `texlive_version`
+ZZRM_CURRENT_VERSION: int = 2
+
 # 00README extensions
 ZZRM_V1_EXTS: list[str] = [".xxx"]
 ZZRM_V2_EXTS: list[str] = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml"]
@@ -76,8 +82,8 @@ class ZZRMUnsupportedFileError(ZZRMException):
     pass
 
 
-class ZZRMUnsupportedVersion(ZZRMException):
-    """Error when an unsupported ZZRM version is detected."""
+class ZZRMUnsupportedFiletypeVersion(ZZRMException):
+    """Error when an unsupported ZZRM filetype_version is detected."""
 
     pass
 
@@ -135,8 +141,9 @@ class UserFile(BaseModel):
 class ZeroZeroReadMe:
     """Representation of 00README.json file."""
 
-    def __init__(self, dir_or_file: str | None = None, version: int = 1):
-        self.version: int = version  # classic 00README.XXX is v1, dict i/o is v2.
+    def __init__(self, dir_or_file: str | None = None, filetype_version: int = 1):
+        self.filetype_version: int = filetype_version  # classic 00README.XXX is v1, dict i/o is v2.
+        self.version: int = 1  # we default to version 1 (no version specified in the zzrm file)
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
         self.process: MainProcessSpec = MainProcessSpec()
@@ -237,7 +244,7 @@ class ZeroZeroReadMe:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v1[0]), 1)
             return
 
-    def _fetch_00readme_data(self, filename: str, version: int) -> None:
+    def _fetch_00readme_data(self, filename: str, filetype_version: int) -> None:
         read_data: str | None = None
         for enc in ["utf-8", "iso-8859-1"]:
             try:
@@ -250,19 +257,19 @@ class ZeroZeroReadMe:
             return
 
         self.readme_filename = filename
-        if version == 1:
+        if filetype_version == 1:
             self._fetch_00readme_v1(read_data)
-        elif version == 2:
+        elif filetype_version == 2:
             _, ext = os.path.splitext(filename)
             self._fetch_00readme_v2(read_data, ext)
         else:
-            raise ZZRMUnsupportedVersion(f"Unknown version {version}")
+            raise ZZRMUnsupportedFiletypeVersion(f"Unknown filetype_version {filetype_version}")
 
     def _fetch_00readme_v1(self, data: str) -> None:
         """Read and parse 00README.XXX file."""
         self.readme = data.split("\n")
 
-        self.version = 1
+        self.filetype_version = 1
         for line in self.readme:
             idioms = [idiom for idiom in line.strip().split(" ") if idiom]
             if len(idioms) == 2:
@@ -342,8 +349,12 @@ class ZeroZeroReadMe:
                     raise ZZRMInvalidFormatError("Invalid file format") from e
 
         if zzrm:
-            self.version = 2
+            self.filetype_version = 2
             self.from_dict(zzrm)
+            # Version consistency check
+            if self.version == 1:
+                if self.texlive_version is not None:
+                    raise ZZRMInvalidFormatError("Version 1 ZZRM with texlive_version set")
 
     def from_dict(self, zzrm: dict) -> None:
         """Initialize a ZZRM from a dictionary."""
@@ -387,6 +398,14 @@ class ZeroZeroReadMe:
                     self.nohyperref = v
                 else:
                     self.nohyperref = string_to_bool(v)
+            elif k == "version":
+                if isinstance(v, int):
+                    self.version = v
+                elif isinstance(v, str):
+                    try:
+                        self.version = int(v)
+                    except ValueError:
+                        raise ZZRMParseError(f"Invalid version: {v}")
             elif k == "texlive_version" or k == "texlive-version":
                 if isinstance(v, int):
                     self.texlive_version = v

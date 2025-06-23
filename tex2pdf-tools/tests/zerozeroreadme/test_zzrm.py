@@ -4,7 +4,7 @@ import unittest
 
 import pytest
 
-from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError, ZZRMParseError
+from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError, ZZRMParseError, ZZRMInvalidFormatError
 
 
 class Test00README(unittest.TestCase):
@@ -22,6 +22,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
+        self.assertEqual(zzrm.version, 1)
 
     def test_zzrm_v1_01_from_file(self) -> None:
         file_path = os.path.join(self.fixture_dir, "zzrm_v1_01", "00README.XXX")
@@ -32,6 +33,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
+        self.assertEqual(zzrm.version, 1)
 
     def test_zzrm_v2_01(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_01")
@@ -45,6 +47,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
         self.assertEqual(False, zzrm.nohyperref)
+        self.assertEqual(zzrm.version, 1)
 
     def test_zzrm_v2_syntax_error(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_syntax_error")
@@ -63,6 +66,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("latex+dvips_ps2pdf", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(zzrm.version, 1)
 
     def test_zzrm_v2_03(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_03")
@@ -75,6 +79,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(zzrm.version, 1)
 
     def test_zzrm_v2_04(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_04")
@@ -87,6 +92,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(zzrm.version, 1)
 
     def test_zzrm_v2_05(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_05")
@@ -189,3 +195,9 @@ fontmaps = [
         dir_path = os.path.join(self.fixture_dir, "zzrm_texlive_version")
         zzrm = ZeroZeroReadMe(dir_path)
         self.assertEqual(2024, zzrm.texlive_version)
+        self.assertEqual(zzrm.version, 2)
+
+    def test_zzrm_v2_version_missing_with_texlive_version(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_version_missing_with_texlive_version")
+        with pytest.raises(ZZRMInvalidFormatError):
+            _ = ZeroZeroReadMe(dir_path)
