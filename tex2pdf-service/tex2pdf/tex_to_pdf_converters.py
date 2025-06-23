@@ -780,18 +780,19 @@ class VanillaTexConverter(BaseDviConverter):
         args.append(tex_file)
         self._args = args
 
-        # tex run
-        step = "tex_to_dvi_run"
-        run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
-        dvi_size = run["dvi"]["size"]
-        if not dvi_size or run["return_code"] != 0:
-            msg = "failed to create dvi" if not dvi_size else "compiler run returned error code"
-            outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
-            dvi_file = os.path.join(in_dir, f"{self.stem}.dvi")
-            if os.path.exists(dvi_file):
-                os.unlink(dvi_file)
-            run["dvi"] = file_props(dvi_file)
-            return outcome
+        # run two times
+        for i in range(1, 3):
+            step = f"tex_to_dvi_run_{i}"
+            run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
+            dvi_size = run["dvi"]["size"]
+            if not dvi_size or run["return_code"] != 0:
+                msg = "failed to create dvi" if not dvi_size else "compiler run returned error code"
+                outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
+                dvi_file = os.path.join(in_dir, f"{self.stem}.dvi")
+                if os.path.exists(dvi_file):
+                    os.unlink(dvi_file)
+                run["dvi"] = file_props(dvi_file)
+                return outcome
 
         # dvi run
         step = "dvi_to_ps_run"
