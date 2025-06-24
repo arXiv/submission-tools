@@ -624,3 +624,14 @@ class TestPreflight(unittest.TestCase):
         assert found_main
         assert found_tikz
         assert found_pgf
+
+    def test_latex209(self):
+        """Test submission in latex209 format."""
+        dir_path = os.path.join(self.fixture_dir, "latex209")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.unsupported_compiler_type)
+
