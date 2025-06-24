@@ -114,6 +114,7 @@ class LanguageType(str, Enum):
 
     TEX does not allow compiling as latex, e.g., because it contains \bye
     LATEX does not allow compiling as plain tex, e.g., because it contains \documentclass
+    LATEX209 is for old-style submissions, which we do not accept anymore, but detect
     PDF is for PDF only submissions.
     HTML is for HTML only submissions.
     UNKNOWN allows compilation as either TEX or LATEX.
@@ -122,6 +123,7 @@ class LanguageType(str, Enum):
     unknown = "unknown"
     tex = "tex"
     latex = "latex"
+    latex209 = "latex209"
     pdf = "pdf"
     html = "html"
 
@@ -456,7 +458,14 @@ class ParsedTeXFile(BaseModel):
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
             self.language = LanguageType.latex
-
+        if re.search(rb"^[^%\n]*\\documentstyle[^a-zA-Z]", self._data, re.MULTILINE):
+            logging.debug("Found documentstyle, setting language to latex209")
+            self.contains_documentclass = True
+            if self.language == LanguageType.tex:
+                self.issues.append(
+                    TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
+                )
+            self.language = LanguageType.latex209
         if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
             self.contains_pdfoutput_true = True
         if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
@@ -800,6 +809,8 @@ class ParsedTeXFile(BaseModel):
         """Walk a subgraph to search for properties."""
         issues = []
         found_language: LanguageType = self.language
+        if found_language == LanguageType.latex209:
+            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "LaTeX 2.09 is not supported anymore"))
         logging.debug("compute_language_of_graph: %s, start lang = %s", self.filename, found_language)
         for n in self.children:
             if n.filename in visited:
@@ -826,6 +837,12 @@ class ParsedTeXFile(BaseModel):
                         TeXFileIssue(IssueType.conflicting_file_type, "conflicting lang types of main and subfiles")
                     )
                 # keep found_language as LATEX
+            elif found_language == LanguageType.latex209:
+                if kid_language == LanguageType.tex:
+                    issues.append(
+                        TeXFileIssue(IssueType.conflicting_file_type, "conflicting lang types of main and subfiles")
+                    )
+                # keep found_language as LATEX209
             else:
                 raise PreflightException(f"Unknown LanguageType {found_language}")
 
@@ -1738,6 +1755,10 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
         all_idx = [fn[7:] for fn in node.recursive_collect_files(FileType.idx)]
         logging.debug("Got all_ind = %s", all_ind)
         logging.debug("Got all_idx = %s", all_idx)
+        if not all_ind and not all_idx:
+            logging.debug("no index use detected!")
+            # no index used, skip
+            continue
         defined_indices = {}
         for idxdef in all_idx:
             tag, idx_ext, ind_ext = idxdef.split(".")
