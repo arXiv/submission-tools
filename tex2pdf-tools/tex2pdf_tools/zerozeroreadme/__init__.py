@@ -406,6 +406,10 @@ class ZeroZeroReadMe:
                         self.version = int(v)
                     except ValueError:
                         raise ZZRMParseError(f"Invalid version: {v}")
+                # check for proper range of ZZRM version
+                if self.version:
+                    if self.version < 1 or self.version > ZZRM_CURRENT_VERSION:
+                        raise ZZRMParseError(f"Version number out of range (1-{ZZRM_CURRENT_VERSION}): {v}")
             elif k == "texlive_version" or k == "texlive-version":
                 if isinstance(v, int):
                     self.texlive_version = v
