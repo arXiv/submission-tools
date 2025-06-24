@@ -43,7 +43,7 @@ def submit_tarball(
                 res = requests.post(
                     url, files=uploading, timeout=post_timeout, allow_redirects=False, params=params_dict
                 )
-                print(f"POSTED TO {res.url}")
+                logging.debug(f"Posted to {res.url}")
                 status_code = res.status_code
                 if status_code == 504:
                     logging.warning("Got 504 for %s", service)
@@ -61,7 +61,10 @@ def submit_tarball(
                             meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
 
                 else:
-                    logging.warning("%s: status code %d", url, status_code)
+                    logging.warning("%s: status code %d, %s", url, status_code, res.text)
+                    # load "message" from response
+                    data = res.json()
+                    return data["message"], status_code
 
             except TimeoutError:
                 logging.warning("%s: Connection timed out", tarball)
@@ -250,8 +253,8 @@ def test_api_smoke(docker_container):
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test1/test1.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test1.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
-    assert meta is None
-    assert status == 500
+    assert meta == "ZZRM cannot be loaded: Q"
+    assert status == 422
 
 
 @pytest.mark.integration
@@ -541,9 +544,59 @@ def test_api_texlive_version(docker_container):
 
 
 @pytest.mark.integration
-def test_api_texlive_version_error(docker_container):
+def test_api_version_1(docker_container):
     url = docker_container + "/convert"
-    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-texlive-version/test-texlive-version.tar.gz")
-    outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-1/version-1.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/version-1.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+
+
+@pytest.mark.integration
+def test_api_version_2(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-2/version-2.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/version-2.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+
+
+@pytest.mark.integration
+def test_api_version_100(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-100/version-100.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/version-100.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
+    assert meta == "ZZRM cannot be loaded: Version number out of range (1-2): 100"
+
+
+@pytest.mark.integration
+def test_api_version_1_texlive_version(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-1-texlive-version/version-1-texlive-version.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/version-1-texlive-version.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 422
+    assert meta == "ZZRM cannot be loaded: Version 1 ZZRM with texlive_version set"
+
+
+@pytest.mark.integration
+def test_api_version_2_texlive_version(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-2-texlive-version/version-2-texlive-version.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+
+
+@pytest.mark.integration
+def test_api_version_2_texlive_version_unknown(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(
+        SELF_DIR, "fixture/tarballs/version-2-texlive-version-unknown/version-2-texlive-version-unknown.tar.gz"
+    )
+    outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version-unknown.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 422
+    assert meta == "Invalid configuration: Undefined TeX Live version requested in ZZRM: tl2045"
