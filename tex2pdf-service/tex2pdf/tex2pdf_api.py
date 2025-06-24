@@ -136,8 +136,7 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
         if tlver in TEX2PDF_KEYS_TO_URLS:
             return TEX2PDF_KEYS_TO_URLS[tlver]
         else:
-            # TODO - what should we do if the specified TL version is NOT found?
-            logger.warning("Unknown texlive version %s, using current", texlive_version)
+            raise ValueError(f"Undefined TeX Live version requested in ZZRM: {tlver}")
     # we need to look into identifier
     # and select either local _generate_pdf or remote depending on the
     # time frame
@@ -315,11 +314,19 @@ async def convert_pdf(
             # load ZZRM and check whether a texlive version is set
             try:
                 zzrm = ZeroZeroReadMe(in_dir)
-            except ZZRMException:
-                # TODO what to do here?
-                zzrm = ZeroZeroReadMe()
-                logger.warning("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
-            compile_service = determine_compilation_system(ts, zzrm.texlive_version)
+                compile_service = determine_compilation_system(ts, zzrm.texlive_version)
+            except ZZRMException as e:
+                logger.error("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
+                return JSONResponse(
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    content={"message": f"ZZRM cannot be loaded: {e!s}"},
+                )
+            except ValueError as e:
+                logger.error("Failed to determine compilation system: %s -- %s, %s", str(e), ts, zzrm.texlive_version)
+                return JSONResponse(
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    content={"message": f"Invalid configuration: {e!s}"},
+                )
         else:
             # we are not proxying, so we always use the current compilation service
             compile_service = "current"
@@ -478,7 +485,7 @@ def _convert_pdf_remote(
                     content={"message": "Timeout contacting remote service"},
                 )
             except Exception as exc:
-                logger.warning("Exception submitting tarball: %s", exc, extra=log_extra)
+                logger.warning("Exception submitting tarball: %s", exc, exc_info=True, extra=log_extra)
                 logger.warning("%s: %s", tarball, str(exc), extra=log_extra)
                 return JSONResponse(
                     status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -555,9 +562,7 @@ def _convert_pdf_current(
 
     except Exception as exc:
         logger.error("Exception %s", str(exc), exc_info=True, extra=log_extra)
-        return JSONResponse(
-            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": traceback.format_exc()}
-        )
+        return JSONResponse(status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": str(exc)})
 
     more_files: list[str] = []
     # if pdf_file:
