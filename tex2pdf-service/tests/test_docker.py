@@ -245,6 +245,18 @@ def test_api_hello(docker_container):
     pass
 
 
+@pytest.mark.integration
+def test_api_texlive_version_info(docker_container):
+    url = docker_container
+    response = requests.get(f"{url}/texlive/version")
+    if response.status_code != 200:
+        print(response.content)
+    assert response.status_code == 200
+    ret = response.json()
+    assert ret["version"] == "2024"
+    assert sorted(ret["proxy_version"]) == ["tl2023", "tl2025"]
+
+
 # this test doesn't work with the remote compilation since the status changes from 500 to 400 ???
 @pytest.mark.integration
 def test_api_smoke(docker_container):

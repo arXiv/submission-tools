@@ -28,6 +28,7 @@ MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
 MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 
 GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
+TEXLIVE_BASE_RELEASE: str = os.environ.get("TEXLIVE_BASE_RELEASE", "")
 
 # The default TeX Live version to use for compilation
 # Default is empty, so use the current built-in version.
