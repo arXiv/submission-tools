@@ -201,3 +201,8 @@ fontmaps = [
         dir_path = os.path.join(self.fixture_dir, "zzrm_version_missing_with_texlive_version")
         with pytest.raises(ZZRMInvalidFormatError):
             _ = ZeroZeroReadMe(dir_path)
+
+    def test_zzrm_v2_version_out_of_range(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_version_out_of_range")
+        with pytest.raises(ZZRMParseError):
+            _ = ZeroZeroReadMe(dir_path)
