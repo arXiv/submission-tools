@@ -162,6 +162,14 @@ class BibCompiler(str, Enum):
     biber = "biber"
 
 
+class BblType(str, Enum):
+    """Possible values for bbl file type."""
+
+    unknown = "unknown"
+    plain = "plain"
+    biblatex = "biblatex"
+
+
 class PostProcessType(str, Enum):
     """Possible conversion types from dvi to pdf."""
 
@@ -403,7 +411,8 @@ class ParsedTeXFile(BaseModel):
     filename: str
     _data: bytes = b""  # content of files is read in bytes
     _graphicspath: list[list[str]] = []
-    _uses_bibliography: set[BibCompiler] = set()
+    _uses_bibliography: bool = False
+    _uses_bbl_file_type: set[BblType] = set()
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -623,13 +632,12 @@ class ParsedTeXFile(BaseModel):
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
                 file_incspec[f"""{{tikz,pgf}}library{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
+        elif incdef.cmd == "bibliographystyle":
+            self._uses_bbl_file_type.add(BblType.plain)
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
-            # assume for now that users are using bibtex since we don't run it ourselves anyway
-            # TODO needs to be changed for supporting bibtex8 etc
-            self._uses_bibliography = self._uses_bibliography.union(
-                set([BibCompiler.biber if incdef.cmd == "addbibresource" else BibCompiler.bibtex])
-            )
+            # TODO detect more possible add*resource commands of biblatex
             # replace end of line comments with empty string
+            self._uses_bibliography = True
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for bf in include_argument.split(","):
                 f = bf.strip().strip('"')
@@ -664,6 +672,10 @@ class ParsedTeXFile(BaseModel):
                 if fn == "hyperref.sty":
                     self.hyperref_found = True
                 file_incspec[fn] = {incdef.cmd: incdef}
+                # if biblatex is used, record that
+                if fn == "biblatex.sty":
+                    self._uses_bibliography = True
+                    self._uses_bbl_file_type.add(BblType.biblatex)
         elif incdef.cmd == "psfig" or incdef.cmd == "epsfig":
             # Command syntax: \(e)psfig{file=xxxx, ...}
             # which is similar to \includegraphics[...]{xxxx}
@@ -970,6 +982,7 @@ INCLUDE_COMMANDS = [
         multi_args=False,
     ),
     IncludeSpec(cmd="bibliography", source="core", type=FileType.bib, extensions="bib", take_options=False),
+    IncludeSpec(cmd="bibliographystyle", source="core", type=FileType.other, extensions="blg", take_options=False),
     IncludeSpec(cmd="addbibresource", source="biblatex", type=FileType.bib),
     IncludeSpec(cmd="includegraphics", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="includegraphics*", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
@@ -1056,6 +1069,7 @@ ARGS_INCLUDE_REGEX = r"""
         RequirePackage|
         RequirePackageWithOptions|
         bibliography|
+        bibliographystyle|
         addbibresource|                  # biblatex
         includegraphics\*|               # graphic[sx]
         includegraphics|                 # graphic[sx]
@@ -1624,19 +1638,26 @@ def deal_with_bibliographies(
     """Check for inclusion of bib files and presence .bbl files."""
     for tl_f, tl_n in toplevel_files.items():
         node = nodes[tl_f]
-        bibliography_types_used: set = node.generic_walk_document_tree(
-            lambda x: x._uses_bibliography, lambda x, y: x.union(y), set()
+        uses_bibliography: bool = node.generic_walk_document_tree(
+            lambda x: x._uses_bibliography, lambda x, y: x or y, False
         )
-        logging.debug(f"bibliography used: {bibliography_types_used}")
-        if len(bibliography_types_used) == 0:
+        bbl_types_used: set = node.generic_walk_document_tree(
+            lambda x: x._uses_bbl_file_type, lambda x, y: x.union(y), set()
+        )
+        logging.debug(f"bbl types used: {bbl_types_used}")
+        if not uses_bibliography:
+            logging.debug("no bibliography use detected!")
             # no bibliography used, skip
             continue
-        if len(bibliography_types_used) > 1:
+        if len(bbl_types_used) == 0:
+            # we default to plain type
+            bbl_types_used = set([BblType.plain])
+        if len(bbl_types_used) > 1:
             # multiple bibliography types used, skip
             tl_n.issues.append(
                 TeXFileIssue(
                     IssueType.multiple_bibliography_types,
-                    f"multiple bibliography types used: {[v.value for v in bibliography_types_used]}",
+                    f"multiple bibliography types used: {[v.value for v in bbl_types_used]}",
                 )
             )
             continue
@@ -1644,7 +1665,7 @@ def deal_with_bibliographies(
         bbl_file_full_path = os.path.join(rundir, bbl_file)
         bbl_file_present = os.path.isfile(bbl_file_full_path)
         # we have only one bibliography type, check if it is biber or bibtex
-        is_biber: bool = bibliography_types_used.pop() == BibCompiler.biber
+        is_biblatex_bbl: bool = bbl_types_used.pop() == BblType.biblatex
         if bbl_file_present:
             # check version of bbl file
             # First three lines of .bbl file:
@@ -1662,7 +1683,7 @@ def deal_with_bibliographies(
                     head = [b""]
             if head[0] == b"% $ biblatex auxiliary file $":
                 # only check files created by biblatex/biber
-                if not is_biber:
+                if not is_biblatex_bbl:
                     node.issues.append(
                         TeXFileIssue(
                             IssueType.bbl_usage_mismatch,
@@ -1684,16 +1705,18 @@ def deal_with_bibliographies(
                                 )
                             )
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
+            # TODO this should detect `backend=bibtex` in the biblatex options!
             tl_n.process.bibliography = BibProcessSpec(
-                processor=BibCompiler.biber if is_biber else BibCompiler.unknown, pre_generated=True
+                processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=True
             )
             # add bbl file to the list of used_other_files
             nodes[tl_f].used_other_files.append(bbl_file)
             continue
         # we are still here, so bbl_file_present is False
         # toplevel filename .bbl is missing -> require .bib to be available,
+        # TODO this should detect `backend=bibtex` in the biblatex options!
         tl_n.process.bibliography = BibProcessSpec(
-            processor=BibCompiler.biber if is_biber else BibCompiler.unknown, pre_generated=False
+            processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
         )
         tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
 

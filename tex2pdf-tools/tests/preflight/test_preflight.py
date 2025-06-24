@@ -505,6 +505,20 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.used_bib_files, ["xxx.bib", "xxx.bib"])
         self.assertEqual(tf.used_other_files, [])
 
+    def test_biblatex_with_bibliography(self):
+        """Test submission with using biblatex and \bibliography."""
+        dir_path = os.path.join(self.fixture_dir, "biblatex-bibliography")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, ["xxx.bib"])
+        self.assertEqual(tf.used_other_files, ["main.bbl"])
+
     def test_double_slash_normalization(self):
         """Test double slash normalization present."""
         dir_path = os.path.join(self.fixture_dir, "double-slash-normalization")
