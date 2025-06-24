@@ -29,6 +29,7 @@ from . import (
     TEX2PDF_KEYS_TO_URLS,
     TEX2PDF_PROXY_RELEASE,
     TEX2PDF_SCOPES,
+    TEXLIVE_BASE_RELEASE,
     USE_ADDON_TREE,
 )
 from .converter_driver import ConversionOutcomeMaker, ConverterDriver
@@ -661,6 +662,32 @@ async def texlive_info() -> FileResponse:
             pass
         pass
     return FileResponse(tlmgr_info, media_type="application/json")
+
+
+@app.get("/texlive/version")
+async def texlive_version() -> JSONResponse:
+    """Get TeX Live version."""
+    # note that this is run in /home/worker and we don't have write permissions
+    # to /usr/local/texlive/... - thus, save the file simply in CWD.
+    tlmgr_version = "tlmgr-version.txt"
+    if not os.path.exists(tlmgr_version):
+        with subprocess.Popen(
+            ["/usr/bin/tlmgr", "version"], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ) as tlmgr:
+            (out, _err) = tlmgr.communicate()
+        vers_info = out if out else ""
+        with open(tlmgr_version, "w", encoding="utf-8") as fh:
+            fh.write(vers_info)
+    else:
+        with open(tlmgr_version, encoding="utf-8") as fh:
+            vers_info = fh.read()
+    ret: dict[str, typing.Any] = {
+        "version": TEXLIVE_BASE_RELEASE,
+        "description": vers_info,
+    }
+    if TEX2PDF_PROXY_RELEASE:
+        ret["proxy_version"] = list(TEX2PDF_KEYS_TO_URLS.keys())
+    return JSONResponse(status_code=STATCODE.HTTP_200_OK, content=ret)
 
 
 @app.get("/robots.txt", summary="robots.txt", include_in_schema=False)
