@@ -7,6 +7,7 @@ import time
 import traceback
 import typing
 from enum import Enum
+from pathlib import Path
 
 import requests
 from fastapi import FastAPI, Query, UploadFile
@@ -645,22 +646,29 @@ async def stamp_pdf(
 
 
 @app.get("/texlive/info")
-async def texlive_info() -> FileResponse:
+async def texlive_info(request: Request) -> Response:
     """Get TeX Live info."""
-    # note that this is run in /home/worker and we don't have write permissions
-    # to /usr/local/texlive/... - thus, save the file simply in CWD.
-    tlmgr_info = "tlmgr-info.json"
-    if not os.path.exists(tlmgr_info):
-        with subprocess.Popen(
-            ["/usr/bin/tlmgr", "info", "--json"], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ) as tlmgr:
-            (out, _err) = tlmgr.communicate()
-            pass
-        packages = out if out else "{}"
-        with open(tlmgr_info, "w", encoding="utf-8") as fh:
-            fh.write(packages)
-            pass
-        pass
+    return _texlive_info(request)
+
+
+def _texlive_info(request: Request) -> Response:
+    logger = get_logger()
+    tlmgr_info = Path(f"/usr/local/texlive/{TEXLIVE_BASE_RELEASE}/local-info/tlmgr-info.json")
+    if not tlmgr_info.exists():
+        logger.warning("tlmgr-info.json not found in %s", tlmgr_info)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "tlmgr-info.json file missing."},
+        )
+
+    if request.method == "HEAD":
+        headers = {
+            "Content-Length": str(tlmgr_info.stat().st_size),
+            "Content-Type": "application/json",
+            "Content-Disposition": f"attachment; filename={os.path.basename(tlmgr_info.name)}",
+        }
+        return Response(status_code=STATCODE.HTTP_200_OK, headers=headers)
+
     return FileResponse(tlmgr_info, media_type="application/json")
 
 
