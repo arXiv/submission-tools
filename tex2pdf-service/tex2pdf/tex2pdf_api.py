@@ -130,6 +130,9 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
     logger = get_logger()
     # texlive_version takes priority:
     if texlive_version is not None:
+        if str(texlive_version) == TEXLIVE_BASE_RELEASE:
+            # the requested version is the one included in the current docker image
+            return "current"
         # if we have a texlive version, we can use it to determine the
         # compilation system.
         # We assume that our keys are called "tl2025" etc

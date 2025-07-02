@@ -1,5 +1,9 @@
 """Pytest configuration file."""
 
+import os
+
+os.environ.setdefault("TEXLIVE_BASE_RELEASE", "2024")
+
 
 def pytest_addoption(parser):
     """Add command line options to pytest."""
