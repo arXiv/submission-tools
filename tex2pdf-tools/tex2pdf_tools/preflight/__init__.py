@@ -939,7 +939,13 @@ ALL_IMAGE_EXTS: str = " ".join(_extss)
 
 # only parse file with these extensions
 # .pdf_tex are generated tex files from the svg.sty packages
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo", ".pdf_tex"]
+# we do not parse .cls and .clo files because they at times contain
+# calls to macros that we use to detect language or bib type (\documentstyle, \bibliographystyle, etc.)
+# which leads to misdetection and errors
+# Examples:
+# - cup-journal.cls contains \bibliographystyle
+# - revtex4-1.cls contains \documentstyle
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex"]
 # extensions of files we want to keep but cannot detect in preflight directly
 MAYBE_USED_FILE_EXTENSIONS = [
     ".pygtex",  # frozen cache of minted/pygmentize
