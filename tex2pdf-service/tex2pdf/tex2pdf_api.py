@@ -3,13 +3,10 @@
 import os
 import subprocess
 import tempfile
-import time
-import traceback
 import typing
 from enum import Enum
 from pathlib import Path
 
-import requests
 from fastapi import FastAPI, Query, UploadFile
 from fastapi import status as STATCODE
 from fastapi.exceptions import RequestValidationError
@@ -29,13 +26,13 @@ from . import (
     MAX_TOPLEVEL_TEX_FILES,
     TEX2PDF_KEYS_TO_URLS,
     TEX2PDF_PROXY_RELEASE,
-    TEX2PDF_SCOPES,
     TEXLIVE_BASE_RELEASE,
     USE_ADDON_TREE,
 )
 from .converter_driver import ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
+from .remote_call import determine_compilation_system, submit_tarball
 from .service_logger import get_logger
 from .tarball import (
     RemovedSubmission,
@@ -123,72 +120,6 @@ class PreflightVersion(Enum):
     NONE = 0
     V1 = 1
     V2 = 2
-
-
-def determine_compilation_system(ts: int | None, texlive_version: int | None) -> str:
-    """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
-    logger = get_logger()
-    # texlive_version takes priority:
-    if texlive_version is not None:
-        # if we have a texlive version, we can use it to determine the
-        # compilation system.
-        # We assume that our keys are called "tl2025" etc
-        tlver = f"tl{texlive_version}"
-        logger.debug("Using texlive version %s to determine compilation system", texlive_version)
-        if tlver in TEX2PDF_KEYS_TO_URLS:
-            return TEX2PDF_KEYS_TO_URLS[tlver]
-        else:
-            raise ValueError(f"Undefined TeX Live version requested in ZZRM: {tlver}")
-    # we need to look into identifier
-    # and select either local _generate_pdf or remote depending on the
-    # time frame
-    # Input comes from an environment variable
-    # TEX2PDF_DATE_SCOPES="tetex2:CUTOF1:tetex3:CUTOF1:tl2009:...:CUTOFN:tl2023"
-    # with the interpretations:
-    # - submission date < CUTOF1 -> use tetex2
-    # - CUTOF1 <= submission date < CUTOF2 -> use tetex3
-    # ...
-    # - CUTOFEND <= submission date -> use tl2023
-    # Format of CUTOVERXXX: epoch seconds!
-    # all of the following is only necessary if we actually have multiple
-    # TeX systems running
-    if TEX2PDF_SCOPES != "" and ts is not None:
-        scope_list: list[str] = TEX2PDF_SCOPES.split(":")
-        if len(scope_list) % 2:
-            # uneven length is not good
-            raise ValueError(f"Invalid scope definition: {scope_list}")
-        # check for correct format and ordering!
-        last_date: float = 0
-        for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
-            if tex_key not in TEX2PDF_KEYS_TO_URLS.keys():
-                raise ValueError(f"Invalid tex key: {tex_key}")
-            curr_date: float = float(cut_of_day)
-            if curr_date < last_date:
-                raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
-            last_date = curr_date
-        # if we have no ts, we can only use the current system
-        if ts is None:
-            return "current"
-        tex_system_key: str | None = None
-        for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
-            logger.debug("Checking submission date against curdate: %s", cut_of_day)
-            curr_date = float(cut_of_day)
-            if ts < curr_date:
-                tex_system_key = tex_key
-                break
-        if tex_system_key is None:
-            tex_system_key = "current"
-    else:
-        # no compilation services defined, we always use current
-        tex_system_key = "current"
-    logger.debug("Detected tex system: %s", tex_system_key)
-    if tex_system_key == "current":
-        compile_service = tex_system_key
-    else:
-        # we already checked above that all entries in the scope list are
-        # available in the GEN_PDF_KEYS_TO_URLS hash.
-        compile_service = TEX2PDF_KEYS_TO_URLS[tex_system_key]
-    return compile_service
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -388,118 +319,30 @@ def _convert_pdf_remote(
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
 ) -> Response:
-    logger = get_logger()
-    tarball = os.path.join(tempdir, source)
-    with open(tarball, "rb") as data_fd:
-        uploading = {"incoming": (source, data_fd, "application/gzip")}
-        retries = 2
-        for attempt in range(1 + retries):
-            try:
-                args_dict = {
-                    "timeout": timeout,
-                    "use_addon_tree": use_addon_tree,
-                    "max_tex_files": max_tex_files,
-                    "max_appending_files": max_appending_files,
-                    "watermark_text": watermark_text,
-                    "watermark_link": watermark_link,
-                    "auto_detect": auto_detect,
-                    "hide_anc_dir": hide_anc_dir,
-                }
-                logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
-                logger.debug("uploading = %s", uploading, extra=log_extra)
-                res = requests.post(
-                    compile_service,
-                    files=uploading,
-                    timeout=timeout,
-                    allow_redirects=False,
-                    params=args_dict,
-                )
-                status_code = res.status_code
-                logger.debug("Received status code %d from POST to %s", status_code, res.url, extra=log_extra)
-                if status_code == 504:
-                    # This is the only place we retry, and at most 3 times in total.
-                    logger.warning("Got 504 for %s", compile_service, extra=log_extra)
-                    time.sleep(1)
-                    # we need to rewind the data_fd otherwise the next request will send
-                    # an empty file.
-                    data_fd.seek(0)
-                    continue
-
-                # Deal with failures
-                if status_code == 400 or status_code == 422 or status_code == 500:
-                    logger.warning(
-                        "Failed to submit tarball %s to %s, status code: %d, %s",
-                        tarball,
-                        compile_service,
-                        status_code,
-                        res.text,
-                        extra=log_extra,
-                    )
-                    return JSONResponse(
-                        status_code=status_code,
-                        content={"message": f"Failed to submit tarball: {res.text}"},
-                    )
-
-                elif status_code == 200:
-                    # it would be better to forward the streaming response directly to the caller
-                    # one approach is explained here: https://stackoverflow.com/a/73299661
-                    if res.content:
-                        out_filename = f"{tag}-outcome.tar.gz"
-                        out_path = os.path.join(tempdir, out_filename)
-                        with open(out_path, "wb") as out_file:
-                            out_file.write(res.content)
-                        headers = {
-                            "Content-Type": "application/gzip",
-                            "Content-Disposition": f"attachment; filename={out_filename}",
-                        }
-                        content = open(out_path, "rb")
-                        return GzipResponse(content, headers=headers, background=closer(content, source, log_extra))
-                    else:
-                        logger.warning(
-                            "Failed to submit tarball %s to %s, status code: %d, %s",
-                            tarball,
-                            compile_service,
-                            status_code,
-                            res.text,
-                            extra=log_extra,
-                        )
-                        return JSONResponse(
-                            status_code=status_code,
-                            content={"message": f"Failed to submit tarball: {res.text}"},
-                        )
-                else:
-                    logger.warning(
-                        "Unexpected status code %d from %s: %s",
-                        status_code,
-                        compile_service,
-                        res.text,
-                        extra=log_extra,
-                    )
-                    return JSONResponse(
-                        status_code=status_code,
-                        content={"message": f"Unexpected status code: {status_code}"},
-                    )
-
-            except TimeoutError:
-                logger.warning("%s: Connection to %s timed out", tarball, compile_service, extra=log_extra)
-                return JSONResponse(
-                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"message": "Timeout contacting remote service"},
-                )
-            except Exception as exc:
-                logger.warning("Exception submitting tarball: %s", exc, exc_info=True, extra=log_extra)
-                logger.warning("%s: %s", tarball, str(exc), extra=log_extra)
-                return JSONResponse(
-                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"message": "General exception: " + traceback.format_exc()},
-                )
-        logger.error(
-            "Failed to submit tarball %s to %s after %d attempts", tarball, compile_service, retries, extra=log_extra
-        )
-        return JSONResponse(
-            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": "Failed to submit tarball after multiple attempts"},
-        )
+    status_code, msg_file = submit_tarball(
+        compile_service=compile_service,
+        tempdir=tempdir,
+        tag=tag,
+        source=source,
+        use_addon_tree=use_addon_tree,
+        timeout=timeout,
+        max_tex_files=max_tex_files,
+        max_appending_files=max_appending_files,
+        watermark_text=watermark_text,
+        watermark_link=watermark_link,
+        auto_detect=auto_detect,
+        hide_anc_dir=hide_anc_dir,
+        log_extra=log_extra,
+    )
+    if status_code == 200:
+        headers = {
+            "Content-Type": "application/gzip",
+            "Content-Disposition": f"attachment; filename={out_filename}",
+        }
+        content = open(msg_file, "rb")
+        return GzipResponse(content, headers=headers, background=closer(content, source, log_extra))
+    else:
+        return JSONResponse(status_code=status_code, content={"message": msg})
 
 
 def _convert_pdf_current(

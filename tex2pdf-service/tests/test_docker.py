@@ -11,6 +11,7 @@ import pytest
 import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.converter_driver import RemoteConverterDriver
+from tex2pdf.remote_call import submit_tarball as tex2pdf_submit_tarball
 from tex2pdf.tarball import unpack_tarball
 
 PORT_2023 = 33031
@@ -28,23 +29,31 @@ def submit_tarball(
     service: str,
     tarball: str,
     outcome_file: str,
-    tex2pdf_timeout: int = 30,
-    post_timeout: int = 10,
+    timeout: int = 30,
     json_response: bool = False,
     api_args: dict = {},
 ) -> tuple[None | dict, int]:
     meta = None
-    params_dict = {"timeout": tex2pdf_timeout}
+    params_dict = {"timeout": timeout}
     params_dict.update(api_args)
+    tempdir = os.path.basename(tarball)
+    tarball_name = os.path.basename(tarball)
+    status, msg_file = tex2pdf_submit_tarball(
+        service,
+        tempdir,
+        tarball_name,
+        tarball,
+        outcome_file,
+        timeout=timeout,
+        api_args=params_dict,
+    )
     url = f"{service}/"
     logging.debug(f"Submitting {service} with params {params_dict} and tarball {tarball}")
     with open(tarball, "rb") as data_fd:
         uploading = {"incoming": (os.path.basename(tarball), data_fd, "application/gzip")}
         while True:
             try:
-                res = requests.post(
-                    url, files=uploading, timeout=post_timeout, allow_redirects=False, params=params_dict
-                )
+                res = requests.post(url, files=uploading, timeout=timeout, allow_redirects=False, params=params_dict)
                 logging.debug(f"Posted to {res.url}")
                 status_code = res.status_code
                 if status_code == 504:

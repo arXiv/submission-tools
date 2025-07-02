@@ -25,7 +25,7 @@ from . import (
 )
 from .doc_converter import combine_documents
 from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
-from .remote_call import service_process_tarball
+from .remote_call import submit_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
 from .tex_patching import fix_tex_sources
@@ -609,12 +609,12 @@ class RemoteConverterDriver(ConverterDriver):
     """Uses compilation service for conversion."""
 
     service: str
-    post_timeout: int
+    timeout: int
 
-    def __init__(self, service: str, post_timeout: int, work_dir: str, source: str, **kwargs: typing.Any):
+    def __init__(self, service: str, timeout: int, work_dir: str, source: str, **kwargs: typing.Any):
         super().__init__(work_dir, source, **kwargs)
         self.service = service
-        self.post_timeout = post_timeout
+        self.timeout = timeout
 
     def generate_pdf(self) -> str | None:
         """We have the beef."""
@@ -623,29 +623,31 @@ class RemoteConverterDriver(ConverterDriver):
 
         tag = self.tag or os.path.basename(self.source)
 
-        local_tarball = os.path.join(self.work_dir, self.source)
-        outcome_file = os.path.join(self.work_dir, f"{tag}-outcome.tar.gz")
-
-        logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
-        success = service_process_tarball(
-            self.service,
-            local_tarball,
-            outcome_file,
-            int(self.max_time_budget),
-            self.post_timeout,
-            self.auto_detect,
-            self.hide_anc_dir,
+        status_code, msg_file = submit_tarball(
+            compile_service=self.service,
+            tempdir=self.work_dir,
+            tag=tag,
+            source=self.source,
+            use_addon_tree=self.use_addon_tree,
+            timeout=self.timeout,
+            max_tex_files=self.max_tex_files,
+            max_appending_files=self.max_appending_files,
+            watermark_text=self.water.text,
+            watermark_link=self.water.link,
+            auto_detect=self.auto_detect,
+            hide_anc_dir=self.hide_anc_dir,
+            log_extra=self.log_extra,
         )
 
-        if not success:
-            logger.warning("Couldn't generate PDF")
+        if status_code != 200:
+            logger.warning(f"Couldn't generate PDF: {msg_file}")
             # ensure we have a zzrm file!
             self.zzrm = ZeroZeroReadMe()
             return None
 
         # unpack the tarball for further processing
         logger.debug("Unpacking to workdir %s", self.work_dir)
-        unpack_tarball(self.work_dir, outcome_file, {})
+        unpack_tarball(self.work_dir, msg_file, {})
         logger.debug("Unpacking done")
 
         logger.debug("Getting outcome json")
