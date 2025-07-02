@@ -241,20 +241,48 @@ class DirectiveManager:
         Raises:
             ValueError: If there is already an existing v2 file in a different format.
         """
-        if not force and self.v2_exists() and not self.is_active_directives_file(src_filename):
-            raise ValueError("A v2 directives file already exists.")
-
         # The current routine does not allow you to select the file, it picks it for
         # you. So we can't do V2.formatA -> v2.formatB
-        new_00readme_path = os.path.join(self.root_dir, f"00README.{dest_format}")
-        try:
-            zzrm = ZeroZeroReadMe(self.root_dir)
-            data = zzrm.to_dict()
 
+        # Check if we already have an active article directives file.
+        zzrm_filename = self.get_active_directives_file()
+        # Create path for new article directives file.
+        new_filename = f"00README.{dest_format}"
+        new_00readme_path = os.path.join(self.src_dir, new_filename)
+
+        # We normally expect to run the conversion once.
+        if not force and self.v2_exists() and not self.is_active_directives_file(src_filename):
+            raise ValueError(f"A v2 article directives file already exists. Remove "
+                             f"existing directives file: {zzrm_filename} or "
+                             f"specify force option to overwrite.")
+        # Warn that destination 00README exists and is being overwritten
+        if zzrm_filename == new_filename and self.is_v2_file(new_filename):
+            print(f"Current 00README directives file ({zzrm_filename}) will be overwritten: "
+                  f" (force option -F specified)")
+        elif zzrm_filename != new_filename and self.is_v2_file(zzrm_filename):
+            # We only allow a single V2 article directives file.
+            raise ValueError(f"A v2 directives file already exists ({zzrm_filename}). Remove "
+                             f"existing directives file ({zzrm_filename}) or "
+                             f"specify migrate option to replace "
+                             f"'{zzrm_filename}' with '{new_filename}'.")
+        else:
+            # migrate V2 00README to different format
+
+            pass
+
+        try:
+            zzrm = ZeroZeroReadMe(self.src_dir)
+            actual_zzrm_filename = zzrm.readme_filename
+            #print(f"Actual 00README directives file: {actual_zzrm_filename}")
+            self.readme_object = zzrm
+            data = zzrm.to_dict()
+            #print("Data:")
+            #print(json.dumps(data, indent=2))
             serialized_data = serialize_data(data, dest_format)
             write_readme_file(new_00readme_path, serialized_data)
 
-            print(f"Upgraded to v2 and saved as {new_00readme_path}")
+            print(f"Upgraded '{actual_zzrm_filename}' to v2 and saved as"
+                  f" {new_00readme_path}")
         except (json.JSONDecodeError, ZZRMInvalidFormatError)  as e:
             raise ValueError(f"Error parsing {new_00readme_path} build directives file: {e}")
 
@@ -265,6 +293,10 @@ class DirectiveManager:
         try:
             zzrm = ZeroZeroReadMe(self.src_dir)
             zzrm_filename = zzrm.readme_filename
+
+            if not os.path.isfile(zzrm_filename):
+                raise ValueError(f"Source directives file does not exist: {zzrm_filename}")
+
             self.readme_object = zzrm
 
             data = zzrm.to_dict()
