@@ -3,6 +3,7 @@
 import argparse
 import json
 import os.path
+import sys
 
 from . import DirectiveManager
 
@@ -154,10 +155,14 @@ def main():
         if manager.is_v1_file(args.upgrade_file):
             additional_directives = None  # Define as needed for your context  # noqa
             format = args.format
-            manager.upgrade_directives_file(args.upgrade_file, format, True)
-            print(f"Upgraded {args.upgrade_file} to {format} format.")
+            try:
+                manager.upgrade_directives_file(args.upgrade_file, format, args.force)
+                print(f"Upgraded {args.upgrade_file} to {format} format.")
+            except ValueError as e:
+                print(f"Error: {e}")
         else:
             print(f"{args.upgrade_file} is not a valid v1 directives file.")
+        #sys.exit(0)
 
     if args.create_file:
         try:
