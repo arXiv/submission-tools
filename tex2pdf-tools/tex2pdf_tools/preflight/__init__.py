@@ -647,6 +647,8 @@ class ParsedTeXFile(BaseModel):
             # TODO detect more possible add*resource commands of biblatex
             # replace end of line comments with empty string
             self._uses_bibliography = True
+            if incdef.cmd == "addbibresource":
+                self._uses_bbl_file_type.add(BblType.biblatex)
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for bf in include_argument.split(","):
                 f = bf.strip().strip('"')
