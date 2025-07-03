@@ -6,10 +6,12 @@ import subprocess
 import time
 import urllib.parse
 
+import pymupdf
 import pytest
 import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.converter_driver import RemoteConverterDriver
+from tex2pdf.tarball import unpack_tarball
 
 PORT_2023 = 33031
 PORT_2025 = 33032
@@ -603,6 +605,17 @@ def test_api_version_2_texlive_version(docker_container):
 
 
 @pytest.mark.integration
+def test_api_version_2_texlive_version_current(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(
+        SELF_DIR, "fixture/tarballs/version-2-texlive-version-current/version-2-texlive-version-current.tar.gz"
+    )
+    outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version-current.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+
+
+@pytest.mark.integration
 def test_api_version_2_texlive_version_unknown(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(
@@ -612,3 +625,18 @@ def test_api_version_2_texlive_version_unknown(docker_container):
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
     assert meta == "Invalid configuration: Undefined TeX Live version requested in ZZRM: tl2045"
+
+
+@pytest.mark.integration
+def test_api_bookmark_out_file(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/bookmark-out-file/bookmark-out-file.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/bookmark-out-file.outcome.tar.gz")
+    outcome_dir = os.path.join(SELF_DIR, "output/bookmark-out-file")
+    shutil.rmtree(outcome_dir, ignore_errors=True)
+    os.makedirs(outcome_dir)
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    unpack_tarball(outcome_dir, outcome, {})
+    with pymupdf.open(os.path.join(outcome_dir, "out", "bookmark-out-file.pdf")) as pdf:
+        assert pdf.get_toc()[0] == [1, "Proof of Lemma 1", 1]
