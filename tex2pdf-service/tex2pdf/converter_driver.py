@@ -444,8 +444,8 @@ class ConverterDriver:
                 outcome["gs"]["timeout"] = True
                 # mypy believes that exc does not have stdout/stderr, but both
                 # exceptions contain these values
-                outcome["gs"]["stdout"] = exc.stdout  # type: ignore
-                outcome["gs"]["stderr"] = exc.stderr  # type: ignore
+                outcome["gs"]["stdout"] = exc.stdout
+                outcome["gs"]["stderr"] = exc.stderr
             else:
                 raise exc
 
