@@ -1501,6 +1501,7 @@ def compute_document_graph(
 def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, ParsedTeXFile]) -> dict[str, ToplevelFile]:
     """Determine the toplevel files."""
     toplevel_files = {}
+    nr_root_items = len(roots)
     for f, n in roots.items():
         # don't consider sty/cls/clo as toplevel, even if they are not used
         if f.endswith(".sty") or f.endswith(".cls") or f.endswith(".clo"):
@@ -1518,6 +1519,19 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         )
         contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
         if contains_documentclass_somewhere or contains_bye_somewhere:
+            toplevel_files[f] = tl
+
+        # special case: we didn't find any toplevel file, and there is only one tree (root)
+        # If the tree has unknown LanguageType, we assume it is plain TeX since the end of input is equivalent to \bye
+        # We don't do this if there are more than one root items, to not get some randomly uploaded file
+        # listed as toplevel file.
+        if (
+            len(toplevel_files) == 0
+            and nr_root_items == 1
+            and tl_n.compute_language_of_graph()[0] == LanguageType.unknown
+        ):
+            logging.debug("compute_toplevel_files: assuming plain TeX due to graph being unknown for %s", f)
+            tl_n.language = LanguageType.tex
             toplevel_files[f] = tl
 
     return toplevel_files
