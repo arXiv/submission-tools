@@ -36,6 +36,7 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
     if texlive_version is not None:
         if str(texlive_version) == TEXLIVE_BASE_RELEASE:
             # the requested version is the one included in the current docker image
+            logger.debug("Detected tex system via ZZRM: current (%s)", TEXLIVE_BASE_RELEASE)
             return "current"
         # if we have a texlive version, we can use it to determine the
         # compilation system.
@@ -43,6 +44,7 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
         tlver = f"tl{texlive_version}"
         logger.debug("Using texlive version %s to determine compilation system", texlive_version)
         if tlver in TEX2PDF_KEYS_TO_URLS:
+            logger.debug("Detected tex system via ZZRM: %s", tlver)
             return TEX2PDF_KEYS_TO_URLS[tlver]
         else:
             raise ValueError(f"Undefined TeX Live version requested in ZZRM: {tlver}")
@@ -59,7 +61,9 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
     # Format of CUTOVERXXX: epoch seconds!
     # all of the following is only necessary if we actually have multiple
     # TeX systems running
-    if TEX2PDF_SCOPES != "" and ts is not None:
+    if ts is None:
+        tex_system_key = "current"
+    elif TEX2PDF_SCOPES != "":
         scope_list: list[str] = TEX2PDF_SCOPES.split(":")
         if len(scope_list) % 2:
             # uneven length is not good
@@ -73,9 +77,6 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
             if curr_date < last_date:
                 raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
             last_date = curr_date
-        # if we have no ts, we can only use the current system
-        if ts is None:
-            return "current"
         tex_system_key: str | None = None
         for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
             logger.debug("Checking submission date against curdate: %s", cut_of_day)
@@ -113,9 +114,10 @@ def submit_tarball(
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] | None = None,
     api_args: dict | None = None,
-) -> tuple[int, str | None]:
+    outcome_file: str | None = None,
+) -> tuple[int, str | dict | None]:
     logger = get_logger()
-    if api_args is not None:
+    if api_args is None:
         api_args = {}
     if log_extra is None:
         log_extra = {}
@@ -166,14 +168,20 @@ def submit_tarball(
                         res.text,
                         extra=log_extra,
                     )
-                    return status_code, f"Failed to submit tarball: {res.text}"
+                    data = res.json()
+                    return status_code, f"Failed to submit tarball: {data['message']}"
 
                 elif status_code == 200:
                     # it would be better to forward the streaming response directly to the caller
                     # one approach is explained here: https://stackoverflow.com/a/73299661
                     if res.content:
-                        out_filename = f"{tag}-outcome.tar.gz"
-                        out_path = os.path.join(tempdir, out_filename)
+                        if "application/json" in res.headers.get("Content-Type", ""):
+                            return 200, json.loads(res.content)
+                        if outcome_file:
+                            out_path = outcome_file
+                        else:
+                            out_filename = f"{tag}-outcome.tar.gz"
+                            out_path = os.path.join(tempdir, out_filename)
                         with open(out_path, "wb") as out_file:
                             out_file.write(res.content)
                         return 200, out_path
