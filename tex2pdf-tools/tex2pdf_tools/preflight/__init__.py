@@ -647,6 +647,8 @@ class ParsedTeXFile(BaseModel):
             # TODO detect more possible add*resource commands of biblatex
             # replace end of line comments with empty string
             self._uses_bibliography = True
+            if incdef.cmd == "addbibresource":
+                self._uses_bbl_file_type.add(BblType.biblatex)
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for bf in include_argument.split(","):
                 f = bf.strip().strip('"')
@@ -939,7 +941,13 @@ ALL_IMAGE_EXTS: str = " ".join(_extss)
 
 # only parse file with these extensions
 # .pdf_tex are generated tex files from the svg.sty packages
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".cls", ".clo", ".pdf_tex"]
+# we do not parse .cls and .clo files because they at times contain
+# calls to macros that we use to detect language or bib type (\documentstyle, \bibliographystyle, etc.)
+# which leads to misdetection and errors
+# Examples:
+# - cup-journal.cls contains \bibliographystyle
+# - revtex4-1.cls contains \documentstyle
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex"]
 # extensions of files we want to keep but cannot detect in preflight directly
 MAYBE_USED_FILE_EXTENSIONS = [
     ".pygtex",  # frozen cache of minted/pygmentize
@@ -1493,6 +1501,7 @@ def compute_document_graph(
 def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, ParsedTeXFile]) -> dict[str, ToplevelFile]:
     """Determine the toplevel files."""
     toplevel_files = {}
+    nr_root_items = len(roots)
     for f, n in roots.items():
         # don't consider sty/cls/clo as toplevel, even if they are not used
         if f.endswith(".sty") or f.endswith(".cls") or f.endswith(".clo"):
@@ -1510,6 +1519,19 @@ def compute_toplevel_files(roots: dict[str, ParsedTeXFile], nodes: dict[str, Par
         )
         contains_bye_somewhere = tl_n.generic_walk_document_tree(lambda x: x.contains_bye, lambda x, y: x or y)
         if contains_documentclass_somewhere or contains_bye_somewhere:
+            toplevel_files[f] = tl
+
+        # special case: we didn't find any toplevel file, and there is only one tree (root)
+        # If the tree has unknown LanguageType, we assume it is plain TeX since the end of input is equivalent to \bye
+        # We don't do this if there are more than one root items, to not get some randomly uploaded file
+        # listed as toplevel file.
+        if (
+            len(toplevel_files) == 0
+            and nr_root_items == 1
+            and tl_n.compute_language_of_graph()[0] == LanguageType.unknown
+        ):
+            logging.debug("compute_toplevel_files: assuming plain TeX due to graph being unknown for %s", f)
+            tl_n.language = LanguageType.tex
             toplevel_files[f] = tl
 
     return toplevel_files

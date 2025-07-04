@@ -614,6 +614,17 @@ def test_api_version_2_texlive_version(docker_container):
 
 
 @pytest.mark.integration
+def test_api_version_2_texlive_version_current(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(
+        SELF_DIR, "fixture/tarballs/version-2-texlive-version-current/version-2-texlive-version-current.tar.gz"
+    )
+    outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version-current.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+
+
+@pytest.mark.integration
 def test_api_version_2_texlive_version_unknown(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(

@@ -551,6 +551,20 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.process.compiler.output, "dvi")
         self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
 
+
+    def test_plain_no_bye(self):
+        """Test plain tex files without \bye."""
+        dir_path = os.path.join(self.fixture_dir, "plain-tex-no-bye")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "dvi")
+        self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
+
     def test_tikz_pgf_library_0(self):
         """Test tikzlibrary loading system pgfarrow.meta."""
         dir_path = os.path.join(self.fixture_dir, "arrowmeta")

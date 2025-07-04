@@ -317,8 +317,10 @@ def _convert_pdf_remote(
     watermark_link: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
-    log_extra: dict[str, typing.Any] = {},
+    log_extra=None,
 ) -> Response:
+    if log_extra is None:
+        log_extra = {}
     status_code, msg_file = submit_tarball(
         compile_service=compile_service,
         tempdir=tempdir,
@@ -337,12 +339,12 @@ def _convert_pdf_remote(
     if status_code == 200:
         headers = {
             "Content-Type": "application/gzip",
-            "Content-Disposition": f"attachment; filename={out_filename}",
+            "Content-Disposition": f"attachment; filename={os.path.basename(msg_file)}",
         }
         content = open(msg_file, "rb")
         return GzipResponse(content, headers=headers, background=closer(content, source, log_extra))
     else:
-        return JSONResponse(status_code=status_code, content={"message": msg})
+        return JSONResponse(status_code=status_code, content={"message": msg_file})
 
 
 def _convert_pdf_current(
