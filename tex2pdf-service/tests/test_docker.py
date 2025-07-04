@@ -35,21 +35,19 @@ def pytest_submit_tarball(
     meta = None
     params_dict = {"timeout": timeout}
     params_dict.update(api_args)
-    tempdir = os.path.dirname(tarball)
     tarball_name = os.path.basename(tarball)
     logging.warning("Submitting %s to %s", tarball, service)
     service = service.rstrip("/") + "/"  # make sure we finish in one /
     status, msg_file = submit_tarball(
         compile_service=service,
-        tempdir=tempdir,
+        input_path=tarball,
         tag=tarball_name,
-        source=tarball_name,
         use_addon_tree=False,
         max_tex_files=None,
         max_appending_files=None,
         timeout=timeout,
         api_args=params_dict,
-        outcome_file=outcome_file,
+        output_path=outcome_file,
     )
     logging.warning("XXXX submit_tarball returned\nmsg_file %s\nstatus: %s", msg_file, status)
     if status == 200:
@@ -365,6 +363,12 @@ def test_remote2023(docker_container) -> None:
     out_dir = os.path.join(SELF_DIR, "output/test2-remote")
     url = docker_container + "/convert/"
     tag = os.path.basename(tarball)
+    while True:
+        [stem, ext] = os.path.splitext(tag)
+        if ext in [".gz", ".zip", ".tar"]:
+            tag = stem
+            continue
+        break
 
     logging.debug("Before instantiating the RemoteConverterDriver")
 
@@ -384,13 +388,19 @@ def test_remote2023_anc_ignore(docker_container) -> None:
     out_dir = os.path.join(SELF_DIR, "output/test-anc-ignore-remote")
     url = docker_container + "/convert/"
     tag = os.path.basename(tarball)
+    while True:
+        [stem, ext] = os.path.splitext(tag)
+        if ext in [".gz", ".zip", ".tar"]:
+            tag = stem
+            continue
+        break
     shutil.rmtree(out_dir, ignore_errors=True)
     converter = RemoteConverterDriver(
         url, 600, out_dir, tarball, use_addon_tree=False, tag=tag, auto_detect=True, hide_anc_dir=True
     )
     pdf = converter.generate_pdf()
     assert pdf is None
-    assert os.path.isfile(f"{out_dir}/test-anc-ignore.tar.gz-outcome.tar.gz")
+    assert os.path.isfile(f"{out_dir}/out/test-anc-ignore-outcome.tar.gz")
 
 
 @pytest.mark.integration

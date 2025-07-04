@@ -61,6 +61,7 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
     # Format of CUTOVERXXX: epoch seconds!
     # all of the following is only necessary if we actually have multiple
     # TeX systems running
+    tex_system_key: str | None = None
     if ts is None:
         tex_system_key = "current"
     elif TEX2PDF_SCOPES != "":
@@ -77,7 +78,6 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
             if curr_date < last_date:
                 raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
             last_date = curr_date
-        tex_system_key: str | None = None
         for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
             logger.debug("Checking submission date against curdate: %s", cut_of_day)
             curr_date = float(cut_of_day)
@@ -101,9 +101,8 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
 
 def submit_tarball(
     compile_service: str,
-    tempdir: str,
+    input_path: str,
     tag: str,
-    source: str,
     use_addon_tree: bool,
     timeout: float,
     max_tex_files: int | None,
@@ -114,16 +113,25 @@ def submit_tarball(
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] | None = None,
     api_args: dict | None = None,
-    outcome_file: str | None = None,
+    output_path: str | None = None,
 ) -> tuple[int, str | dict | None]:
+    """Submit a tarball to the remote service for compilation.
+
+    Return values:
+        status: int - HTTP status code
+        outcome: str | dict | None
+            if status is 200, and outcome is a string, it is the path to the outcome file.
+            if status is 200, and outcome is a dict, it contains the JSON response from the service.
+            otherwise, outcome is an error message.
+    """
     logger = get_logger()
     if api_args is None:
         api_args = {}
     if log_extra is None:
         log_extra = {}
-    tarball = os.path.join(tempdir, source)
-    with open(tarball, "rb") as data_fd:
-        uploading = {"incoming": (source, data_fd, "application/gzip")}
+    source_filename = os.path.basename(input_path)
+    with open(input_path, "rb") as data_fd:
+        uploading = {"incoming": (source_filename, data_fd, "application/gzip")}
         retries = 2
         for attempt in range(1 + retries):
             try:
@@ -162,7 +170,7 @@ def submit_tarball(
                 if status_code == 400 or status_code == 422 or status_code == 500:
                     logger.warning(
                         "Failed to submit tarball %s to %s, status code: %d, %s",
-                        tarball,
+                        source_filename,
                         compile_service,
                         status_code,
                         res.text,
@@ -177,18 +185,19 @@ def submit_tarball(
                     if res.content:
                         if "application/json" in res.headers.get("Content-Type", ""):
                             return 200, json.loads(res.content)
-                        if outcome_file:
-                            out_path = outcome_file
+                        if output_path:
+                            out_path = output_path
                         else:
                             out_filename = f"{tag}-outcome.tar.gz"
-                            out_path = os.path.join(tempdir, out_filename)
+                            out_path = os.path.join(os.path.dirname(input_path), out_filename)
+                        os.makedirs(os.path.dirname(out_path), exist_ok=True)
                         with open(out_path, "wb") as out_file:
                             out_file.write(res.content)
                         return 200, out_path
                     else:
                         logger.warning(
                             "Failed to submit tarball %s to %s, status code: %d, %s",
-                            tarball,
+                            source_filename,
                             compile_service,
                             status_code,
                             res.text,
@@ -206,13 +215,17 @@ def submit_tarball(
                     return status_code, f"Unexpected status code: {status_code}"
 
             except TimeoutError:
-                logger.warning("%s: Connection to %s timed out", tarball, compile_service, extra=log_extra)
+                logger.warning("%s: Connection to %s timed out", source_filename, compile_service, extra=log_extra)
                 return 500, "Timeout contacting remote service"
             except Exception as exc:
                 logger.warning("Exception submitting tarball: %s", exc, exc_info=True, extra=log_extra)
-                logger.warning("%s: %s", tarball, str(exc), extra=log_extra)
+                logger.warning("%s: %s", source_filename, str(exc), extra=log_extra)
                 return 500, "General exception: " + traceback.format_exc()
         logger.error(
-            "Failed to submit tarball %s to %s after %d attempts", tarball, compile_service, retries, extra=log_extra
+            "Failed to submit tarball %s to %s after %d attempts",
+            source_filename,
+            compile_service,
+            retries,
+            extra=log_extra,
         )
         return 500, "Failed to submit tarball after multiple attempts"

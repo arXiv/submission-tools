@@ -287,8 +287,7 @@ async def convert_pdf(
             logger.info("Using RemoteConverterDriver")
             return _convert_pdf_remote(
                 compile_service=compile_service,
-                tempdir=tempdir,
-                in_dir=in_dir,
+                input_path=local_tarball,
                 tag=tag,
                 source=filename,
                 use_addon_tree=use_addon_tree,
@@ -305,27 +304,25 @@ async def convert_pdf(
 
 def _convert_pdf_remote(
     compile_service: str,
-    tempdir: str,
-    in_dir: str,
+    input_path: str,
     tag: str,
     source: str,
     use_addon_tree: bool,
-    timeout: float | None,
+    timeout: float,
     max_tex_files: int | None,
     max_appending_files: int | None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
-    log_extra=None,
+    log_extra: dict | None = None,
 ) -> Response:
     if log_extra is None:
         log_extra = {}
     status_code, msg_file = submit_tarball(
         compile_service=compile_service,
-        tempdir=tempdir,
+        input_path=input_path,
         tag=tag,
-        source=source,
         use_addon_tree=use_addon_tree,
         timeout=timeout,
         max_tex_files=max_tex_files,
@@ -337,6 +334,7 @@ def _convert_pdf_remote(
         log_extra=log_extra,
     )
     if status_code == 200:
+        assert isinstance(msg_file, str)
         headers = {
             "Content-Type": "application/gzip",
             "Content-Disposition": f"attachment; filename={os.path.basename(msg_file)}",
@@ -361,9 +359,11 @@ def _convert_pdf_current(
     watermark_link: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
-    log_extra: dict[str, typing.Any] = {},
+    log_extra: dict | None = None,
 ) -> Response:
     """Convert source to PDF using the built-in TeX system."""
+    if log_extra is None:
+        log_extra = {}
     driver = ConverterDriver(
         work_dir=tempdir,
         source=source,

@@ -623,11 +623,11 @@ class RemoteConverterDriver(ConverterDriver):
 
         tag = self.tag or os.path.basename(self.source)
 
+        logger.warning("workdir = %s, tag = %s, source = %s", self.work_dir, tag, self.source)
         status_code, msg_file = submit_tarball(
             compile_service=self.service,
-            tempdir=self.work_dir,
+            input_path=self.source,
             tag=tag,
-            source=self.source,
             use_addon_tree=self.use_addon_tree,
             timeout=self.timeout,
             max_tex_files=self.max_tex_files,
@@ -637,6 +637,7 @@ class RemoteConverterDriver(ConverterDriver):
             auto_detect=self.auto_detect,
             hide_anc_dir=self.hide_anc_dir,
             log_extra=self.log_extra,
+            output_path=os.path.join(self.out_dir, f"{tag}-outcome.tar.gz"),
         )
 
         if status_code != 200:
@@ -647,6 +648,8 @@ class RemoteConverterDriver(ConverterDriver):
 
         # unpack the tarball for further processing
         logger.debug("Unpacking to workdir %s", self.work_dir)
+        os.makedirs(self.work_dir, exist_ok=True)
+        assert isinstance(msg_file, str)
         unpack_tarball(self.work_dir, msg_file, {})
         logger.debug("Unpacking done")
 
@@ -670,6 +673,6 @@ class RemoteConverterDriver(ConverterDriver):
         else:
             logger.debug("self.zzrm = %s", self.zzrm)
 
-        logger.debug("Directory listing of %s is: %s", self.out_dir, os.listdir(self.out_dir))
+        logger.debug("Directory listing of %s is: %s", self.work_dir, os.listdir(self.work_dir))
 
         return self.outcome.get("pdf_file")
