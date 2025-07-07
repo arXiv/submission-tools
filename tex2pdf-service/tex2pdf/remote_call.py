@@ -30,7 +30,7 @@ def get_outcome_meta(outcome_file: str) -> dict:
 
 
 def determine_compilation_system(ts: int | None, texlive_version: int | None) -> str:
-    """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
+    """Determine the compilation system based on TEX2PDF_SCOPES from a ts and the given arXiv ID."""
     logger = get_logger()
     # texlive_version takes priority:
     if texlive_version is not None:

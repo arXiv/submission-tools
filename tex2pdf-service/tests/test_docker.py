@@ -14,6 +14,10 @@ from tex2pdf.converter_driver import RemoteConverterDriver
 from tex2pdf.remote_call import service_process_tarball
 from tex2pdf.tarball import unpack_tarball
 
+# we are testing with three different docker images:
+# - the main proxy is TL2024
+# - TL2023 is available via a cutoff date
+# - TL2025 is available by explicitely requesting it in the ZZRM.texlive_release
 PORT_2023 = 33031
 PORT_2025 = 33032
 # default proxy is TL2024
@@ -49,7 +53,7 @@ def submit_tarball(
         api_args=params_dict,
         output_path=outcome_file,
     )
-    logging.warning("service_process_tarball returned\nmsg_file %s\nstatus: %s", msg_file, status)
+    logging.debug("service_process_tarball returned\nmsg_file %s\nstatus: %s", msg_file, status)
     if status == 200:
         if msg_file is None:
             logging.warning("No msg_file returned, but status is 200")
@@ -115,28 +119,29 @@ def submit_file(
 
 
 def _start_docker_container(
-    image_name: str, container_name: str, external_port: int, extra_args: list[str] = [], internal_port: int = 8080
+    yyyy: int,
+    image_name: str,
+    container_name: str,
+    external_port: int,
+    extra_args: list[str] = [],
+    internal_port: int = 8080,
 ):
     """Start the docker container if it is not already running."""
     # Start the container
+    # fmt: off
     args = [
-        "docker",
-        "run",
-        "--security-opt",
-        "no-new-privileges=true",
-        "--cpus",
-        "1",
-        "--rm",
-        "-d",
-        "-p",
-        f"{external_port}:{internal_port}",
-        "-e",
-        f"PORT={internal_port}",
+        "docker", "run",
+        "--security-opt", "no-new-privileges=true",
+        "--cpus", "1",
+        "--rm", "-d",
+        "-p", f"{external_port}:{internal_port}",
+        "-e", f"PORT={internal_port}",
+        "-e", f"TEXLIVE_BASE_RELEASE={yyyy}",
         *extra_args,
-        "--name",
-        container_name,
+        "--name", container_name,
         image_name,
     ]
+    # fmt: on
     docker = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
     if docker.returncode != 0:
         logging.error(f"tex2pdf container {container_name} did not start")
@@ -185,11 +190,11 @@ def docker_container(request):
             print(make.stderr)
             pass
 
-        _start_docker_container(image_2023_name, container_2023_name, PORT_2023)
-        _start_docker_container(image_2025_name, container_2025_name, PORT_2025)
+        _start_docker_container(2023, image_2023_name, container_2023_name, PORT_2023)
+        _start_docker_container(2025, image_2025_name, container_2025_name, PORT_2025)
         # fmt: off
         _start_docker_container(
-            image_2024_name, container_2024_name, PORT_DEFAULT,
+            2024, image_2024_name, container_2024_name, PORT_DEFAULT,
             [
                 "--network", "host",
                 "--env",     "TEX2PDF_PROXY_RELEASE=1",

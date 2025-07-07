@@ -2,6 +2,7 @@
 
 import os
 
+# set the default TeX Live base release to 2024
 os.environ.setdefault("TEXLIVE_BASE_RELEASE", "2024")
 
 
