@@ -86,6 +86,7 @@ def submit_file(
                 if status_code == 504:
                     logging.warning("Got 504 for %s", service)
                     time.sleep(1)
+                    data_fd.seek(0)
                     continue
 
                 if status_code == 200:
