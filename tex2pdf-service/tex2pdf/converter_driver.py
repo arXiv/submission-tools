@@ -25,7 +25,7 @@ from . import (
 )
 from .doc_converter import combine_documents
 from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
-from .remote_call import submit_tarball
+from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
 from .tex_patching import fix_tex_sources
@@ -624,7 +624,7 @@ class RemoteConverterDriver(ConverterDriver):
         tag = self.tag or os.path.basename(self.source)
 
         logger.warning("workdir = %s, tag = %s, source = %s", self.work_dir, tag, self.source)
-        status_code, msg_file = submit_tarball(
+        status_code, msg_file = service_process_tarball(
             compile_service=self.service,
             input_path=self.source,
             tag=tag,

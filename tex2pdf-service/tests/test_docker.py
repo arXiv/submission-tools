@@ -11,7 +11,7 @@ import pytest
 import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.converter_driver import RemoteConverterDriver
-from tex2pdf.remote_call import submit_tarball
+from tex2pdf.remote_call import service_process_tarball
 from tex2pdf.tarball import unpack_tarball
 
 PORT_2023 = 33031
@@ -25,7 +25,7 @@ TL2023_CUTOFF = 1748736000
 TL2023_TS = TL2023_CUTOFF - 100
 
 
-def pytest_submit_tarball(
+def submit_tarball(
     service: str,
     tarball: str,
     outcome_file: str,
@@ -38,7 +38,7 @@ def pytest_submit_tarball(
     tarball_name = os.path.basename(tarball)
     logging.warning("Submitting %s to %s", tarball, service)
     service = service.rstrip("/") + "/"  # make sure we finish in one /
-    status, msg_file = submit_tarball(
+    status, msg_file = service_process_tarball(
         compile_service=service,
         input_path=tarball,
         tag=tarball_name,
@@ -49,7 +49,7 @@ def pytest_submit_tarball(
         api_args=params_dict,
         output_path=outcome_file,
     )
-    logging.warning("XXXX submit_tarball returned\nmsg_file %s\nstatus: %s", msg_file, status)
+    logging.warning("service_process_tarball returned\nmsg_file %s\nstatus: %s", msg_file, status)
     if status == 200:
         if msg_file is None:
             logging.warning("No msg_file returned, but status is 200")
@@ -249,7 +249,7 @@ def test_api_smoke(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test1/test1.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test1.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta == "Failed to submit tarball: ZZRM cannot be loaded: Q"
     assert status == 422
 
@@ -260,7 +260,7 @@ def test_api_git_hash(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("version_info") is not None
     assert meta.get("version_info") != ""
@@ -274,7 +274,7 @@ def test_api_test2(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test2.pdf"
     assert meta.get("tex_files") == ["fake-file-2.tex"]
@@ -288,7 +288,7 @@ def test_api_test3(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test3.pdf"
     assert meta.get("tex_files") == ["fake-file-2.tex", "fake-file-1.tex", "fake-file-3.tex"]
@@ -303,7 +303,7 @@ def test_api_test4(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test4.pdf"
     assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
@@ -317,7 +317,7 @@ def test_api_test_anc_ignore(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-anc-ignore.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(
+    meta, status = submit_tarball(
         url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true", "ts": ts}
     )
     assert meta is not None
@@ -330,7 +330,7 @@ def test_api_test_anc_ignore_no_ancfiles(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(
+    meta, status = submit_tarball(
         url, tarball, outcome, api_args={"auto_detect": "true", "hide_anc_dir": "true", "ts": ts}
     )
     assert meta is not None
@@ -346,7 +346,7 @@ def test_api_preflight(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test3.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"preflight": "v2", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"preflight": "v2", "ts": ts})
     assert meta is not None
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
@@ -409,7 +409,7 @@ def test_api_missing_graphics(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-img/test-missing-img.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-missing-img.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     # compilation must fail on missing files
     assert meta.get("status") == "fail"
@@ -421,7 +421,7 @@ def test_api_missing_glo(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-glo/test-missing-glo.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-missing-glo.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "success"
@@ -437,7 +437,7 @@ def test_api_broken_tex(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-broken-tex/test-broken-tex.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-broken-tex.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "fail"
@@ -454,7 +454,7 @@ def test_bbl_32(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-32.pdf"
     assert len(meta.get("converters", [])) == 1
@@ -468,7 +468,7 @@ def test_bbl_33(docker_container):
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-33/test-bbl-33.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-33.outcome.tar.gz")
     # need to send this tl tl2023 container, thus give timestamp according to TEX2PDF_SCOPES
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": TL2023_TS})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": TL2023_TS})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-33.pdf"
     assert len(meta.get("converters", [])) == 1
@@ -517,7 +517,7 @@ def test_always_changing_labels(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-always-changing-labels/test-always-changing-labels.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-always-changing-labels.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     assert meta.get("pdf_file") == "test-always-changing-labels.pdf"
     assert meta.get("tex_files") == ["main.tex"]
@@ -531,7 +531,7 @@ def test_latex_as_tex_fails(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/latex-as-tex-fails/latex-as-tex-fails.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-latex-as-tex-fails.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": TL2023_TS})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": TL2023_TS})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "fail"
@@ -545,7 +545,7 @@ def test_api_texlive_version(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-texlive-version/test-texlive-version.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     logging.warning("meta = %s, status = %d", meta, status)
     # since the default proxy is TL2024, and we explicitely request TL2025 in the ZZRM here,
@@ -558,7 +558,7 @@ def test_api_version_1(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-1/version-1.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/version-1.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
 
 
@@ -567,7 +567,7 @@ def test_api_version_2(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-2/version-2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/version-2.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
 
 
@@ -576,7 +576,7 @@ def test_api_version_100(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-100/version-100.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/version-100.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
     assert meta == "Failed to submit tarball: ZZRM cannot be loaded: Version number out of range (1-2): 100"
 
@@ -586,7 +586,7 @@ def test_api_version_1_texlive_version(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-1-texlive-version/version-1-texlive-version.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/version-1-texlive-version.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
     assert meta == "Failed to submit tarball: ZZRM cannot be loaded: Version 1 ZZRM with texlive_version set"
 
@@ -596,7 +596,7 @@ def test_api_version_2_texlive_version(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-2-texlive-version/version-2-texlive-version.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
 
 
@@ -607,7 +607,7 @@ def test_api_version_2_texlive_version_current(docker_container):
         SELF_DIR, "fixture/tarballs/version-2-texlive-version-current/version-2-texlive-version-current.tar.gz"
     )
     outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version-current.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
 
 
@@ -618,7 +618,7 @@ def test_api_version_2_texlive_version_unknown(docker_container):
         SELF_DIR, "fixture/tarballs/version-2-texlive-version-unknown/version-2-texlive-version-unknown.tar.gz"
     )
     outcome = os.path.join(SELF_DIR, "output/version-2-texlive-version-unknown.outcome.tar.gz")
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
     assert (
         meta == "Failed to submit tarball: Invalid configuration: Undefined TeX Live version requested in ZZRM: tl2045"
@@ -633,7 +633,7 @@ def test_api_bookmark_out_file(docker_container):
     outcome_dir = os.path.join(SELF_DIR, "output/bookmark-out-file")
     shutil.rmtree(outcome_dir, ignore_errors=True)
     os.makedirs(outcome_dir)
-    meta, status = pytest_submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
     unpack_tarball(outcome_dir, outcome, {})
     with pymupdf.open(os.path.join(outcome_dir, "out", "bookmark-out-file.pdf")) as pdf:

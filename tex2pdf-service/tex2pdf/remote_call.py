@@ -99,7 +99,7 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
     return compile_service
 
 
-def submit_tarball(
+def service_process_tarball(
     compile_service: str,
     input_path: str,
     tag: str,

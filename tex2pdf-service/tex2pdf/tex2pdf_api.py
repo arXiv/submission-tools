@@ -32,7 +32,7 @@ from . import (
 from .converter_driver import ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
-from .remote_call import determine_compilation_system, submit_tarball
+from .remote_call import determine_compilation_system, service_process_tarball
 from .service_logger import get_logger
 from .tarball import (
     RemovedSubmission,
@@ -319,7 +319,7 @@ def _convert_pdf_remote(
 ) -> Response:
     if log_extra is None:
         log_extra = {}
-    status_code, msg_file = submit_tarball(
+    status_code, msg_file = service_process_tarball(
         compile_service=compile_service,
         input_path=input_path,
         tag=tag,
