@@ -41,6 +41,9 @@ def main():
     parser.add_argument("-l", "--list_files", action="store_true", help="List all directives files.")
     parser.add_argument("--v1_exists", action="store_true", help="Check if a version 1 directives file exists.")
     parser.add_argument("--v2_exists", action="store_true", help="Check if a version 2 directives file exists.")
+    parser.add_argument("-M", "--migrate", action="store_true", help="Migrate 00README to new format, "
+                                                                     "and delete source format.")
+
     parser.add_argument("-o", "--output_file", type=str, help="Path to directives results output (JSON).")
     parser.add_argument(
         "-p", "--preflight", action="store_true", help="Process the PreFlight data and return summary (JSON)."
@@ -156,7 +159,8 @@ def main():
             additional_directives = None  # Define as needed for your context  # noqa
             format = args.format
             try:
-                manager.upgrade_directives_file(args.upgrade_file, format, args.force)
+                manager.upgrade_directives_file(args.upgrade_file, format,
+                                                args.force, args.migrate)
                 print(f"Upgraded {args.upgrade_file} to {format} format.")
             except ValueError as e:
                 print(f"Error: {e}")
@@ -208,8 +212,12 @@ def main():
     #    ignore_list = manager.readme_list_ignore()
     #    for ignore in ignore_list:
     #        node['ignore'].append({'filename': ignore})
+    serial = None
+    try:
+        serial = manager.process_directives()
+    except ValueError as e:
+        print(f"Error: {e}")
 
-    serial = manager.process_directives()
     directives["directives"] = serial
     # print(f"Serial:{serial}")
     # exit(0)
