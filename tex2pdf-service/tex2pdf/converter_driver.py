@@ -233,6 +233,8 @@ class ConverterDriver:
                 else:
                     logger.debug("Renaming anc directory %s to %s", ancdir, target)
                     os.rename(ancdir, target)
+        # ensure that TEXMFVAR is always a new clean directory
+        os.environ["TEXMFVAR"] = f"{self.work_dir}/texmf-var"
         try:
             # run TeX under try and have a finally to rename the anc directory back
             # in case some exception happens in the TeX processing
@@ -242,6 +244,9 @@ class ConverterDriver:
             self.outcome["reason"] = str(e)
             self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         finally:
+            # revert the TEXMFVAR to the unset value
+            del os.environ["TEXMFVAR"]
+            # deal with the anc directory reverting
             if self.hide_anc_dir and target is not None:
                 logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
                 os.rename(target, ancdir)

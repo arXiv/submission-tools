@@ -236,7 +236,9 @@ class BaseConverter:
             "half_error_line": "238",
         }
         # support SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE set in the environment
-        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE"]:
+        # also make sure we forward TEXMFVAR settings which are set to a session
+        # specific directory
+        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE", "TEXMFVAR"]:
             if os.getenv(senv):
                 cmdenv[senv] = os.getenv(senv, "")  # the "" is only here to placate mypy :-(
         # try detecting incompatible bbl version and adjust TEXMFAUXTREES to make it compile
