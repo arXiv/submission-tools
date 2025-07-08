@@ -1,6 +1,7 @@
 """DirectivesManager main source."""
 
 import json
+import io
 import os
 from typing import ClassVar
 
@@ -14,7 +15,7 @@ from ..zerozeroreadme import ZeroZeroReadMe, ZZRMInvalidFormatError
 DIRECTIVE_EXTS = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml", ".xxx"]
 
 
-def serialize_data(data: dict, format: str) -> str:
+def serialize_data(zzrm: ZeroZeroReadMe, format: str) -> str:
     """
     Serialize data into the specified format.
 
@@ -27,11 +28,16 @@ def serialize_data(data: dict, format: str) -> str:
     """
     match format:
         case "yaml":
-            return yaml.dump(data)
+            tmpio = io.StringIO()
+            zzrm.to_yaml(tmpio)
+            tmpio.flush()
+            tmpio.seek(0)
+            data = tmpio.read()
+            return data
         case "json":
-            return json.dumps(data, indent=4)
+            return zzrm.to_json()
         case "toml":
-            return toml.dumps(data)
+            return zzrm.to_toml()
         case _:
             raise ValueError("Unsupported format. Use 'yaml', 'json', or 'toml'.")
 
@@ -53,7 +59,7 @@ class DirectiveManager:
     # Supported v2 formats
     SUPPORTED_FORMATS: ClassVar[list[str]] = ["json", "yaml", "toml"]
 
-    def __init__(self, root_dir: str, src_dir: str | None = None):
+    def __init__(self, root_dir: str, src_dir: str | None = None, debug: bool = False):
         self.root_dir = root_dir
         self.src_dir = src_dir if src_dir is not None else f"{self.root_dir}/src"
         self.directives_files = self.list_directives_files()
@@ -61,6 +67,7 @@ class DirectiveManager:
         self.preflight_hierarchy = None
         self.preflight_data_not_found = False
         self.readme_object = None
+        self.debug = debug
 
     def load_preflight_data(self, preflight_file_arg: str | None = None):
         """Load preflight data and returns a hierarchy."""
@@ -227,7 +234,8 @@ class DirectiveManager:
 
         return False
 
-    def upgrade_directives_file(self, src_filename: str, dest_format: str = "json", force: bool = False):
+    def upgrade_directives_file(self, src_filename: str, dest_format: str = "json",
+                                force: bool = False, migrate: bool = False):
         """
         Upgrade from v1 00README.XXX to modern v2+ directives file.
 
@@ -244,11 +252,28 @@ class DirectiveManager:
         # The current routine does not allow you to select the file, it picks it for
         # you. So we can't do V2.formatA -> v2.formatB
 
-        # Check if we already have an active article directives file.
-        zzrm_filename = self.get_active_directives_file()
+
         # Create path for new article directives file.
         new_filename = f"00README.{dest_format}"
         new_00readme_path = os.path.join(self.src_dir, new_filename)
+
+        # Migration from one format to another is considered an 'invalid'
+        # state. This may occur when we are converting from one V2 directives
+        # file to another (in the case we are converting from .yaml to .json
+        # and both V2 files exist).
+
+        # Check if we already have an active article directives file.
+        # When migrating, accept the src_filename to avoid errors.
+        zzrm_filename = ''
+        if (migrate): # if both are V2
+            zzrm_filename = src_filename
+        else:
+            zzrm_filename = self.get_active_directives_file()
+
+        # Same file?
+        is_same_file = zzrm_filename == new_filename
+        is_v2_existing = self.is_v2_file(zzrm_filename)
+        is_v2_new = self.is_v2_file(new_filename)
 
         # We normally expect to run the conversion once.
         if not force and self.v2_exists() and not self.is_active_directives_file(src_filename):
@@ -256,33 +281,35 @@ class DirectiveManager:
                              f"existing directives file: {zzrm_filename} or "
                              f"specify force option to overwrite.")
         # Warn that destination 00README exists and is being overwritten
-        if zzrm_filename == new_filename and self.is_v2_file(new_filename):
+        if is_same_file and is_v2_new:
             print(f"Current 00README directives file ({zzrm_filename}) will be overwritten: "
                   f" (force option -F specified)")
-        elif zzrm_filename != new_filename and self.is_v2_file(zzrm_filename):
+        elif not is_same_file and is_v2_existing:
             # We only allow a single V2 article directives file.
-            raise ValueError(f"A v2 directives file already exists ({zzrm_filename}). Remove "
-                             f"existing directives file ({zzrm_filename}) or "
-                             f"specify migrate option to replace "
-                             f"'{zzrm_filename}' with '{new_filename}'.")
-        else:
-            # migrate V2 00README to different format
-
-            pass
+            if not migrate:
+                raise ValueError(f"A v2 directives file already exists ({zzrm_filename}). Remove "
+                                 f"existing directives file ({zzrm_filename}) or "
+                                 f"specify migrate option to replace "
+                                 f"'{zzrm_filename}' with '{new_filename}'.")
+            else:
+                # migrate source V2 00README to different format
+                # We eventually need to clean out any other v2 files
+                pass
 
         try:
-            zzrm = ZeroZeroReadMe(self.src_dir)
+            # We really want to use 'path' here (support has been added to ZeroZeroReadMe).
+            src_path = os.path.join(self.src_dir, src_filename)
+            zzrm = ZeroZeroReadMe(src_path)
             actual_zzrm_filename = zzrm.readme_filename
-            #print(f"Actual 00README directives file: {actual_zzrm_filename}")
+            if (self.debug):
+                print(f"Actual 00README directives file: {src_path}  {actual_zzrm_filename}")
             self.readme_object = zzrm
             data = zzrm.to_dict()
-            #print("Data:")
-            #print(json.dumps(data, indent=2))
-            serialized_data = serialize_data(data, dest_format)
+            serialized_data = serialize_data(zzrm, dest_format)
             write_readme_file(new_00readme_path, serialized_data)
 
-            print(f"Upgraded '{actual_zzrm_filename}' to v2 and saved as"
-                  f" {new_00readme_path}")
+            print(f"Upgraded '{zzrm_filename}' to v2 and saved as"
+                  f" {new_filename}")
         except (json.JSONDecodeError, ZZRMInvalidFormatError)  as e:
             raise ValueError(f"Error parsing {new_00readme_path} build directives file: {e}")
 
