@@ -94,7 +94,7 @@ def main():
         root_dir = os.path.join(args.base, args.identifier[:4], args.identifier)
 
     # Create DirectiveManager with specified root directory
-    manager = DirectiveManager(root_dir, args.src_dir)
+    manager = DirectiveManager(root_dir, args.src_dir, args.debug)
 
     # Process commands
     if args.active_file:
