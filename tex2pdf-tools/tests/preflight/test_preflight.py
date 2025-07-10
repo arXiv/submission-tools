@@ -649,3 +649,17 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(len(tf.issues), 1)
         self.assertEqual(tf.issues[0].key, IssueType.unsupported_compiler_type)
 
+
+    def test_amstex_documentstyle(self):
+        """Test documentstyle from amstex."""
+        dir_path = os.path.join(self.fixture_dir, "amstex-documentstyle")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "dvi")
+        self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
+

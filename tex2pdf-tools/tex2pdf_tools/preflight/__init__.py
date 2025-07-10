@@ -811,8 +811,6 @@ class ParsedTeXFile(BaseModel):
         """Walk a subgraph to search for properties."""
         issues = []
         found_language: LanguageType = self.language
-        if found_language == LanguageType.latex209:
-            issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "LaTeX 2.09 is not supported anymore"))
         logging.debug("compute_language_of_graph: %s, start lang = %s", self.filename, found_language)
         for n in self.children:
             if n.filename in visited:
@@ -983,7 +981,7 @@ INCLUDE_COMMANDS = [
     IncludeSpec(
         cmd="InputIfFileExists", source="core", type=FileType.tex, extensions=TEX_EXTENSIONS, take_options=False
     ),
-    IncludeSpec(cmd="documentstyle", source="core", type=FileType.tex, extensions="cls"),
+    IncludeSpec(cmd="documentstyle", source="core", type=FileType.tex, extensions="cls sty"),
     IncludeSpec(cmd="documentclass", source="core", type=FileType.tex, extensions="cls"),
     IncludeSpec(cmd="LoadClass", source="core", type=FileType.tex, extensions="cls"),
     IncludeSpec(cmd="LoadClassWithOptions", source="core", type=FileType.tex, extensions="cls", take_options=False),
@@ -1545,7 +1543,23 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         # CompilerSpec is not hashable, so we cannot directly use it as set elements
         candidate_compilers = set(ALL_COMPILERS_STR)
 
+        logging.debug("guess_compilation_parameters: tl_n.used_tex_files = %s", tl_n.used_tex_files)
+        logging.debug("guess_compilation_parameters: tl_n.used_system_files = %s", tl_n.used_system_files)
+
         found_language, issues = tl_n.compute_language_of_graph()
+        if found_language == LanguageType.latex209:
+            # we generally forbid latex209, but to support those who still write amstex plain tex documents
+            # using \include amstex\documentstyle{amsppt} let them be helped!
+            loads_amstex: bool = tl_n.generic_walk_document_tree(
+                lambda x: bool([p for p in x.used_tex_files + x.used_system_files if p.endswith("/amstex.tex")]),
+                lambda x, y: x or y,
+            )
+            if loads_amstex:
+                logging.debug("guess_compilation_parameters: found amstex load, allowing for latex209")
+                found_language = LanguageType.tex
+            else:
+                issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "LaTeX 2.09 is not supported anymore"))
+
         logging.debug("guess_compilation_parameters: found language %s", found_language)
 
         contains_pdfoutput_true = tl_n.generic_walk_document_tree(
