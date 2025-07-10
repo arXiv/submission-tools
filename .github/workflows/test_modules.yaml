@@ -40,7 +40,7 @@ jobs:
       run: |
         cd tex2pdf-tools
         export PYTHONPATH=$PWD
-        poetry run pytest tests
+        poetry run python -m pytest tests
     - name: ruff check
       run: |
         cd tex2pdf-tools
