@@ -654,6 +654,7 @@ class TestPreflight(unittest.TestCase):
         """Test documentstyle from amstex."""
         dir_path = os.path.join(self.fixture_dir, "amstex-documentstyle")
         pf: PreflightResponse = generate_preflight_response(dir_path)
+        print(f"PREFLIGHT = {json.dumps(json.loads(pf.to_json()), indent=4)}")
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         self.assertEqual(len(pf.tex_files), 2)
