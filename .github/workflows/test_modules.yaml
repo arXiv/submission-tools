@@ -31,6 +31,9 @@ jobs:
           csquotes
           biblatex
           pgf
+          polyglossia
+          unicode-math
+          fontspec
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools
