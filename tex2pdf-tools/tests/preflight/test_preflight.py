@@ -1,8 +1,9 @@
 import json
 import os
+import pytest
 import unittest
 
-from tex2pdf_tools.preflight import BibCompiler, IssueType
+from tex2pdf_tools.preflight import BibCompiler, IssueType, UNICODE_TEX_PACKAGES
 from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
 
 
@@ -663,3 +664,16 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.process.compiler.output, "dvi")
         self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
 
+
+    def test_unicode_tex_packages(self):
+        """Test submission with unicode packages."""
+        for pkg in UNICODE_TEX_PACKAGES:
+            dir_path = os.path.join(self.fixture_dir, f"unicode-tex-{pkg}")
+            pf: PreflightResponse = generate_preflight_response(dir_path)
+            self.assertEqual(pf.status.key.value, "success")
+            self.assertEqual(len(pf.detected_toplevel_files), 1)
+            self.assertEqual(len(pf.tex_files), 1)
+            tf = pf.detected_toplevel_files[0]
+            self.assertEqual(len(tf.issues), 1)
+            issue = tf.issues[0]
+            self.assertEqual(issue.key, IssueType.unsupported_compiler_type)

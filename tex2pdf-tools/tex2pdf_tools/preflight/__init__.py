@@ -30,6 +30,10 @@ T = TypeVar("T")
 PDF_SUBMISSION_STRING = "pdf_submission"
 HTML_SUBMISSION_STRING = "html_submission"
 
+#
+# packages that require unicode tex (xetex, luatex)
+UNICODE_TEX_PACKAGES = ["fontspec", "polyglossia", "unicode-math"]
+
 # Version of the bbl file that is created by biber in the
 # current version of arxiv tex
 # TL2025
@@ -1581,9 +1585,11 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         # check for fontspec.sty to determine xetex/luatex
         is_unicode_tex = False
         for fn in tl_n.used_system_files + tl_n.used_tex_files:
-            if fn.endswith("/fontspec.sty"):
-                candidate_compilers.intersection_update(FONTSPEC_ALLOWED_COMPILERS_STR)
-                is_unicode_tex = True
+            for ucfn in UNICODE_TEX_PACKAGES:
+                if fn.endswith(f"/{ucfn}.sty"):
+                    candidate_compilers.intersection_update(FONTSPEC_ALLOWED_COMPILERS_STR)
+                    is_unicode_tex = True
+                    break
 
         # check all other files
         all_other = tl_n.recursive_collect_files(FileType.other)
