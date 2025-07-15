@@ -206,3 +206,13 @@ fontmaps = [
         dir_path = os.path.join(self.fixture_dir, "zzrm_version_out_of_range")
         with pytest.raises(ZZRMParseError):
             _ = ZeroZeroReadMe(dir_path)
+
+    def test_zzrm_pdftex(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_pdftex")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual("pdfetex", zzrm.process.compiler.compiler_string)
+
+    def test_zzrm_pdfetex(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_pdfetex")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual("pdfetex", zzrm.process.compiler.compiler_string)
