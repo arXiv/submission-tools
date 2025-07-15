@@ -8,6 +8,7 @@ import time
 import typing
 from abc import abstractmethod
 
+from tex2pdf_tools.preflight import BibCompiler
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
@@ -136,6 +137,30 @@ class BaseConverter:
                 {"status": "fail", "step": step, "reason": f"failed to create {base_format}", "runs": self.runs}
             )
             return outcome
+
+        # if bib processer is requested, run it
+        if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
+            if self.zzrm.process.bibliography.processor is BibCompiler.unknown:
+                logger.debug("Bib processer is not set, defaulting to bibtex")
+                bibprogram = "bibtex"
+            else:
+                bibprogram = self.zzrm.process.bibliography.processor.value
+            bib_step = f"{bibprogram}_run"
+            logger.debug(f"Starting {bibprogram} run")
+            bib_args = [f"/usr/bin/{bibprogram}", stem]
+            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+            if bib_run["return_code"] != 0:
+                logger.debug(f"{bibprogram} run failed")
+                outcome.update(
+                    {
+                        "status": "fail",
+                        "step": bib_step,
+                        "reason": f"{bibprogram} run returned error code",
+                        "runs": self.runs,
+                    }
+                )
+                return outcome
 
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
