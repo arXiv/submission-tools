@@ -137,6 +137,26 @@ class BaseConverter:
             )
             return outcome
 
+        # if bib processer is requested, run it
+        if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
+            bibprogram = self.zzrm.process.bibliography.processor.value
+            bib_step = f"{bibprogram}_run"
+            logger.debug(f"Starting {bibprogram} run")
+            bib_args = [f"/usr/bin/{bibprogram}", stem]
+            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+            if bib_run["return_code"] != 0:
+                logger.debug(f"{bibprogram} run failed")
+                outcome.update(
+                    {
+                        "status": "fail",
+                        "step": bib_step,
+                        "reason": f"{bibprogram} run returned error code",
+                        "runs": self.runs,
+                    }
+                )
+                return outcome
+
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
         iteration_list = range(MAX_LATEX_RUNS - 1)
