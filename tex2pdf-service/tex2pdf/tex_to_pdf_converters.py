@@ -90,7 +90,7 @@ class BaseConverter:
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
+    def tex_compiler_name(self) -> str:
         """TeX Compiler."""
         return "Unknown"
 
@@ -446,6 +446,12 @@ def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
         return LatexConverter
     elif process_spec == "pdflatex":
         return PdfLatexConverter
+    elif process_spec == "xelatex":
+        return XeLatexConverter
+    elif process_spec == "lualatex":
+        return LuaLatexConverter
+    elif process_spec == "pdfetex":
+        return PdfTexConverter
     else:
         raise CompilerNotSpecified("Unknown compiler, cannot select converter: %s", process_spec)
 
@@ -558,7 +564,7 @@ class LatexConverter(BaseDviConverter):
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
+    def tex_compiler_name(self) -> str:
         """TeX Compiler."""
         return "latex"
 
@@ -632,16 +638,17 @@ class PdfLatexConverter(BaseConverter):
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
+    def tex_compiler_name(self) -> str:
         """TeX Compiler."""
         return "pdflatex"
 
     def _get_pdflatex_args(self, tex_file: str) -> list[str]:
         """Return the pdflatex command line arguments."""
-        args = ["/usr/bin/pdflatex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
+        args = [f"/usr/bin/{self.tex_compiler_name()}", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         # You need this sometimes, and harmful sometimes.
-        if not self.pdfoutput_1_seen:
-            args.append("-output-format=pdf")
+        # NP 20250715 - commented the code, I don't think this is needed.
+        # if not self.pdfoutput_1_seen:
+        #     args.append("-output-format=pdf")
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -676,74 +683,83 @@ class PdfLatexConverter(BaseConverter):
     pass
 
 
-# class PdfTexConverter(BaseConverter):
-#     """Runs pdftex command"""
-#     to_pdf_args: typing.List[str]
-#
-#     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
-#         super().__init__(conversion_tag, **kwargs)
-#         self.to_pdf_args = []
-#         pass
-#
-#    @classmethod
-#    def tex_compiler_name(cls) -> str:
-#        """TeX Compiler name"""
-#        return "pdftex"
-#
-#     @classmethod
-#     def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
-#         if test_file_extent(any_file, bad_for_pdftex_file_exts):
-#             return True, f"PdfTexConverter cannot handle {any_file}." + \
-#                 "See the list of excluded extensions."
-#         return False, ""
-#
-#     @classmethod
-#     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-#         if is_pdflatex_line(tex_line) or is_vanilla_tex_line(tex_line) or is_usepackage_line(tex_line):
-#             return True, f"PdfTexConverter cannot handle line {line_number}"
-#         for package_name in pick_package_names(tex_line):
-#             if package_name in bad_for_pdftex_packages:
-#                 return True, f"PdfTexConverter cannot handle {package_name} at line {line_number}"
-#         return False, ""
-#
-#     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-#         """Produce PDF
-#
-#         NOTE: It is important to return the outcome so that you can troubleshoot.
-#         Do not exception out.
-#         """
-#
-#         # Stem: the filename of the tex file without the extension
-#         stem = os.path.splitext(tex_file)[0]
-#         self.stem = stem
-#         stem_pdf = f"{stem}.pdf"
-#         # pdf_filename = os.path.join(in_dir, stem_pdf)
-#         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
-#
-#         args = ["/usr/bin/pdftex",  *COMMON_TEX_CMD_LINE_ARGS]
-#         if WITH_SHELL_ESCAPE:
-#             args.append("-shell-escape")
-#         args.append(tex_file)
-#         self.to_pdf_args = args
-#
-#         #  pdftex run
-#         step = "only_run"
-#         run = self._pdftex_run(step, work_dir, in_dir, out_dir)
-#         pdf_size = run["pdf"]["size"]
-#         if not pdf_size:
-#             outcome.update({"status": "fail", "step": step,
-#                             "reason": "failed to create pdf", "runs": self.runs})
-#             return outcome
-#         return outcome
-#
-#     def _pdftex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-#         log = os.path.join(in_dir, f"{self.stem}.log")
-#         return self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, log)
-#
-#     def converter_name(self) -> str:
-#         return "pdftex: %s" % (shlex.join(self.to_pdf_args))
-#
-#     pass
+class XeLatexConverter(PdfLatexConverter):
+    """Runs xelatex command."""
+
+    @classmethod
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
+        return "xelatex"
+
+
+class LuaLatexConverter(PdfLatexConverter):
+    """Runs lualatex command."""
+
+    @classmethod
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
+        return "lualatex"
+
+
+class PdfTexConverter(BaseConverter):
+    """Runs pdfetex command."""
+
+    to_pdf_args: list[str]
+
+    def __init__(self, conversion_tag: str, **kwargs: typing.Any):
+        super().__init__(conversion_tag, **kwargs)
+        self.to_pdf_args = []
+        pass
+
+    @classmethod
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler name."""
+        return "pdfetex"
+
+    def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        """Produce PDF.
+
+        NOTE: It is important to return the outcome so that you can troubleshoot.
+        Do not exception out.
+        """
+        # Stem: the filename of the tex file without the extension
+        stem = os.path.splitext(tex_file)[0]
+        self.stem = stem
+        stem_pdf = f"{stem}.pdf"
+        # pdf_filename = os.path.join(in_dir, stem_pdf)
+        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
+
+        args = ["/usr/bin/pdfetex", *COMMON_TEX_CMD_LINE_ARGS]
+        if WITH_SHELL_ESCAPE:
+            args.append("-shell-escape")
+        args.append(tex_file)
+        self.to_pdf_args = args
+
+        # run two times
+        for i in range(1, 3):
+            step = f"pdftex_run_{i}"
+            run = self._pdftex_run(step, work_dir, in_dir, out_dir)
+            pdf_size = run["pdf"]["size"]
+            if not pdf_size or run["return_code"] != 0:
+                msg = "failed to create pdf" if not pdf_size else "compiler run returned error code"
+                outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
+                pdf_file = os.path.join(in_dir, f"{self.stem}.pdf")
+                if os.path.exists(pdf_file):
+                    os.unlink(pdf_file)
+                run["pdf"] = file_props(pdf_file)
+                return outcome
+
+        outcome.update({"runs": self.runs, "status": "success"})
+        return outcome
+
+    def _pdftex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        log = os.path.join(in_dir, f"{self.stem}.log")
+        return self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, log)
+
+    def converter_name(self) -> str:
+        return f"{self.tex_compiler_name()}: {shlex.join(self.to_pdf_args)}"
+
+    pass
 
 
 class VanillaTexConverter(BaseDviConverter):
@@ -757,7 +773,7 @@ class VanillaTexConverter(BaseDviConverter):
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
+    def tex_compiler_name(self) -> str:
         """TeX Compiler."""
         return "tex"
 
