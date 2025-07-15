@@ -1,0 +1,19 @@
+{
+  "process": {
+    "compiler": "pdftex",
+    "bibliography": {
+      "pre_generated": false,
+      "processer": "bibtex"
+    },
+    "index": {
+      "pre_generated": false,
+      "processer": "makeindex"
+    }
+  },
+  "sources": [
+    {
+      "filename": "fake-file-1.tex",
+      "usage": "toplevel"
+    }
+  ]
+}
