@@ -10,7 +10,7 @@ from . import DirectiveManager
 import logging
 
 DEFAULT_BASE = "/data/new"
-
+DEFAULT_PREFLIGHT_NAME = "gcp_preflight.json"
 
 def main():
     """Provide the main cli entry point."""
@@ -71,6 +71,8 @@ def main():
     parser.add_argument(
         "-S", "--src_dir", type=str, required=False, help="Src directory for directives and document files."
     )
+    parser.add_argument("-T", "--tree", action="store_true", help="Print document tree as "
+                                                                  "represented in preflight report.")
     parser.add_argument("-u", "--upgrade_file", type=str,
                         help="Upgrade the specified v1 directives file to v2.")
     parser.add_argument("-U", "--upgrade_or_update", action="store_true",
@@ -169,10 +171,36 @@ def main():
                                                                   force=args.force)
             result["created"] = created_file
 
-        if args.preflight_file and os.path.exists(args.preflight_file):
-            directives["preflight"] = manager.load_preflight_data(args.preflight_file)
-        elif args.preflight:
-            result["error"] = "No preflight file path provided. Use -P <path>"
+        preflight_path = ""
+        if args.preflight_file:
+            preflight_path = args.preflight_file
+            if not os.path.exists(args.preflight_file):
+                possible_preflight_path = os.path.join(root_dir, preflight_path)
+                if os.path.exists(possible_preflight_path):
+                    preflight_path = possible_preflight_path
+                else:
+                    result["error"] = f"Invalid path to preflight report: {args.preflight_file}"
+                    print(json.dumps(result, indent=2))
+                    sys.exit(0)
+        elif args.preflight: # no path
+            # look in root directory for preflight report
+            default_preflight_path = os.path.join(root_dir, DEFAULT_PREFLIGHT_NAME)
+            if os.path.exists(default_preflight_path):
+                preflight_path = default_preflight_path
+            else:
+                result["error"] = "No preflight report found. Use -P optione to specify <path>"
+                print(json.dumps(result, indent=2))
+                sys.exit(0)
+
+        if args.preflight and preflight_path:
+            preflight_data = manager.load_preflight_data(preflight_path)
+            if args.tree:
+                result["document_tree"] = preflight_data.get("document_tree", {})
+            else:
+                result["preflight"] = preflight_data
+
+            print(json.dumps(result, indent=2))
+            sys.exit(0)
 
         if args.set_active:
             if manager.is_v1_file(args.set_active) or manager.is_v2_file(args.set_active):
@@ -185,19 +213,6 @@ def main():
 
         if args.write_file:
             result["can_write"] = manager.can_make_active(args.write_file)
-
-        # XXX This is where refactoring stops...
-
-
-        # I'm NOT SURE THIS IS HANDLED CORRECTLY IN REFACTORED CODE ABOVE
-        if xxx and args.preflight_file:
-            if os.path.exists(args.preflight_file):
-                hierarchy = manager.load_preflight_data(args.preflight_file)
-                print(json.dumps(hierarchy, indent=2))
-                exit(0)
-            else:
-                manager.preflight_data_not_found = True
-                print(f"Error: Preflight file '{args.preflight_file}' not found.")
 
         # re/generate the directives file (not required on all requests)
         if not result or generate_directives:
