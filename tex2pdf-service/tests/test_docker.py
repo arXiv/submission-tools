@@ -642,7 +642,6 @@ def test_api_bookmark_out_file(docker_container):
         assert pdf.get_toc()[0] == [1, "Proof of Lemma 1", 1]
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("compiler", ["pdftex", "xelatex", "lualatex"])
 def test_basic_compilers(docker_container, compiler):
     url = docker_container + "/convert"
@@ -662,3 +661,40 @@ def test_basic_compilers(docker_container, compiler):
         assert meta.get("converter").startswith(compiler)
     assert len(meta.get("converters", [])) == 1
     assert len(meta["converters"][0]["runs"]) == 2  # compiler, compiler
+
+
+@pytest.mark.integration
+def test_bibtex(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bibtex/test-bibtex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-bibtex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+
+
+@pytest.mark.integration
+def test_biber(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-biber/test-biber.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-biber.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, biber, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "biber_run"
+
+
+@pytest.mark.integration
+def test_no_bib_processor(docker_container):
+    """Test that if the bib processor is not set, that we use bibtex as default."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-no-bib-processor/test-no-bib-processor.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-no-bib-processor.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"

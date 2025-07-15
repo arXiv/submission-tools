@@ -156,6 +156,7 @@ class IndexCompiler(str, Enum):
 
     unknown = "unknown"
     makeindex = "makeindex"
+    mendex = "mendex"
 
 
 class BibCompiler(str, Enum):
@@ -164,7 +165,8 @@ class BibCompiler(str, Enum):
     unknown = "unknown"
     bibtex = "bibtex"
     bibtex8 = "bibtex8"
-    ubibtex = "ubibtex"
+    bibtexu = "bibtexu"
+    upbibtex = "upbibtex"
     biber = "biber"
 
 
@@ -393,6 +395,9 @@ class IssueType(str, Enum):
     conflicting_engine_type = "conflicting_engine_type"
     conflicting_postprocess_type = "conflicting_postprocess_type"
     unsupported_compiler_type = "unsupported_compiler_type"
+    unsupported_compiler_type_unicode = "unsupported_compiler_type_unicode"
+    unsupported_compiler_type_image_mix = "unsupported_compiler_type_image_mix"
+    unsupported_compiler_type_latex209 = "unsupported_compiler_type_latex209"
     conflicting_image_types = "conflicting_image_types"
     include_command_with_macro = "include_command_with_macro"
     contents_decode_error = "contents_decode_error"
@@ -1569,7 +1574,9 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                 logging.debug("guess_compilation_parameters: found amstex load, allowing for latex209")
                 found_language = LanguageType.tex
             else:
-                issues.append(TeXFileIssue(IssueType.unsupported_compiler_type, "LaTeX 2.09 is not supported anymore"))
+                issues.append(
+                    TeXFileIssue(IssueType.unsupported_compiler_type_latex209, "LaTeX 2.09 is not supported anymore")
+                )
 
         logging.debug("guess_compilation_parameters: found language %s", found_language)
 
@@ -1668,14 +1675,14 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
             if is_unicode_tex:
                 issues.append(
                     TeXFileIssue(
-                        IssueType.unsupported_compiler_type,
+                        IssueType.unsupported_compiler_type_unicode,
                         "Unicode TeX engine (XeTeX or LuaTeX) is required, but currently not supported.",
                     )
                 )
             else:
                 issues.append(
                     TeXFileIssue(
-                        IssueType.unsupported_compiler_type,
+                        IssueType.unsupported_compiler_type_image_mix,
                         "Probable mix of eps and png/jpg/pdf images, which is currently not supported.",
                     )
                 )

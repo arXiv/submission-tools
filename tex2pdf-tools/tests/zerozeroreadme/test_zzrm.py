@@ -216,3 +216,24 @@ fontmaps = [
         dir_path = os.path.join(self.fixture_dir, "zzrm_pdfetex")
         zzrm = ZeroZeroReadMe(dir_path)
         self.assertEqual("pdfetex", zzrm.process.compiler.compiler_string)
+
+    def test_yaml_dump(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_yaml_dump")
+        zzrm = ZeroZeroReadMe(dir_path)
+        sio = io.StringIO()
+        zzrm.to_yaml(sio)
+        sio.flush()
+        sio.seek(0)
+        data = sio.read()
+        expected = """process:
+  bibliography:
+    - pre_generated: false
+    - process: bibtex
+  index:
+    - pre_generated: false
+    - process: makeindex
+sources:
+- filename: fake-file-1.tex
+  usage: toplevel
+stamp: false
+"""
