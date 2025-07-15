@@ -326,6 +326,7 @@ class CompilerSpec(BaseModel):
         # further aliases:
         # tex -> etex+dvips_ps2pdf
         # latex -> latex+dvips_ps2pdf
+        # pdftex -> pdfetex (since this is the correct compiler name)
         if compiler == "tex":
             self.lang = LanguageType.tex
             self.engine = EngineType.tex
@@ -337,6 +338,12 @@ class CompilerSpec(BaseModel):
             self.engine = EngineType.tex
             self.output = OutputType.dvi
             self.postp = PostProcessType.dvips_ps2pdf
+            return
+        if compiler == "pdftex":
+            self.lang = LanguageType.tex
+            self.engine = EngineType.tex
+            self.output = OutputType.pdf
+            self.postp = PostProcessType.none
             return
         parts = compiler.split("+", 1)
         comp: str = ""

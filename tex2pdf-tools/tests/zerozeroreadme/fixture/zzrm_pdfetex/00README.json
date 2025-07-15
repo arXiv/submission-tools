@@ -1,0 +1,11 @@
+{
+  "process": {
+    "compiler": "pdfetex"
+  },
+  "sources": [
+    {
+      "filename": "fake-file-1.tex",
+      "usage": "include"
+    }
+  ]
+}
