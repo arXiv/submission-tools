@@ -156,6 +156,7 @@ class IndexCompiler(str, Enum):
 
     unknown = "unknown"
     makeindex = "makeindex"
+    mendex = "mendex"
 
 
 class BibCompiler(str, Enum):
@@ -164,7 +165,8 @@ class BibCompiler(str, Enum):
     unknown = "unknown"
     bibtex = "bibtex"
     bibtex8 = "bibtex8"
-    ubibtex = "ubibtex"
+    bibtexu = "bibtexu"
+    upbibtex = "upbibtex"
     biber = "biber"
 
 
