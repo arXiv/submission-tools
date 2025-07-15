@@ -282,7 +282,7 @@ class TestPreflight(unittest.TestCase):
         self.assertTrue(pf.detected_toplevel_files[0].process.compiler is None)
         self.assertEqual(
             pf.detected_toplevel_files[0].issues[0].key,
-            "unsupported_compiler_type"
+            IssueType.unsupported_compiler_type_image_mix
         )
 
     def test_multi_include_cmds(self):
@@ -648,7 +648,7 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
         self.assertEqual(len(tf.issues), 1)
-        self.assertEqual(tf.issues[0].key, IssueType.unsupported_compiler_type)
+        self.assertEqual(tf.issues[0].key, IssueType.unsupported_compiler_type_latex209)
 
 
     def test_amstex_documentstyle(self):
@@ -676,4 +676,4 @@ class TestPreflight(unittest.TestCase):
             tf = pf.detected_toplevel_files[0]
             self.assertEqual(len(tf.issues), 1)
             issue = tf.issues[0]
-            self.assertEqual(issue.key, IssueType.unsupported_compiler_type)
+            self.assertEqual(issue.key, IssueType.unsupported_compiler_type_unicode)
