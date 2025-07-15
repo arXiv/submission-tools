@@ -664,3 +664,16 @@ def test_biber(docker_container):
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, biber, pdflatex, pdflatex
     assert meta["converters"][0]["runs"][1]["step"] == "biber_run"
+
+
+@pytest.mark.integration
+def test_no_bib_processor(docker_container):
+    """Test that if the bib processor is not set, that we use bibtex as default."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-no-bib-processor/test-no-bib-processor.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-no-bib-processor.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"

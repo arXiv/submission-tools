@@ -8,6 +8,7 @@ import time
 import typing
 from abc import abstractmethod
 
+from tex2pdf_tools.preflight import BibCompiler
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
@@ -139,7 +140,11 @@ class BaseConverter:
 
         # if bib processer is requested, run it
         if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
-            bibprogram = self.zzrm.process.bibliography.processor.value
+            if self.zzrm.process.bibliography.processor is BibCompiler.unknown:
+                logger.debug("Bib processer is not set, defaulting to bibtex")
+                bibprogram = "bibtex"
+            else:
+                bibprogram = self.zzrm.process.bibliography.processor.value
             bib_step = f"{bibprogram}_run"
             logger.debug(f"Starting {bibprogram} run")
             bib_args = [f"/usr/bin/{bibprogram}", stem]

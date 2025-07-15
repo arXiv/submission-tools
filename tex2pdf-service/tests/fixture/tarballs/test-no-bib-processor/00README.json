@@ -1,0 +1,14 @@
+{
+   "sources" : [
+      {
+         "usage" : "toplevel",
+         "filename" : "main.tex"
+      }
+   ],
+   "process" : {
+      "compiler" : "pdflatex",
+      "bibliography": {
+	      "pre_generated" : false
+	}
+   }
+}
