@@ -1233,7 +1233,13 @@ FONTSPEC_ALLOWED_COMPILERS_STR = [c.compiler_string for c in FONTSPEC_ALLOWED_CO
 for c in ALL_COMPILERS:
     assert c.compiler_string is not None
 # the following order also gives the preference!
-SUPPORTED_COMPILERS: list[CompilerSpec] = [COMPILER["pdflatex"], COMPILER["latex"], COMPILER["tex"]]
+# fmt: off
+SUPPORTED_COMPILERS: list[CompilerSpec] = [
+    COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
+    COMPILER["pdftex"], COMPILER["tex"],       # plain tex, we prefer pdftex
+    COMPILER["xelatex"], COMPILER["lualatex"]  # latex with unicode support, we prefer xelatex
+]
+# fmt: on
 SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
 
 
