@@ -28,7 +28,6 @@ from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
-from .tex_patching import fix_tex_sources
 from .tex_to_pdf_converters import BaseConverter, CompilerNotSpecified, select_converter_class
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
@@ -165,7 +164,9 @@ class ConverterDriver:
         if self.water.text:
             self.outcome["watermark"] = self.water
         # Find the starting point
-        fix_tex_sources(self.in_dir)
+        # NP 20250716 disable the fixup, the graphicspath rewriting is incorrect
+        # and the rest should not be necessary. Authors should fix their sources.
+        # fix_tex_sources(self.in_dir)
 
         if not self.zzrm.is_ready_for_compilation:
             if not self.auto_detect:
