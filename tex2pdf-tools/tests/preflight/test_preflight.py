@@ -467,11 +467,33 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
         self.assertFalse(tf.process.bibliography.pre_generated)
-        self.assertEqual(len(tf.issues), 1)
-        self.assertEqual(tf.issues[0].key, IssueType.bbl_file_missing)
+        # bbl is missing, but we have bib around
+        self.assertEqual(len(tf.issues), 0)
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
         self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, ["xxx.bib"])
+        self.assertEqual(tf.used_other_files, [])
+
+    def test_multi_bib_no_bbl(self):
+        """Test submission with multiple bib, no bbl, one bib missing."""
+        dir_path = os.path.join(self.fixture_dir, "multi-bib-no-bbl")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertFalse(tf.process.bibliography.pre_generated)
+        # bbl is missing, but we have bib around
+        self.assertEqual(len(tf.issues), 2)
+        self.assertEqual(
+            sorted([issue.key for issue in tf.issues]),
+            [IssueType.bbl_bib_file_missing, IssueType.issue_in_subfile]
+        )
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.file_not_found)
+        self.assertEqual(tf.issues[0].filename, "yyy.bib")
         self.assertEqual(tf.used_bib_files, ["xxx.bib"])
         self.assertEqual(tf.used_other_files, [])
 
@@ -483,11 +505,16 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
         self.assertFalse(tf.process.bibliography.pre_generated)
-        self.assertEqual(len(tf.issues), 1)
-        self.assertEqual(tf.issues[0].key, IssueType.bbl_file_missing)
+        self.assertEqual(len(tf.issues), 2)
+        self.assertEqual(
+            sorted([issue.key for issue in tf.issues]),
+            [IssueType.bbl_bib_file_missing, IssueType.issue_in_subfile]
+        )
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
-        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.file_not_found)
+        self.assertEqual(tf.issues[0].filename, "xxx.bib")
         self.assertEqual(tf.used_bib_files, [])
         self.assertEqual(tf.used_other_files, [])
 

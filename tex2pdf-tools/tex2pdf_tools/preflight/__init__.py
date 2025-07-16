@@ -404,7 +404,7 @@ class IssueType(str, Enum):
     issue_in_subfile = "issue_in_subfile"
     index_definition_missing = "index_definition_missing"
     bbl_version_mismatch = "bbl_version_mismatch"
-    bbl_file_missing = "bbl_file_missing"
+    bbl_bib_file_missing = "bbl_bib_file_missing"
     multiple_bibliography_types = "multiple_bibliography_types"
     bbl_usage_mismatch = "bbl_usage_mismatch"
     other = "other"
@@ -431,6 +431,7 @@ class ParsedTeXFile(BaseModel):
     _graphicspath: list[list[str]] = []
     _uses_bibliography: bool = False
     _uses_bbl_file_type: set[BblType] = set()
+    _missing_bib_files: set[str] = set()
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -1458,9 +1459,13 @@ def update_nodes_with_kpse_info(
                 # * it is not loaded via InputIfFileExists
                 # * it is not a bib file
                 # then record an issue
+                # If it is a bib file, record it in internal field _missing_bib_files
                 if found == "":
-                    if v.cmd != "InputIfFileExists" and v.type != FileType.bib:
-                        n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
+                    if v.cmd != "InputIfFileExists":
+                        if v.type == FileType.bib:
+                            n._missing_bib_files.add(f)
+                        else:
+                            n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
                     continue
                 if only_tex:
                     if v.type == FileType.tex:
@@ -1698,6 +1703,14 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         if selected_compiler_string:
             tl.process.compiler = CompilerSpec(compiler=selected_compiler_string)
 
+        tl.issues = issues
+
+
+def update_toplevel_issues(toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
+    """Add a toplevel issue if there are issues in subfiles."""
+    for f, tl in toplevel_files.items():
+        issues: list[TeXFileIssue] = tl.issues
+        tl_n = nodes[f]
         # count issues in sub files
         for fn, nr_issues in tl_n.walk_document_tree(lambda n: [tuple((n.filename, len(n.issues)))]):
             if nr_issues > 0:
@@ -1710,6 +1723,24 @@ def deal_with_bibliographies(
 ) -> None:
     """Check for inclusion of bib files and presence .bbl files."""
     for tl_f, tl_n in toplevel_files.items():
+        bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
+        bbl_file_full_path = os.path.join(rundir, bbl_file)
+        bbl_file_present = os.path.isfile(bbl_file_full_path)
+
+        # if the bbl file is not present, go over all nodes and add issues if bib files are missing
+        bib_file_issue_found: bool = False
+        if not bbl_file_present:
+            logging.debug("bbl file %s not present, checking for bib files", bbl_file)
+            selected_nodes = nodes[tl_f].recursive_collect_files(FileType.tex).copy()
+            selected_nodes.append(tl_f)
+            for _, n in nodes.items():
+                if tl_n and selected_nodes and n.filename not in selected_nodes:
+                    logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, tl_n.filename)
+                    continue
+                for bib_file in n._missing_bib_files:
+                    bib_file_issue_found = True
+                    n.issues.append(TeXFileIssue(IssueType.file_not_found, "bib file missing", bib_file))
+
         node = nodes[tl_f]
         uses_bibliography: bool = node.generic_walk_document_tree(
             lambda x: x._uses_bibliography, lambda x, y: x or y, False
@@ -1724,8 +1755,10 @@ def deal_with_bibliographies(
             continue
         if len(bbl_types_used) == 0:
             # we default to plain type
+            logging.debug("no bibliography type used, defaulting to plain")
             bbl_types_used = set([BblType.plain])
         if len(bbl_types_used) > 1:
+            logging.debug("multiple bbl types used, add issue")
             # multiple bibliography types used, skip
             tl_n.issues.append(
                 TeXFileIssue(
@@ -1734,9 +1767,7 @@ def deal_with_bibliographies(
                 )
             )
             continue
-        bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
-        bbl_file_full_path = os.path.join(rundir, bbl_file)
-        bbl_file_present = os.path.isfile(bbl_file_full_path)
+
         # we have only one bibliography type, check if it is biber or bibtex
         is_biblatex_bbl: bool = bbl_types_used.pop() == BblType.biblatex
         if bbl_file_present:
@@ -1791,7 +1822,11 @@ def deal_with_bibliographies(
         tl_n.process.bibliography = BibProcessSpec(
             processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
         )
-        tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
+        # we have activated bib->bbl generation, so no issue needs to be reported
+        # we also already added issues to the single files if bib is missing and bbl not available
+        # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
+        if bib_file_issue_found and not bbl_file_present:
+            tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
 
 
 def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
@@ -1923,11 +1958,10 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
                     tl_n.filename,
                     nodes[tlf].used_other_files,
                 )
-            # determine compilation settings
             guess_compilation_parameters(toplevel_files, nodes)
-            # deal with bibliographies, which is painful
             deal_with_bibliographies(rundir, toplevel_files, nodes)
             deal_with_indices(rundir, toplevel_files, nodes)
+            update_toplevel_issues(toplevel_files, nodes)
             # TODO check for suspicious status!
             status = PreflightStatus(key=PreflightStatusValues.success)
     return PreflightResponse(
