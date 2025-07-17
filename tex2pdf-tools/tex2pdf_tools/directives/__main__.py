@@ -179,7 +179,7 @@ def main():
                 if os.path.exists(possible_preflight_path):
                     preflight_path = possible_preflight_path
                 else:
-                    result["error"] = f"Invalid path to preflight report: {args.preflight_file}"
+                    result["error"] = f"Invalid file/path to preflight report: {args.preflight_file}"
                     print(json.dumps(result, indent=2))
                     sys.exit(0)
         elif args.preflight: # no path
