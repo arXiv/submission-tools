@@ -59,7 +59,8 @@ class DirectiveManager:
     # Supported v2 formats
     SUPPORTED_FORMATS: ClassVar[list[str]] = ["json", "yaml", "toml"]
 
-    def __init__(self, root_dir: str, src_dir: str | None = None, debug: bool = False):
+    def __init__(self, root_dir: str, src_dir: str | None = None, migrate : bool = False,
+                 debug: bool = False):
         self.root_dir = root_dir
         self.src_dir = src_dir if src_dir is not None else f"{self.root_dir}/src"
         self.directives_files = self.list_directives_files()
@@ -67,6 +68,7 @@ class DirectiveManager:
         self.preflight_hierarchy = None
         self.preflight_data_not_found = False
         self.readme_object = None
+        self.migrate = migrate
         self.debug = debug
 
     def load_preflight_data(self, preflight_file_arg: str | None = None):
@@ -138,7 +140,8 @@ class DirectiveManager:
             ValueError: If more than one v2 file is found.
         """
         v2_files = [f for f in self.directives_files if self.is_v2_file(f)]
-        if len(v2_files) > 1:
+        # Relax single v2 constraint when we are converting between v2 formats
+        if len(v2_files) > 1 and not self.migrate:
             raise ValueError("Only one v2 00README directives file is allowed.")
         elif v2_files:
             return v2_files[0]
@@ -317,12 +320,20 @@ class DirectiveManager:
         """Load a ZZRM file and return it as dictionary."""
         data = None
         zzrm_filename = self.get_active_directives_file()
+        if zzrm_filename is not None:
+            readme_path = os.path.join(self.src_dir, zzrm_filename)
+
         try:
-            zzrm = ZeroZeroReadMe(self.src_dir)
+            if zzrm_filename is not None:
+                zzrm = ZeroZeroReadMe(readme_path)
+            else:
+                zzrm = ZeroZeroReadMe(self.src_dir)
+
             zzrm_filename = zzrm.readme_filename
 
-            if not os.path.isfile(zzrm_filename):
-                raise ValueError(f"Source directives file does not exist: {zzrm_filename}")
+            # We may not have generated a 00README if we are processing initial preflight report.
+            #if not os.path.isfile(zzrm_filename):
+            #    raise ValueError(f"Source directives file does not exist: {zzrm_filename}")
 
             self.readme_object = zzrm
 
@@ -370,3 +381,47 @@ class DirectiveManager:
         write_readme_file(new_filepath, content)
 
         print(f"Created directives file {new_filepath}")
+
+    def upgrade_or_update(self, force: bool = False, migrate: bool = False):
+        """
+        Upgrade or update the directives file based on current state.
+
+        If there is only one directives file, and it is v1, upgrade it
+        to v2 (JSON).
+        (Ex. Upgrade: 00README.XXX -> 00README.json)
+
+        If there is a single non-JSON v2 directives format, we want to upgrade to JSON.
+        (Ex. Upgrade: 00README.yaml -> 00README.json)
+
+        When there are more than one v2 file, prior to final cleanup, we
+        want to check whether the non-standard format (TOML/YAML) has
+        been updated by the submitter. If it has, we want to merge these
+        settings into the latest JSON.
+        (Ex. 00README.yaml is newer than 00README.json,
+            Update: 00README.yaml -> 00README.json)
+
+        Update will merge/retain the settings of both files, overwriting with
+        settings from submitter's original 00README format. The assumption
+        is that the submitter changed settings in the original 00README.
+
+        (For now, we will preserve, but ignore, the submitter's original
+         00README file: 00README.XXX, 00README.yaml, 00README.toml)
+
+        Future logic will handle updates when both v1 and v2 exist.
+
+        Args:
+        force (bool): Whether to force overwrite if v2 exists.
+        """
+        directives = self.directives_files
+
+        if len(directives) == 1 and (self.is_v1_file(directives[0]) or directives[0] != '00README.json'):
+            print("Single v1 or non-json V2 directives file found. Upgrading to JSON format...")
+            self.upgrade_directives_file(
+                src_filename=directives[0],
+                dest_format="json",
+                migrate=migrate,
+            )
+            return
+
+        # Placeholder for future logic when both v1 and v2 exist
+        print("Multiple directives files found or v2 already exists. Update logic not yet implemented.")
