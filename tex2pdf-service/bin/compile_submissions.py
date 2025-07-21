@@ -32,8 +32,10 @@ import tarfile
 import threading
 from multiprocessing.pool import ThreadPool
 from sqlite3 import Connection
+from typing import IO
 
 import click
+import pikepdf
 from tex2pdf.remote_call import service_process_tarball
 from tqdm import tqdm
 
@@ -47,7 +49,8 @@ def score_db(score_path: str) -> Connection:
     db = sqlite3.connect(score_path)
     db.execute(
         "create table if not exists score (source varchar primary key, outcome TEXT, "
-        "arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, pdfchecksum TEXT, status int, success bool)"
+        "arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, pdfchecksum TEXT, "
+        "nrpages int, status int, success bool)"
     )
     db.execute("create table if not exists touched (filename varchar primary key)")
     return db
@@ -65,7 +68,7 @@ def tarball_to_outcome_path(tarball: str) -> str:
     return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
-def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str], list[str], list[str], str]:
+def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str], list[str], list[str], str, int]:
     """Open a compressed outcome tar archive and get the metadata."""
     meta = {}
     files = set()
@@ -107,16 +110,19 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
                         )
         arxiv_id = meta.get("arxiv_id")
         pdfchecksum = hashlib.sha256()
+        nr_pages = 0
         for name in outcome.getnames():
             if name == f"out/{arxiv_id}.pdf":
-                pdffile = outcome.extractfile(name)
+                pdffile: IO[bytes] = outcome.extractfile(name)
                 pdfchecksum.update(pdffile.read())
+                pdf = pikepdf.open(pdffile)
+                nr_pages = len(pdf.pages)
         # this is the checksum of the empty hash
         pdfchecksum_digest = pdfchecksum.hexdigest()
         if pdfchecksum_digest == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855":
             pdfchecksum_digest = ""
 
-    return meta, list(files), list(clsfiles), list(styfiles), pdfchecksum_digest
+    return meta, list(files), list(clsfiles), list(styfiles), pdfchecksum_digest, nr_pages
 
 
 @cli.command()
@@ -190,7 +196,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         outcome_file = tarball_to_outcome_path(tarball_path)
         if os.path.exists(outcome_file):
             try:
-                meta, files, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
+                meta, files, clsfiles, styfiles, pdfchecksum, nr_pages = get_outcome_meta_and_files_info(outcome_file)
                 pdf_file = meta.get("pdf_file")
             except Exception as exc:
                 logging.warning("%s: %s - deleting outcome", outcome_file, str(exc))
@@ -205,11 +211,11 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
         cursor = sdb.cursor()
         cursor.execute("begin")
         cursor.execute(
-            "insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, pdfchecksum, success)"
-            " values (?, ?, ?, ?, ?, ?, ?, ?)"
+            "insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, pdfchecksum, nrpages, success)"
+            " values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles,"
             " clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf,"
-            " pdfchecksum=excluded.pdfchecksum, success=excluded.success",
+            " pdfchecksum=excluded.pdfchecksum, nrpages=excluded.nrpages, success=excluded.success",
             (
                 tarball_path,
                 json.dumps(meta, indent=2),
@@ -218,6 +224,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
                 json.dumps(styfiles, indent=2),
                 pdf_file,
                 pdfchecksum,
+                nr_pages,
                 success,
             ),
         )
