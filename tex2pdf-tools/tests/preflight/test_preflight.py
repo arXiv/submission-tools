@@ -677,3 +677,24 @@ class TestPreflight(unittest.TestCase):
             self.assertEqual(len(tf.issues), 1)
             issue = tf.issues[0]
             self.assertEqual(issue.key, IssueType.unsupported_compiler_type_unicode)
+
+
+    def test_img_in_cls(self):
+        """Test detection of images loaded in cls files."""
+        dir_path = os.path.join(self.fixture_dir, "img-in-cls")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        found_cls: bool = False
+        for tf in pf.tex_files:
+            if tf.filename == "rsproca_new.cls":
+                found_cls = True
+                self.assertEqual(
+                    sorted(tf.used_other_files),
+                    sorted([
+                        "RS_Pubs_Logo_Line_CMYK.pdf", "RSTA_OpenAccesslogo_RGB.pdf",
+                        "RS_crossmark_logo.pdf", "PROCEEDINGS_A_RGB.pdf"
+                    ])
+                )
+        self.assertTrue(found_cls)
