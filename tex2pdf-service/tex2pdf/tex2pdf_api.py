@@ -242,6 +242,7 @@ async def convert_pdf(
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
+    auto_detect_delete: bool = False,
     hide_anc_dir: bool = False,
 ) -> Response:
     """Get a tarball, and convert to PDF."""
@@ -352,6 +353,7 @@ async def convert_pdf(
                 watermark_text=watermark_text,
                 watermark_link=watermark_link,
                 auto_detect=auto_detect,
+                auto_detect_delete=auto_detect_delete,
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
             )
@@ -370,6 +372,7 @@ async def convert_pdf(
                 watermark_text=watermark_text,
                 watermark_link=watermark_link,
                 auto_detect=auto_detect,
+                auto_detect_delete=auto_detect_delete,
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
             )
@@ -388,6 +391,7 @@ def _convert_pdf_remote(
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
+    auto_detect_delete: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
 ) -> Response:
@@ -406,6 +410,7 @@ def _convert_pdf_remote(
                     "watermark_text": watermark_text,
                     "watermark_link": watermark_link,
                     "auto_detect": auto_detect,
+                    "auto_detect_delete": auto_detect_delete,
                     "hide_anc_dir": hide_anc_dir,
                 }
                 logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
@@ -518,6 +523,7 @@ def _convert_pdf_current(
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
+    auto_detect_delete: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
 ) -> Response:
@@ -533,6 +539,7 @@ def _convert_pdf_current(
         max_appending_files=max_appending_files,
         ts=None,
         auto_detect=auto_detect,
+        auto_detect_delete=auto_detect_delete,
         hide_anc_dir=hide_anc_dir,
     )
     logger = get_logger()

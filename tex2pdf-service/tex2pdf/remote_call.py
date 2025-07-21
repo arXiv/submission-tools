@@ -28,6 +28,7 @@ def service_process_tarball(
     tex2pdf_timeout: int,
     post_timeout: int,
     auto_detect: bool = False,
+    auto_detect_delete: bool = False,
     hide_anc_dir: bool = False,
 ) -> bool:
     """Submit tarball to compilation service and receive result."""
@@ -43,7 +44,11 @@ def service_process_tarball(
         retries = 2
         for attempt in range(1 + retries):
             try:
-                post_url = service + f"?timeout={tex2pdf_timeout}&auto_detect={auto_detect}&hide_anc_dir={hide_anc_dir}"
+                post_url = (
+                    service
+                    + f"?timeout={tex2pdf_timeout}&auto_detect={auto_detect}&auto_detect_delete={auto_detect_delete}"
+                    + f"&hide_anc_dir={hide_anc_dir}"
+                )
                 logging.debug("POST URL: %s", post_url)
                 logging.debug("uploading = %s", uploading)
                 res = requests.post(

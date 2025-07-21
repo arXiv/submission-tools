@@ -50,7 +50,7 @@ def score_db(score_path: str) -> Connection:
     db.execute(
         "create table if not exists score (source varchar primary key, outcome TEXT, "
         "arxivfiles TEXT, clsfiles TEXT, styfiles TEXT, pdf varchar, pdfchecksum TEXT, "
-        "nrpages int, status int, success bool)"
+        "nrpages int, removed_unused_files TEXT, status int, success bool)"
     )
     db.execute("create table if not exists touched (filename varchar primary key)")
     return db
@@ -133,8 +133,16 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
 @click.option("--post-timeout", default=600, help="timeout for the complete post")
 @click.option("--threads", default=64, help="Number of threads requested for threadpool")
 @click.option("--auto-detect", is_flag=True, help="Auto detect ZZRM")
+@click.option("--auto-detect-delete", is_flag=True, help="Auto delete unused files")
 def compile(
-    submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int, auto_detect: bool
+    submissions: str,
+    service: str,
+    score: str,
+    tex2pdf_timeout: int,
+    post_timeout: int,
+    threads: int,
+    auto_detect: bool,
+    auto_detect_delete: bool,
 ) -> None:
     """Compile submissions in a directory."""
 
@@ -142,7 +150,13 @@ def compile(
         outcome_file = tarball_to_outcome_path(tarball)
         try:
             service_process_tarball(
-                service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect=auto_detect
+                service,
+                tarball,
+                outcome_file,
+                tex2pdf_timeout,
+                post_timeout,
+                auto_detect=auto_detect,
+                auto_detect_delete=auto_detect_delete,
             )
         except FileExistsError:
             logging.info(f"Not recreating already existing {outcome_file}.")
@@ -207,15 +221,18 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
             skipped += 1
             continue
         success = meta.get("status") == "success"
+        removed_unused_files = meta.get("removed_unused_files", [])
         # Upsert the result
         cursor = sdb.cursor()
         cursor.execute("begin")
         cursor.execute(
-            "insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf, pdfchecksum, nrpages, success)"
-            " values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "insert into score (source, outcome, arxivfiles, clsfiles, styfiles, pdf,"
+            " pdfchecksum, nrpages, removed_unused_files, success)"
+            " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             " on conflict(source) do update set outcome=excluded.outcome, arxivfiles=excluded.arxivfiles,"
             " clsfiles=excluded.clsfiles, styfiles=excluded.styfiles, pdf=excluded.pdf,"
-            " pdfchecksum=excluded.pdfchecksum, nrpages=excluded.nrpages, success=excluded.success",
+            " pdfchecksum=excluded.pdfchecksum, nrpages=excluded.nrpages,"
+            " removed_unused_files=excluded.removed_unused_files, success=excluded.success",
             (
                 tarball_path,
                 json.dumps(meta, indent=2),
@@ -225,6 +242,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
                 pdf_file,
                 pdfchecksum,
                 nr_pages,
+                ",".join(removed_unused_files),
                 success,
             ),
         )

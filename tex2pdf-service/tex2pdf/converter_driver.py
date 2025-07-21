@@ -75,6 +75,7 @@ class ConverterDriver:
     water: Watermark
     ts: int | None
     auto_detect: bool = False
+    auto_detect_delete: bool = False
     hide_anc_dir: bool = False
 
     def __init__(
@@ -89,6 +90,7 @@ class ConverterDriver:
         max_appending_files: int = 0,
         ts: int | None = None,
         auto_detect: bool = False,
+        auto_detect_delete: bool = False,
         hide_anc_dir: bool = False,
     ):
         self.work_dir = work_dir
@@ -111,6 +113,7 @@ class ConverterDriver:
         self.max_appending_files = max_appending_files
         self.ts = ts
         self.auto_detect = auto_detect
+        self.auto_detect_delete = auto_detect_delete
         self.hide_anc_dir = hide_anc_dir
         self.zzrm = None
         pass
@@ -182,6 +185,19 @@ class ConverterDriver:
                 raise Exception("Preflight didn't succeed!")
             if not self.zzrm.update_from_preflight(preflight_response):
                 raise ZZRMUnderspecified("Cannot determine compiler from preflight and sources")
+            if self.auto_detect_delete:
+                unused_files = self.zzrm.unused_files(self.in_dir, preflight_response)
+                actually_removed_files = []
+                for f in unused_files:
+                    full_path = os.path.join(self.in_dir, f)
+                    if os.path.exists(full_path):
+                        logger.debug("Removing unused file %s", full_path, extra=self.log_extra)
+                        os.unlink(full_path)
+                        actually_removed_files.append(f)
+                    else:
+                        logger.warning("File %s not found for removal", full_path, extra=self.log_extra)
+                if actually_removed_files:
+                    self.outcome["removed_unused_files"] = actually_removed_files
 
         # we should now be ready to go
         if not self.zzrm.is_ready_for_compilation:
