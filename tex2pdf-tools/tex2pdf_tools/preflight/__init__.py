@@ -672,6 +672,10 @@ class ParsedTeXFile(BaseModel):
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
                 file_incspec[f"""{{tikz,pgf}}library{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
+        elif incdef.cmd == "tcbuselibrary":
+            include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
+            for f in include_argument.split(","):
+                file_incspec[f"""tcb{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliographystyle":
             self._uses_bbl_file_type.add(BblType.plain)
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
