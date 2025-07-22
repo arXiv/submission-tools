@@ -567,7 +567,9 @@ class ParsedTeXFile(BaseModel):
                 logging.debug("Setting graphicspath to %s", self._graphicspath)
 
             # deal with some specially tricky commands
-            for i in re.findall(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*({[^}]+})", data, re.MULTILINE):
+            for i in re.findall(
+                rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", data, re.MULTILINE
+            ):
                 logging.debug("%s regex found %s", self.filename, i)
                 try:
                     ii = [x.decode("utf-8") for x in i]
