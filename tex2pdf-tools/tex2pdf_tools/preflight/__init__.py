@@ -493,7 +493,7 @@ class ParsedTeXFile(BaseModel):
             if "/luatex/" in f or "/lualatex/" in f:
                 self.engine = EngineType.luatex
 
-    def detect_included_files(self) -> None:
+    def detect_included_files(self, only_images: bool = False) -> None:
         """Detect and update included files."""
         # deal with
         #   \input foobar
@@ -509,15 +509,16 @@ class ParsedTeXFile(BaseModel):
 
         # preprocess data to remove comments
         data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
-        for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
-            # f is a byte string, but corresponds to an input file.
-            logging.debug("%s regex found %s", self.filename, f)
-            try:
-                ff = f.decode("utf-8")
-                self.mentioned_files[ff] = {"input": INCLUDE_COMMANDS_DICT["input"]}
-            except UnicodeDecodeError:
-                # TODO can we do more here?
-                logging.warning("Cannot decode argument to input: %s", f)
+        if not only_images:
+            for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
+                # f is a byte string, but corresponds to an input file.
+                logging.debug("%s regex found %s", self.filename, f)
+                try:
+                    ff = f.decode("utf-8")
+                    self.mentioned_files[ff] = {"input": INCLUDE_COMMANDS_DICT["input"]}
+                except UnicodeDecodeError:
+                    # TODO can we do more here?
+                    logging.warning("Cannot decode argument to input: %s", f)
         # deal with finding \graphicspath{ ... }
         # which is required to detect grpahics files in other directories
         # format:
@@ -535,39 +536,45 @@ class ParsedTeXFile(BaseModel):
         # because this does a "reverse" search so the returned list is also in reverse!
         # this search the LAST occurrence!
 
-        # doing it with plain re
-        graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
-        logging.debug("Found the following graphicspath entries: %s", graphicspath_occurrences)
-        gp_entries: list[list[str]] = []
-        for gp in graphicspath_occurrences:
-            inside_group = gp[0]  # this is the match inside the argument braces
-            all_path = re.findall(rb"{([^}]*)}", inside_group)
-            this_gp_entry: list[str] = []
-            for d in all_path:
+        if not only_images:
+            # doing it with plain re
+            graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
+            logging.debug("Found the following graphicspath entries: %s", graphicspath_occurrences)
+            gp_entries: list[list[str]] = []
+            for gp in graphicspath_occurrences:
+                inside_group = gp[0]  # this is the match inside the argument braces
+                all_path = re.findall(rb"{([^}]*)}", inside_group)
+                this_gp_entry: list[str] = []
+                for d in all_path:
+                    try:
+                        this_gp_entry.append(d.strip().decode("utf-8"))
+                    except UnicodeDecodeError:
+                        # TODO can we do more here?
+                        logging.warning("Cannot decode graphicspath entry: %s in %s", d, gp)
+                # if we could parse an entry, append it
+                if this_gp_entry:
+                    gp_entries.append(this_gp_entry)
+            if gp_entries:
+                self._graphicspath = gp_entries
+                logging.debug("Setting graphicspath to %s", self._graphicspath)
+
+            # deal with some specially tricky commands
+            for i in re.findall(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*({[^}]+})", data, re.MULTILINE):
+                logging.debug("%s regex found %s", self.filename, i)
                 try:
-                    this_gp_entry.append(d.strip().decode("utf-8"))
+                    ii = [x.decode("utf-8") for x in i]
+                    self.collect_included_files(ii)
                 except UnicodeDecodeError:
                     # TODO can we do more here?
-                    logging.warning("Cannot decode graphicspath entry: %s in %s", d, gp)
-            # if we could parse an entry, append it
-            if this_gp_entry:
-                gp_entries.append(this_gp_entry)
-        if gp_entries:
-            self._graphicspath = gp_entries
-            logging.debug("Setting graphicspath to %s", self._graphicspath)
+                    logging.warning("Cannot decode argument: %s", i)
 
-        # deal with some specially tricky commands
-        for i in re.findall(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*({[^}]+})", data, re.MULTILINE):
-            logging.debug("%s regex found %s", self.filename, i)
-            try:
-                ii = [x.decode("utf-8") for x in i]
-                self.collect_included_files(ii)
-            except UnicodeDecodeError:
-                # TODO can we do more here?
-                logging.warning("Cannot decode argument: %s", i)
+        if only_images:
+            todore = ARGS_INCLUDE_REGEX_ONLY_IMAGES.encode("utf-8")
+        else:
+            todore = ARGS_INCLUDE_REGEX.encode("utf-8")
 
         # check for the rest of include commands
-        for i in re.findall(ARGS_INCLUDE_REGEX.encode("utf-8"), data, re.MULTILINE | re.VERBOSE):
+        for i in re.findall(todore, data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             try:
                 ii = [x.decode("utf-8") for x in i]
@@ -962,6 +969,7 @@ ALL_IMAGE_EXTS: str = " ".join(_extss)
 # - cup-journal.cls contains \bibliographystyle
 # - revtex4-1.cls contains \documentstyle
 PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex"]
+ONLY_IMAGE_PARSE_FILE_EXTENSIONS = [".cls", ".clo"]
 # extensions of files we want to keep but cannot detect in preflight directly
 MAYBE_USED_FILE_EXTENSIONS = [
     ".pygtex",  # frozen cache of minted/pygmentize
@@ -1094,6 +1102,21 @@ INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
 # TODO
 # \openin2=data.txt ... \read2 to \myline ...
 
+ARGS_INCLUDE_REGEX_ONLY_IMAGES = r"""
+    \\(
+        includegraphics\*|               # graphic[sx]
+        includegraphics|                 # graphic[sx]
+        epsfig|                          # epsfig
+        psfig|
+        includepdf|                      # pdfpages
+        epsfbox                          # epsf
+    )\s*(?:%.*\n)?
+    \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
+    \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
+    \s*({[^}]*})?\s*(?:%.*\n)?        # second argument with braces
+    \s*({[^}]*})?                     # third argument with braces
+    (?=\s*(\W|$))                         # any non-word character terminating the command
+"""
 # TODO we should auto-generate this regex
 ARGS_INCLUDE_REGEX = r"""
     \\(
@@ -1226,7 +1249,7 @@ def string_to_bool(value: str) -> bool:
     raise ParseSyntaxError(f"Cannot parse value to boolean: {value}")
 
 
-def parse_file(basedir: str, filename: str) -> ParsedTeXFile:
+def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedTeXFile:
     """Parse a file for included commands."""
     with open(f"{basedir}/{filename}", "rb") as f:
         data = f.read()
@@ -1282,7 +1305,10 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
                         anc_files,
                         maybe_files,
                     )
+    only_image_files = [t for t in files if os.path.splitext(t)[1].lower() in ONLY_IMAGE_PARSE_FILE_EXTENSIONS]
     nodes = {f: parse_file(rundir, f) for f in tex_files}
+    nodes_imgs = {f: parse_file(rundir, f, only_image=True) for f in only_image_files}
+    nodes.update(nodes_imgs)
     # print(nodes)
     return nodes, anc_files, maybe_files
 
