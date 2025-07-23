@@ -1,0 +1,6 @@
+sources:
+  - filename: fake-file-2.tex
+  - filename: fake-file-1.tex
+  - filename: fake-file-3.tex
+texlive_version: 2025
+version: 2

@@ -8,6 +8,7 @@ import time
 import typing
 from abc import abstractmethod
 
+from tex2pdf_tools.preflight import BibCompiler
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
@@ -58,7 +59,7 @@ class BaseConverter:
     runs: list[dict]  # Each run generates an output
     log: str
     log_extra: dict
-    aux_hashes: list[str]
+    supp_file_hashes: dict[str, list[str]]
     use_addon_tree: bool
     zzrm: ZeroZeroReadMe | None
     init_time: float
@@ -79,7 +80,7 @@ class BaseConverter:
         self.runs = []
         self.log = ""
         self.log_extra = {ID_TAG: self.conversion_tag}
-        self.aux_hashes = []
+        self.supp_file_hashes = {"aux": [], "out": []}
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
@@ -137,9 +138,34 @@ class BaseConverter:
             )
             return outcome
 
+        # if bib processer is requested, run it
+        if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
+            if self.zzrm.process.bibliography.processor is BibCompiler.unknown:
+                logger.debug("Bib processer is not set, defaulting to bibtex")
+                bibprogram = "bibtex"
+            else:
+                bibprogram = self.zzrm.process.bibliography.processor.value
+            bib_step = f"{bibprogram}_run"
+            logger.debug(f"Starting {bibprogram} run")
+            bib_args = [f"/usr/bin/{bibprogram}", stem]
+            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+            if bib_run["return_code"] != 0:
+                logger.debug(f"{bibprogram} run failed")
+                outcome.update(
+                    {
+                        "status": "fail",
+                        "step": bib_step,
+                        "reason": f"{bibprogram} run returned error code",
+                        "runs": self.runs,
+                    }
+                )
+                return outcome
+
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
-        for iteration in range(MAX_LATEX_RUNS - 1):
+        iteration_list = range(MAX_LATEX_RUNS - 1)
+        for iteration in iteration_list:
             logger.debug("Starting %s run", iteration + 1)
             step = f"second_run:{iteration}"
             run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
@@ -164,19 +190,30 @@ class BaseConverter:
                 )
                 return outcome
             status = "success"
-            # check for aux size difference
-            if len(self.aux_hashes) > 1:
-                # the last aux hash added is from the current run
-                # if the checksum hasn't changed, this is promising
-                if self.aux_hashes[-1] != self.aux_hashes[-2]:
-                    logger.debug("Aux file size changed, need to rerun")
-                    status = "fail"
+            # check for hash differences of supp files (currently aux and out)
+            for k in self.supp_file_hashes.keys():
+                if len(self.supp_file_hashes[k]) > 1:
+                    # the last aux/out/.. hash added is from the current run
+                    # if the checksum hasn't changed, this is promising
+                    if self.supp_file_hashes[k][-1] != self.supp_file_hashes[k][-2]:
+                        logger.debug(f"{k} file size changed, need to rerun")
+                        if iteration == iteration_list[-1]:
+                            # we are in the last iteration, and labels are still changing
+                            # In line with autotex, let us accept this as a success.
+                            logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        else:
+                            status = "fail"
             for line in run["log"].splitlines():
                 if line.find(rerun_needle) >= 0:
                     # Need retry
                     logger.debug("Found rerun needle")
-                    status = "fail"
-                    break
+                    if iteration == iteration_list[-1]:
+                        # we are in the last iteration, and labels are still changing
+                        # In line with autotex, let us accept this as a success.
+                        logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        # don't break here so that we get to a successful outcome
+                    else:
+                        status = "fail"
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
@@ -224,7 +261,9 @@ class BaseConverter:
             "half_error_line": "238",
         }
         # support SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE set in the environment
-        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE"]:
+        # also make sure we forward TEXMFVAR settings which are set to a session
+        # specific directory
+        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE", "TEXMFVAR"]:
             if os.getenv(senv):
                 cmdenv[senv] = os.getenv(senv, "")  # the "" is only here to placate mypy :-(
         # try detecting incompatible bbl version and adjust TEXMFAUXTREES to make it compile
@@ -343,10 +382,12 @@ class BaseConverter:
             pass
         pass
 
-    def fetch_aux_hash(self, aux_file: str) -> None:
-        if os.path.exists(aux_file):
-            with open(aux_file, "rb") as fd:
-                self.aux_hashes.append(hashlib.sha256(fd.read()).hexdigest())
+    def fetch_supp_hashes(self, stem_file: str) -> None:
+        for k in self.supp_file_hashes:
+            supp_file = f"{stem_file}.{k}"
+            if os.path.exists(supp_file):
+                with open(supp_file, "rb") as fd:
+                    self.supp_file_hashes[k].append(hashlib.sha256(fd.read()).hexdigest())
 
     def decorate_args(self, args: list[str]) -> list[str]:
         """Adjust the command args for TexLive commands.
@@ -404,10 +445,10 @@ class BaseConverter:
         """Run a command to generate a pdf."""
         run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
-        aux_filename = os.path.join(in_dir, f"{stem}.aux")
+        stem_filename = os.path.join(in_dir, stem)
         self._check_cmd_run(run, pdf_filename)
         self._report_run(run, out, err, step, in_dir, out_dir, "pdf", pdf_filename)
-        self.fetch_aux_hash(aux_filename)
+        self.fetch_supp_hashes(stem_filename)
         if log_file:
             self.fetch_log(log_file)
             if self.log:
@@ -516,10 +557,10 @@ class BaseDviConverter(BaseConverter):
         """Run the given command to generate dvi file and returns the run result."""
         run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
-        aux_filename = os.path.join(in_dir, f"{stem}.aux")
+        stem_filename = os.path.join(in_dir, stem)
         self._check_cmd_run(run, dvi_filename)
         latex_log_file = os.path.join(in_dir, f"{stem}.log")
-        self.fetch_aux_hash(aux_filename)
+        self.fetch_supp_hashes(stem_filename)
         self.fetch_log(latex_log_file)
         if self.log:
             run["log"] = self.log
@@ -769,13 +810,19 @@ class VanillaTexConverter(BaseDviConverter):
         args.append(tex_file)
         self._args = args
 
-        # tex run
-        step = "tex_to_dvi_run"
-        run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
-        dvi_size = run["dvi"]["size"]
-        if not dvi_size:
-            outcome.update({"status": "fail", "step": step, "reason": "failed to create pdf", "runs": self.runs})
-            return outcome
+        # run two times
+        for i in range(1, 3):
+            step = f"tex_to_dvi_run_{i}"
+            run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
+            dvi_size = run["dvi"]["size"]
+            if not dvi_size or run["return_code"] != 0:
+                msg = "failed to create dvi" if not dvi_size else "compiler run returned error code"
+                outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
+                dvi_file = os.path.join(in_dir, f"{self.stem}.dvi")
+                if os.path.exists(dvi_file):
+                    os.unlink(dvi_file)
+                run["dvi"] = file_props(dvi_file)
+                return outcome
 
         # dvi run
         step = "dvi_to_ps_run"

@@ -8,7 +8,6 @@ import shlex
 import subprocess
 import time
 import typing
-from enum import Enum
 from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
@@ -26,11 +25,10 @@ from . import (
     test_file_extent,
 )
 from .doc_converter import combine_documents
-from .pdf_watermark import Watermark, add_watermark_text_to_pdf
+from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
-from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, chmod_775, unpack_tarball
-from .tex_patching import fix_tex_sources
+from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
 from .tex_to_pdf_converters import BaseConverter, CompilerNotSpecified, select_converter_class
 
 unlikely_prefix = "WickedUnlkly-"  # prefix for the merged PDF - with intentional typo
@@ -40,14 +38,6 @@ winded_message = (
     "have been resolved by find_primary_tex()."
     " In any rate, the tarball needs clarification."
 )
-
-
-class PreflightVersion(Enum):
-    """Possible values of preflight version."""
-
-    NONE = 0
-    V1 = 1
-    V2 = 2
 
 
 class AssemblingFileNotFound(Exception):
@@ -83,10 +73,8 @@ class ConverterDriver:
     use_addon_tree: bool
     max_tex_files: int
     max_appending_files: int
-    artifact_order: dict
-    today: str | None
     water: Watermark
-    preflight: PreflightVersion
+    ts: int | None
     auto_detect: bool = False
     hide_anc_dir: bool = False
 
@@ -100,7 +88,7 @@ class ConverterDriver:
         max_time_budget: float | None = None,
         max_tex_files: int = 1,
         max_appending_files: int = 0,
-        preflight: PreflightVersion = PreflightVersion.NONE,
+        ts: int | None = None,
         auto_detect: bool = False,
         hide_anc_dir: bool = False,
     ):
@@ -122,8 +110,7 @@ class ConverterDriver:
         self.use_addon_tree = use_addon_tree if use_addon_tree else False
         self.max_tex_files = max_tex_files
         self.max_appending_files = max_appending_files
-        self.today = None
-        self.preflight = preflight
+        self.ts = ts
         self.auto_detect = auto_detect
         self.hide_anc_dir = hide_anc_dir
         self.zzrm = None
@@ -162,7 +149,6 @@ class ConverterDriver:
         logger = get_logger()
         self.t0 = time.perf_counter()
 
-        self._unpack_tarball()
         # this might raise various exceptions, that should be reported to the API down the line
         self.zzrm = ZeroZeroReadMe(self.in_dir)
 
@@ -179,12 +165,9 @@ class ConverterDriver:
         if self.water.text:
             self.outcome["watermark"] = self.water
         # Find the starting point
-        fix_tex_sources(self.in_dir)
-
-        if self.preflight is not PreflightVersion.NONE:
-            logger.debug("[ConverterDriver.generate_pdf] running preflight version %s", self.preflight)
-            self.report_preflight()
-            return None
+        # NP 20250716 disable the fixup, the graphicspath rewriting is incorrect
+        # and the rest should not be necessary. Authors should fix their sources.
+        # fix_tex_sources(self.in_dir)
 
         if not self.zzrm.is_ready_for_compilation:
             if not self.auto_detect:
@@ -252,6 +235,8 @@ class ConverterDriver:
                 else:
                     logger.debug("Renaming anc directory %s to %s", ancdir, target)
                     os.rename(ancdir, target)
+        # ensure that TEXMFVAR is always a new clean directory
+        os.environ["TEXMFVAR"] = f"{self.work_dir}/texmf-var"
         try:
             # run TeX under try and have a finally to rename the anc directory back
             # in case some exception happens in the TeX processing
@@ -261,6 +246,9 @@ class ConverterDriver:
             self.outcome["reason"] = str(e)
             self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         finally:
+            # revert the TEXMFVAR to the unset value
+            del os.environ["TEXMFVAR"]
+            # deal with the anc directory reverting
             if self.hide_anc_dir and target is not None:
                 logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
                 os.rename(target, ancdir)
@@ -271,19 +259,6 @@ class ConverterDriver:
         else:
             self.outcome["status"] = "fail"
         return self.outcome.get("pdf_file")
-
-    def report_preflight(self) -> None:
-        """Set the values to zzrm."""
-        if self.preflight == PreflightVersion.V1:
-            # should not happen, we bail out already at the API entry point.
-            raise ValueError("Preflight v1 is not supported anymore")
-        elif self.preflight == PreflightVersion.V2:
-            # we might have already computed preflight, don't recompute it again
-            if "preflight_v2" not in self.outcome:
-                self.outcome["preflight_v2"] = generate_preflight_response(self.in_dir, json=True)
-        else:
-            # Should not happen, we check this already on entrance of API call
-            raise ValueError(f"Invalid PreflightVersion: {self.preflight}")
 
     def _run_tex_commands(self) -> None:
         logger = get_logger()
@@ -476,8 +451,8 @@ class ConverterDriver:
                 outcome["gs"]["timeout"] = True
                 # mypy believes that exc does not have stdout/stderr, but both
                 # exceptions contain these values
-                outcome["gs"]["stdout"] = exc.stdout  # type: ignore
-                outcome["gs"]["stderr"] = exc.stderr  # type: ignore
+                outcome["gs"]["stdout"] = exc.stdout
+                outcome["gs"]["stderr"] = exc.stderr
             else:
                 raise exc
 
@@ -499,13 +474,6 @@ class ConverterDriver:
             pass
         return
 
-    def _unpack_tarball(self) -> None:
-        """Unpack the tarballs. Make sure the permissions - tar can set nasty perms."""
-        local_tarball = os.path.join(self.in_dir, self.source)
-        unpack_tarball(self.in_dir, local_tarball, self.log_extra)
-        chmod_775(self.work_dir)
-        pass
-
     def _watermark(self, pdf_file: str, watered: str | None = None) -> str:
         """Watermark the PDF file. Watered is the result filename."""
         output = pdf_file
@@ -517,9 +485,12 @@ class ConverterDriver:
             try:
                 add_watermark_text_to_pdf(self.water, pdf_file, watered)
                 output = watered
+            except WatermarkError as _exc:
+                logger.warning("Failed watermarking %s", pdf_file, exc_info=True, extra=self.log_extra)
+                output = pdf_file
             except Exception as _exc:
-                logger.warning("Failed creating %s", watered, exc_info=True, extra=self.log_extra)
-                pass
+                logger.error("Exception in watermarking %s", pdf_file, exc_info=True, extra=self.log_extra)
+                output = pdf_file
             pass
         return output
 
@@ -708,6 +679,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         return self.outcome.get("pdf_file")
 
+
 class AutoTeXConverterDriver(ConverterDriver):
     """Uses autotex for conversion."""
 
@@ -716,7 +688,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
         self.zzrm = ZeroZeroReadMe()
 
-    def generate_pdf(self) -> str|None:
+    def generate_pdf(self) -> str | None:
         """We have the beef."""
         logger = get_logger()
         t0 = time.perf_counter()
@@ -730,13 +702,28 @@ class AutoTeXConverterDriver(ConverterDriver):
         arxivID = self.tag
         # maybe it is already source
         worker_args = [
-            "autotex.pl", "-f", "fInm", "-q",
-            "-S", self.in_dir,  # here the original tarball has been dumped
-            "-W", self.out_dir,  # work_dir/out where we expect files
-                                 # TODO currently autotex.pl DOES NOT HONOR THIS!!!
-            "-v", "-Z", "-p", arxivID ]
-        with subprocess.Popen(worker_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
-                              cwd="/autotex", encoding='iso-8859-1', env=cmdenv) as child:
+            "autotex.pl",
+            "-f",
+            "fInm",
+            "-q",
+            "-S",
+            self.in_dir,  # here the original tarball has been dumped
+            "-W",
+            self.out_dir,  # work_dir/out where we expect files
+            # TODO currently autotex.pl DOES NOT HONOR THIS!!!
+            "-v",
+            "-Z",
+            "-p",
+            arxivID,
+        ]
+        with subprocess.Popen(
+            worker_args,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            cwd="/autotex",
+            encoding="iso-8859-1",
+            env=cmdenv,
+        ) as child:
             process_completion = False
             try:
                 (out, err) = child.communicate(timeout=self.max_time_budget)
@@ -766,7 +753,7 @@ class AutoTeXConverterDriver(ConverterDriver):
         # we use glob here, since we will need to rename the autotex.log created
         # by autotex.pl to arxivID.log *within* autotex.log
         log_files = glob(f"{self.in_dir}/tex_logs/autotex.log")
-        log: str|bytes|None = None
+        log: str | bytes | None = None
         if not log_files:
             logger.warning(f"No log files found for {arxivID}")
             log = None
@@ -789,26 +776,31 @@ class AutoTeXConverterDriver(ConverterDriver):
         # This is unfortunately not well documented and has severe duplication of entries
         self.outcome = {
             ID_TAG: self.tag,
-            "converters": [ {
-                "pdf_file": pdf_file,
-                "runs": [ {
-                    "args": worker_args,
-                    "stdout": out,
-                    "stderr": err,
-                    "return_code": child.returncode,
-                    "run_env": cmdenv,
-                    "start_time": t0, "end_time": t1,
-                    "elapse_time": elapse_time,
-                    "process_completion": process_completion,
-                    "PATH": PATH,
-                    "arxiv_id": arxivID,
-                    "log": log
-                }]
-            } ],
+            "converters": [
+                {
+                    "pdf_file": pdf_file,
+                    "runs": [
+                        {
+                            "args": worker_args,
+                            "stdout": out,
+                            "stderr": err,
+                            "return_code": child.returncode,
+                            "run_env": cmdenv,
+                            "start_time": t0,
+                            "end_time": t1,
+                            "elapse_time": elapse_time,
+                            "process_completion": process_completion,
+                            "PATH": PATH,
+                            "arxiv_id": arxivID,
+                            "log": log,
+                        }
+                    ],
+                }
+            ],
             "start_time": str(t0),
             "timeout": str(self.max_time_budget),
             "total_time": elapse_time,
-            "pdf_files": [ pdf_file ],
+            "pdf_files": [pdf_file],
             "pdf_file": pdf_file,
             "status": "success" if pdf_file else "fail",
         }
@@ -821,4 +813,3 @@ class AutoTeXConverterDriver(ConverterDriver):
             logger.debug("self.zzrm = %s", self.zzrm)
 
         return self.outcome.get("pdf_file")
-

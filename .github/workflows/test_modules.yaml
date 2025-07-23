@@ -20,15 +20,20 @@ jobs:
       with:
         python-version: "3.11"
     - name: Setup TeX Live
-      uses: teatimeguest/setup-texlive-action@v3
+      uses: zauguin/install-texlive@v4
       with: # install extra packages we use in the test files
         packages: |
           scheme-basic
+          amstex
           index
           lipsum
           amsmath
           csquotes
           biblatex
+          pgf
+          polyglossia
+          unicode-math
+          fontspec
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools

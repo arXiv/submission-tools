@@ -1,8 +1,9 @@
 import json
 import os
+import pytest
 import unittest
 
-from tex2pdf_tools.preflight import BibCompiler, IssueType
+from tex2pdf_tools.preflight import BibCompiler, IssueType, UNICODE_TEX_PACKAGES
 from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
 
 
@@ -281,7 +282,7 @@ class TestPreflight(unittest.TestCase):
         self.assertTrue(pf.detected_toplevel_files[0].process.compiler is None)
         self.assertEqual(
             pf.detected_toplevel_files[0].issues[0].key,
-            "unsupported_compiler_type"
+            IssueType.unsupported_compiler_type_image_mix
         )
 
     def test_multi_include_cmds(self):
@@ -505,6 +506,20 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.used_bib_files, ["xxx.bib", "xxx.bib"])
         self.assertEqual(tf.used_other_files, [])
 
+    def test_biblatex_with_bibliography(self):
+        """Test submission with using biblatex and \bibliography."""
+        dir_path = os.path.join(self.fixture_dir, "biblatex-bibliography")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(tf.used_bib_files, ["xxx.bib"])
+        self.assertEqual(tf.used_other_files, ["main.bbl"])
+
     def test_double_slash_normalization(self):
         """Test double slash normalization present."""
         dir_path = os.path.join(self.fixture_dir, "double-slash-normalization")
@@ -524,3 +539,162 @@ class TestPreflight(unittest.TestCase):
         assert found_main
         assert found_sub
 
+    def test_plain_tex_sub(self):
+        """Test plain tex files with sub files."""
+        dir_path = os.path.join(self.fixture_dir, "plain-tex-sub")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "dvi")
+        self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
+
+
+    def test_plain_no_bye(self):
+        """Test plain tex files without \bye."""
+        dir_path = os.path.join(self.fixture_dir, "plain-tex-no-bye")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "dvi")
+        self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
+
+    def test_tikz_pgf_library_0(self):
+        """Test tikzlibrary loading system pgfarrow.meta."""
+        dir_path = os.path.join(self.fixture_dir, "arrowmeta")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 1)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+
+    def test_tikz_pgf_library_1(self):
+        """Test tikzlibrary loading tikzfoobar.code.tex."""
+        dir_path = os.path.join(self.fixture_dir, "tikzlib-1")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        found_main = False
+        found_tikz = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["tikzlibraryfoobar.code.tex"])
+            if tf.filename == "tikzlibraryfoobar.code.tex":
+                found_tikz = True
+        assert found_main
+        assert found_tikz
+
+    def test_tikz_pgf_library_2(self):
+        """Test tikzlibrary loading pgffoobar.code.tex."""
+        dir_path = os.path.join(self.fixture_dir, "tikzlib-2")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        found_main = False
+        found_tikz = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["pgflibraryfoobar.code.tex"])
+            if tf.filename == "pgflibraryfoobar.code.tex":
+                found_tikz = True
+        assert found_main
+        assert found_tikz
+
+    def test_tikz_pgf_library_3(self):
+        """Test tikzlibrary loading tikzfoobar.code.tex when both present."""
+        dir_path = os.path.join(self.fixture_dir, "tikzlib-3")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 3)
+        tf = pf.tex_files[0]
+        self.assertEqual(len(tf.issues), 0)
+        found_main = False
+        found_tikz = False
+        found_pgf = False
+        for tf in pf.tex_files:
+            if tf.filename == "main.tex":
+                found_main = True
+                self.assertEqual(sorted(tf.used_tex_files), ["tikzlibraryfoobar.code.tex"])
+            if tf.filename == "pgflibraryfoobar.code.tex":
+                found_pgf = True
+            if tf.filename == "tikzlibraryfoobar.code.tex":
+                found_tikz = True
+        assert found_main
+        assert found_tikz
+        assert found_pgf
+
+    def test_latex209(self):
+        """Test submission in latex209 format."""
+        dir_path = os.path.join(self.fixture_dir, "latex209")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.unsupported_compiler_type_latex209)
+
+
+    def test_amstex_documentstyle(self):
+        """Test documentstyle from amstex."""
+        dir_path = os.path.join(self.fixture_dir, "amstex-documentstyle")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "dvi")
+        self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
+
+
+    def test_unicode_tex_packages(self):
+        """Test submission with unicode packages."""
+        for pkg in UNICODE_TEX_PACKAGES:
+            dir_path = os.path.join(self.fixture_dir, f"unicode-tex-{pkg}")
+            pf: PreflightResponse = generate_preflight_response(dir_path)
+            self.assertEqual(pf.status.key.value, "success")
+            self.assertEqual(len(pf.detected_toplevel_files), 1)
+            self.assertEqual(len(pf.tex_files), 1)
+            tf = pf.detected_toplevel_files[0]
+            self.assertEqual(len(tf.issues), 1)
+            issue = tf.issues[0]
+            self.assertEqual(issue.key, IssueType.unsupported_compiler_type_unicode)
+
+
+    def test_img_in_cls(self):
+        """Test detection of images loaded in cls files."""
+        dir_path = os.path.join(self.fixture_dir, "img-in-cls")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        found_cls: bool = False
+        for tf in pf.tex_files:
+            if tf.filename == "rsproca_new.cls":
+                found_cls = True
+                self.assertEqual(
+                    sorted(tf.used_other_files),
+                    sorted([
+                        "RS_Pubs_Logo_Line_CMYK.pdf", "RSTA_OpenAccesslogo_RGB.pdf",
+                        "RS_crossmark_logo.pdf", "PROCEEDINGS_A_RGB.pdf"
+                    ])
+                )
+        self.assertTrue(found_cls)
