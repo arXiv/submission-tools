@@ -15,6 +15,7 @@ from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
 from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
 from . import (
+    AUTOTEX_BRANCH,
     GIT_COMMIT_HASH,
     ID_TAG,
     MAX_TIME_BUDGET,
@@ -701,8 +702,10 @@ class AutoTeXConverterDriver(ConverterDriver):
 
         arxivID = self.tag
         # maybe it is already source
+        extra_args = ["-b", AUTOTEX_BRANCH] if AUTOTEX_BRANCH else []
         worker_args = [
             "autotex.pl",
+            *extra_args,
             "-f",
             "fInm",
             "-q",
@@ -710,7 +713,6 @@ class AutoTeXConverterDriver(ConverterDriver):
             self.in_dir,  # here the original tarball has been dumped
             "-W",
             self.out_dir,  # work_dir/out where we expect files
-            # TODO currently autotex.pl DOES NOT HONOR THIS!!!
             "-v",
             "-Z",
             "-p",
