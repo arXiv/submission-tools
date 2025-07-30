@@ -31,9 +31,6 @@ GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
 TEXLIVE_BASE_RELEASE: str = os.environ.get("TEXLIVE_BASE_RELEASE", "")
 AUTOTEX_BRANCH: str = os.environ.get("AUTOTEX_BRANCH", "")
 
-if TEXLIVE_BASE_RELEASE == "":
-    raise ValueError("TEXLIVE_BASE_RELEASE is not set")
-
 # The default TeX Live version to use for compilation
 # Default is empty, so use the current built-in version.
 TEX2PDF_PROXY_RELEASE = os.environ.get("TEX2PDF_PROXY_RELEASE", "0")
