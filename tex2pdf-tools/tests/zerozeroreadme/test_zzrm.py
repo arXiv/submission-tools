@@ -4,6 +4,7 @@ import unittest
 
 import pytest
 
+from tex2pdf_tools.preflight import generate_preflight_response
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError, ZZRMParseError, ZZRMInvalidFormatError
 
 
@@ -237,3 +238,11 @@ sources:
   usage: toplevel
 stamp: false
 """
+
+    def test_unused_files_1(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "unused-files-1")
+        zzrm = ZeroZeroReadMe(dir_path)
+        pf = generate_preflight_response(dir_path)
+        unused_files = zzrm.unused_files(dir_path, pf)
+        print(unused_files)
+        self.assertEqual(sorted(unused_files), sorted(['bla.tex', 'Figs/noneed.png']))
