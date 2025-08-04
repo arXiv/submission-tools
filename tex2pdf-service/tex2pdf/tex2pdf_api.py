@@ -656,6 +656,12 @@ async def texlive_info(request: Request) -> Response:
 
 def _texlive_info(request: Request) -> Response:
     logger = get_logger()
+    if not TEXLIVE_BASE_RELEASE:
+        logger.warning("TEXLIVE_BASE_RELEASE is not set, cannot provide tlmgr-info.json")
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "TEXLIVE_BASE_RELEASE is not set."},
+        )
     tlmgr_info = Path(f"/usr/local/texlive/{TEXLIVE_BASE_RELEASE}/local-info/tlmgr-info.json")
     if not tlmgr_info.exists():
         logger.warning("tlmgr-info.json not found in %s", tlmgr_info)
@@ -678,6 +684,13 @@ def _texlive_info(request: Request) -> Response:
 @app.get("/texlive/version")
 async def texlive_version() -> JSONResponse:
     """Get TeX Live version."""
+    logger = get_logger()
+    if not TEXLIVE_BASE_RELEASE:
+        logger.warning("TEXLIVE_BASE_RELEASE is not set, cannot provide tlmgr-info.json")
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "TEXLIVE_BASE_RELEASE is not set."},
+        )
     # note that this is run in /home/worker and we don't have write permissions
     # to /usr/local/texlive/... - thus, save the file simply in CWD.
     tlmgr_version = "tlmgr-version.txt"

@@ -60,7 +60,9 @@ def submit_tarball(
                             os.makedirs(os.path.dirname(outcome_file), exist_ok=True)
                             with open(outcome_file, "wb") as out:
                                 out.write(res.content)
-                            meta, lines, clsfiles, styfiles, pdfchecksum = get_outcome_meta_and_files_info(outcome_file)
+                            meta, lines, clsfiles, styfiles, pdfchecksum, _ = get_outcome_meta_and_files_info(
+                                outcome_file
+                            )
 
                 else:
                     logging.warning("%s: status code %d, %s", url, status_code, res.text)
