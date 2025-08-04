@@ -644,6 +644,7 @@ def test_api_bookmark_out_file(docker_container):
         assert pdf.get_toc()[0] == [1, "Proof of Lemma 1", 1]
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("compiler", ["pdftex", "xelatex", "lualatex"])
 def test_basic_compilers(docker_container, compiler):
     url = docker_container + "/convert"
