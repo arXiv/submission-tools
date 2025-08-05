@@ -369,7 +369,7 @@ def test_api_preflight(docker_container, ts):
     assert meta is not None
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
-    assert [f["filename"] for f in meta.get("detected_toplevel_files")] == [
+    assert sorted([f["filename"] for f in meta.get("detected_toplevel_files")]) == [
         "fake-file-1.tex",
         "fake-file-2.tex",
         "fake-file-3.tex",
