@@ -1239,14 +1239,15 @@ for c in ALL_COMPILERS:
     assert c.compiler_string is not None
 # the following order also gives the preference!
 # fmt: off
+SUPPORTED_COMPILERS: list[CompilerSpec] = []
 if in_development:
-    SUPPORTED_COMPILERS: list[CompilerSpec] = [
+    SUPPORTED_COMPILERS = [
         COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
         COMPILER["pdftex"], COMPILER["tex"],       # plain tex, we prefer pdftex
         COMPILER["xelatex"], COMPILER["lualatex"]  # latex with unicode support, we prefer xelatex, keep luatex disabled
     ]
 else:
-    SUPPORTED_COMPILERS: list[CompilerSpec] = [
+    SUPPORTED_COMPILERS = [
         COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
         COMPILER["tex"],       # plain tex, we prefer pdftex
     ]
