@@ -1253,6 +1253,18 @@ SUPPORTED_COMPILERS: list[CompilerSpec] = [
 SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
 
 
+def update_list_of_supported_compilers() -> None:
+    """Update the list of supported compilers."""
+    global SUPPORTED_COMPILERS, SUPPORTED_COMPILERS_STR  # noqa: PLW0603
+    SUPPORTED_COMPILERS = (
+        [COMPILER["pdflatex"], COMPILER["latex"]]
+        + ([COMPILER["pdftex"]] * ENABLE_PDFETEX)
+        + [COMPILER["tex"]]
+        + ([COMPILER["xelatex"]] * ENABLE_XELATEX + [COMPILER["lualatex"]] * ENABLE_LUALATEX)
+    )
+    SUPPORTED_COMPILERS_STR = [c.compiler_string for c in SUPPORTED_COMPILERS]
+
+
 #
 # FUNCTIONS
 #
