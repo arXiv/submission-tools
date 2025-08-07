@@ -23,6 +23,11 @@ from pydantic import BaseModel, Field
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
 
+# Get a handle for the environment we are running in, but
+# default to production if not set.
+# We activate some in-development features in the dev branch
+in_development = os.environ.get("ENVIRONMENT", "production") == "development"
+
 MODULE_PATH = os.path.dirname(__file__)
 
 T = TypeVar("T")
@@ -1233,7 +1238,20 @@ FONTSPEC_ALLOWED_COMPILERS_STR = [c.compiler_string for c in FONTSPEC_ALLOWED_CO
 for c in ALL_COMPILERS:
     assert c.compiler_string is not None
 # the following order also gives the preference!
-SUPPORTED_COMPILERS: list[CompilerSpec] = [COMPILER["pdflatex"], COMPILER["latex"], COMPILER["tex"]]
+# fmt: off
+SUPPORTED_COMPILERS: list[CompilerSpec] = []
+if in_development:
+    SUPPORTED_COMPILERS = [
+        COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
+        COMPILER["pdftex"], COMPILER["tex"],       # plain tex, we prefer pdftex
+        COMPILER["xelatex"], COMPILER["lualatex"]  # latex with unicode support, we prefer xelatex, keep luatex disabled
+    ]
+else:
+    SUPPORTED_COMPILERS = [
+        COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
+        COMPILER["tex"],       # plain tex, we prefer pdftex
+    ]
+# fmt: on
 SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
 
 

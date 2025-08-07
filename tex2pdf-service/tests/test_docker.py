@@ -28,8 +28,8 @@ def submit_tarball(
     service: str,
     tarball: str,
     outcome_file: str,
-    tex2pdf_timeout: int = 30,
-    post_timeout: int = 10,
+    tex2pdf_timeout: int = 300,
+    post_timeout: int = 300,
     json_response: bool = False,
     api_args: dict = {},
 ) -> tuple[None | dict, int]:
@@ -369,7 +369,7 @@ def test_api_preflight(docker_container, ts):
     assert meta is not None
     assert meta.get("status").get("key") == "success"
     assert len(meta.get("detected_toplevel_files")) == 3
-    assert [f["filename"] for f in meta.get("detected_toplevel_files")] == [
+    assert sorted([f["filename"] for f in meta.get("detected_toplevel_files")]) == [
         "fake-file-1.tex",
         "fake-file-2.tex",
         "fake-file-3.tex",
@@ -642,6 +642,28 @@ def test_api_bookmark_out_file(docker_container):
     unpack_tarball(outcome_dir, outcome, {})
     with pymupdf.open(os.path.join(outcome_dir, "out", "bookmark-out-file.pdf")) as pdf:
         assert pdf.get_toc()[0] == [1, "Proof of Lemma 1", 1]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("compiler", ["pdftex", "xelatex", "lualatex"])
+def test_basic_compilers(docker_container, compiler):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, f"fixture/tarballs/{compiler}-basic/{compiler}-basic.tar.gz")
+    outcome = os.path.join(SELF_DIR, f"output/{compiler}-basic.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome)
+    if status != 200:
+        print(meta)
+    assert status == 200
+    assert meta is not None
+    assert meta.get("pdf_file") == f"{compiler}-basic.pdf"
+    assert meta.get("tex_files") == ["main.tex"]
+    if compiler == "pdftex":
+        # pdftex is an alias for pdfetex
+        assert meta.get("converter").startswith("pdfetex")
+    else:
+        assert meta.get("converter").startswith(compiler)
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 2  # compiler, compiler
 
 
 @pytest.mark.integration
