@@ -8,6 +8,15 @@ import tex2pdf_tools.preflight
 from tex2pdf_tools.preflight import BibCompiler, IssueType, UNICODE_TEX_PACKAGES
 from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
 
+tex2pdf_tools.preflight.ENABLE_PDFETEX = True
+tex2pdf_tools.preflight.ENABLE_XELATEX = True
+tex2pdf_tools.preflight.update_list_of_supported_compilers()
+UPDATED_COMPILER_LIST = tex2pdf_tools.preflight.SUPPORTED_COMPILERS.copy()
+UPDATED_COMPILER_STR_LIST = tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR.copy()
+# Reset the compiler list to the original state after tests
+tex2pdf_tools.preflight.ENABLE_PDFETEX = False
+tex2pdf_tools.preflight.ENABLE_XELATEX = False
+tex2pdf_tools.preflight.update_list_of_supported_compilers()
 
 class TestPreflight(unittest.TestCase):
     def setUp(self):
@@ -244,6 +253,20 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.detected_toplevel_files[0].hyperref_found, True)
 
     def test_eps_dvips(self):
+        """Test dvips_ps2pdf selection when eps are included."""
+        dir_path = os.path.join(self.fixture_dir, "eps-test")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(pf.detected_toplevel_files[0].filename, "main.tex")
+        self.assertEqual(
+            pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True),
+            """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}""",
+        )
+
+    @patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS', UPDATED_COMPILER_LIST)
+    @patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR', UPDATED_COMPILER_STR_LIST)
+    def test_eps_dvips_enable_pdfetex(self):
         """Test dvips_ps2pdf selection when eps are included."""
         dir_path = os.path.join(self.fixture_dir, "eps-test")
         pf: PreflightResponse = generate_preflight_response(dir_path)
@@ -648,6 +671,21 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.process.compiler.output, "dvi")
         self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
 
+    @patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS', UPDATED_COMPILER_LIST)
+    @patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR', UPDATED_COMPILER_STR_LIST)
+    def test_plain_tex_sub_enable_pdfetex(self):
+        """Test plain tex files with sub files."""
+        dir_path = os.path.join(self.fixture_dir, "plain-tex-sub")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 2)
+        tf = pf.detected_toplevel_files[0]
+        self.assertEqual(tf.process.compiler.engine, "tex")
+        self.assertEqual(tf.process.compiler.lang, "tex")
+        self.assertEqual(tf.process.compiler.output, "pdf")
+        self.assertEqual(tf.process.compiler.postp, "none")
+
 
     def test_plain_no_bye(self):
         """Test plain tex files without \bye."""
@@ -760,7 +798,6 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(tf.process.compiler.output, "dvi")
         self.assertEqual(tf.process.compiler.postp, "dvips_ps2pdf")
 
-    @patch('tex2pdf_tools.preflight.ENABLE_XELATEX', False)
     def test_unicode_tex_packages(self):
         """Test submission with unicode packages."""
         for pkg in UNICODE_TEX_PACKAGES:
@@ -774,11 +811,10 @@ class TestPreflight(unittest.TestCase):
             issue = tf.issues[0]
             self.assertEqual(issue.key, IssueType.unsupported_compiler_type_unicode)
 
-    @patch('tex2pdf_tools.preflight.ENABLE_XELATEX', True)
+    @patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS', UPDATED_COMPILER_LIST)
+    @patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR', UPDATED_COMPILER_STR_LIST)
     def test_unicode_tex_packages_xelatex_enabled(self):
         """Test submission with unicode packages."""
-        # the ENABLE_XELATEX alone is not enough, we need to update the list of supported compilers
-        tex2pdf_tools.preflight.update_list_of_supported_compilers()
         for pkg in UNICODE_TEX_PACKAGES:
             dir_path = os.path.join(self.fixture_dir, f"unicode-tex-{pkg}")
             pf: PreflightResponse = generate_preflight_response(dir_path)
