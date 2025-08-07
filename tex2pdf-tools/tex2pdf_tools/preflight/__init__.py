@@ -23,10 +23,11 @@ from pydantic import BaseModel, Field
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
 
-# Get a handle for the environment we are running in, but
-# default to production if not set.
-# We activate some in-development features in the dev branch
-in_development = os.environ.get("ENVIRONMENT", "production") == "development"
+# Feature flag style: enable features via environment variables
+ENABLE_BIB_BBL: bool = bool(os.environ.get("ENABLE_BIB_BBL", ""))
+ENABLE_PDFETEX: bool = bool(os.environ.get("ENABLE_PDFETEX", ""))
+ENABLE_XELATEX: bool = bool(os.environ.get("ENABLE_XELATEX", ""))
+ENABLE_LUALATEX: bool = bool(os.environ.get("ENABLE_LUALATEX", ""))
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -409,6 +410,7 @@ class IssueType(str, Enum):
     issue_in_subfile = "issue_in_subfile"
     index_definition_missing = "index_definition_missing"
     bbl_version_mismatch = "bbl_version_mismatch"
+    bbl_file_missing = "bbl_file_missing"
     bbl_bib_file_missing = "bbl_bib_file_missing"
     multiple_bibliography_types = "multiple_bibliography_types"
     bbl_usage_mismatch = "bbl_usage_mismatch"
@@ -1240,18 +1242,13 @@ for c in ALL_COMPILERS:
     assert c.compiler_string is not None
 # the following order also gives the preference!
 # fmt: off
-SUPPORTED_COMPILERS: list[CompilerSpec] = []
-if in_development:
-    SUPPORTED_COMPILERS = [
-        COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
-        COMPILER["pdftex"], COMPILER["tex"],       # plain tex, we prefer pdftex
-        COMPILER["xelatex"], COMPILER["lualatex"]  # latex with unicode support, we prefer xelatex, keep luatex disabled
-    ]
-else:
-    SUPPORTED_COMPILERS = [
-        COMPILER["pdflatex"], COMPILER["latex"],   # latex without unicode support, we prefer pdflatex
-        COMPILER["tex"],       # plain tex, we prefer pdftex
-    ]
+SUPPORTED_COMPILERS: list[CompilerSpec] = [
+    COMPILER["pdflatex"], COMPILER["latex"]] + ( # latex without unicode support, we prefer pdflatex
+    [COMPILER["pdftex"]] * ENABLE_PDFETEX +      # plain tex via pdftex if enabled
+    [COMPILER["tex"]] +                          # plain tex via tex/dvips
+    [COMPILER["xelatex"]] * ENABLE_XELATEX +     # xelatex if enabled
+    [COMPILER["lualatex"]] * ENABLE_LUALATEX     # lualatex if enabled
+)
 # fmt: on
 SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
 
@@ -1869,8 +1866,12 @@ def deal_with_bibliographies(
         # we have activated bib->bbl generation, so no issue needs to be reported
         # we also already added issues to the single files if bib is missing and bbl not available
         # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
-        if bib_file_issue_found and not bbl_file_present:
-            tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
+        if ENABLE_BIB_BBL:
+            if bib_file_issue_found and not bbl_file_present:
+                tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
+        else:
+            # if we do not allow bib->bbl generation, we need to report the missing bbl file
+            tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
 
 
 def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
