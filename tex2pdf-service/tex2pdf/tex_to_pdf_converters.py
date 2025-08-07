@@ -12,7 +12,7 @@ from tex2pdf_tools.preflight import BibCompiler
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
-from . import ID_TAG, MAX_LATEX_RUNS, MAX_TIME_BUDGET, file_props, file_props_in_dir, local_exec
+from . import ID_TAG, MAX_LATEX_RUNS, MAX_TIME_BUDGET, TEXLIVE_BASE_RELEASE, file_props, file_props_in_dir, local_exec
 from .service_logger import get_logger
 
 WITH_SHELL_ESCAPE = False
@@ -280,9 +280,37 @@ class BaseConverter:
             if head[0] == b"% $ biblatex auxiliary file $":
                 if head[1].startswith(b"% $ biblatex bbl format version "):
                     bbl_version = head[1].removeprefix(b"% $ biblatex bbl format version ").removesuffix(b" $")
-                    if bbl_version == b"3.3":
-                        logger.debug("bbl version 3.3 found, activating biblatex extra tree", extra=extra)
-                        cmdenv["TEXMFAUXTREES"] = "/usr/local/texlive/texmf-biblatex-33,"  # we need a final comma!
+                    if TEXLIVE_BASE_RELEASE:
+                        # we only do path adjustments when we know which TL release we are running
+                        if TEXLIVE_BASE_RELEASE == "2023":
+                            if bbl_version == b"3.2":
+                                logger.debug("bbl version 3.2 found in TL2023, no adjustments necessary", extra=extra)
+                            elif bbl_version == b"3.3":
+                                logger.debug("bbl version 3.3 found, activating biblatex extra tree", extra=extra)
+                                cmdenv["TEXMFAUXTREES"] = (
+                                    "/usr/local/texlive/texmf-biblatex-33,"  # we need a final comma!
+                                )
+                            else:
+                                logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
+                        else:
+                            # currently the case for TL2024/TL2025
+                            if bbl_version == b"3.3":
+                                logger.debug(
+                                    f"bbl version 3.3 found in {TEXLIVE_BASE_RELEASE}, no adjustments necessary",
+                                    extra=extra,
+                                )
+                            elif bbl_version == b"3.2":
+                                logger.debug("bbl version 3.2 found, activating biblatex extra tree", extra=extra)
+                                cmdenv["TEXMFAUXTREES"] = (
+                                    "/usr/local/texlive/texmf-biblatex-32,"  # we need a final comma!
+                                )
+                            else:
+                                logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
+                    else:
+                        logger.warning(
+                            "Cannot determine TEXLIVE_BASE_RELEASE, not doing any biblatex adjustments", extra=extra
+                        )
+
         # get location of addon trees
         if self.use_addon_tree:
             kpsewhich = self.decorate_args(["/usr/bin/kpsewhich", "-var-value", "SELFAUTOPARENT"])
