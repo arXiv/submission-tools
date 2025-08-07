@@ -185,7 +185,7 @@ def docker_container(request):
 
     image_2023_name = "public-tex2pdf-app-2023-2023-05-21"
     image_2024_name = "public-tex2pdf-app-2024-2024-12-29"
-    image_2025_name = "public-tex2pdf-app-2025-2025-05-11"
+    image_2025_name = "public-tex2pdf-app-2025-2025-08-03"
     container_2023_name = "test-arxiv-tex2pdf-2023"
     container_2024_name = "test-arxiv-tex2pdf-2024"
     container_2025_name = "test-arxiv-tex2pdf-2025"
@@ -481,6 +481,19 @@ def test_bbl_33(docker_container):
     assert len(meta.get("converters", [])) == 1
     assert len(meta["converters"][0]["runs"]) == 3
     assert "/usr/local/texlive/texmf-biblatex-33" in meta["converters"][0]["runs"][2].get("log")
+
+
+@pytest.mark.integration
+def test_bbl_32_2024(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-bbl-32-2024.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test-bbl-32.pdf"
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 3
+    assert "/usr/local/texlive/texmf-biblatex-32" in meta["converters"][0]["runs"][2].get("log")
 
 
 @pytest.mark.integration
