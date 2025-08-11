@@ -52,7 +52,7 @@ class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger."""
 
     def __init__(self, *args: list, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs, rename_fields={"levelname": LOG_LEVEL_NAME, "asctime": "time"})  # type:ignore[no-untyped-call]
+        super().__init__(*args, **kwargs, rename_fields={"levelname": LOG_LEVEL_NAME, "asctime": "time"})
 
     def _perform_rename_log_fields(self, log_record: dict) -> None:
         if "color_message" in log_record:
