@@ -51,8 +51,8 @@ tomli_w = "*"
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
-reference = "pypy-updates"
-resolved_reference = "d151e955e1533869c65bb5402f8d17d96d9a5fb7"
+reference = "HEAD"
+resolved_reference = "096998650d73cd6cf7c5489361df130d5793f41e"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -1434,4 +1434,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "63ef6924c6dfea9e8d9790ac92844996b2be797d0e2ecd0a08fd5edf0b27d423"
+content-hash = "288fd0a3fc7f81882c4e2b5ef739a9890f7ee307a9bfeb5bb68d14b3de64abf5"
