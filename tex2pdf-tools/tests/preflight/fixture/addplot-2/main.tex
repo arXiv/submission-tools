@@ -1,0 +1,14 @@
+\documentclass{article}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\begin{document}
+
+Hello
+\begin{figure}[t]
+  \begin{tikzpicture}
+    \begin{groupplot}
+	    \addplot [opt1,opt2] table [opt3,opt4] {something.csv};
+    \end{groupplot}
+  \end{tikzpicture}
+\end{figure}
+\end{document}

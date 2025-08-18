@@ -567,7 +567,9 @@ class ParsedTeXFile(BaseModel):
                 logging.debug("Setting graphicspath to %s", self._graphicspath)
 
             # deal with some specially tricky commands
-            for i in re.findall(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*({[^}]+})", data, re.MULTILINE):
+            for i in re.findall(
+                rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", data, re.MULTILINE
+            ):
                 logging.debug("%s regex found %s", self.filename, i)
                 try:
                     ii = [x.decode("utf-8") for x in i]
@@ -672,6 +674,10 @@ class ParsedTeXFile(BaseModel):
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
                 file_incspec[f"""{{tikz,pgf}}library{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
+        elif incdef.cmd == "tcbuselibrary":
+            include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
+            for f in include_argument.split(","):
+                file_incspec[f"""tcb{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliographystyle":
             self._uses_bbl_file_type.add(BblType.plain)
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
@@ -970,13 +976,14 @@ ALL_IMAGE_EXTS: str = " ".join(_extss)
 
 # only parse file with these extensions
 # .pdf_tex are generated tex files from the svg.sty packages
+# .pdf_t are generated tex files from the ??? packages
 # we do not parse .cls and .clo files because they at times contain
 # calls to macros that we use to detect language or bib type (\documentstyle, \bibliographystyle, etc.)
 # which leads to misdetection and errors
 # Examples:
 # - cup-journal.cls contains \bibliographystyle
 # - revtex4-1.cls contains \documentstyle
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex"]
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex", ".pdf_t"]
 ONLY_IMAGE_PARSE_FILE_EXTENSIONS = [".cls", ".clo"]
 # extensions of files we want to keep but cannot detect in preflight directly
 MAYBE_USED_FILE_EXTENSIONS = [

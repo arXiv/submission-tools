@@ -443,6 +443,15 @@ class TestPreflight(unittest.TestCase):
                 self.assertEqual(sorted(tf.used_other_files), ["data1.txt", "data2.txt"])
         assert found_main
 
+    def test_addplot_2(self):
+        """Test addplot environment detection."""
+        dir_path = os.path.join(self.fixture_dir, "addplot-2")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 1)
+        self.assertEqual(pf.tex_files[0].used_other_files, ['something.csv'])
+
     def test_quoted_arguments(self):
         """Test quoted arguments to commands."""
         dir_path = os.path.join(self.fixture_dir, "quoted-arguments")
@@ -847,3 +856,13 @@ class TestPreflight(unittest.TestCase):
                     ])
                 )
         self.assertTrue(found_cls)
+
+    def test_tcblibrary(self):
+        """Test detection of tcblibrary loaded files."""
+        dir_path = os.path.join(self.fixture_dir, "tcblibrary")
+        pf: PreflightResponse = generate_preflight_response(dir_path)
+        self.assertEqual(pf.status.key.value, "success")
+        self.assertEqual(len(pf.detected_toplevel_files), 1)
+        self.assertEqual(len(pf.tex_files), 1)
+        self.assertEqual(len(pf.tex_files[0].issues), 0)
+

@@ -34,6 +34,7 @@ jobs:
           polyglossia
           unicode-math
           fontspec
+          tcolorbox
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools
