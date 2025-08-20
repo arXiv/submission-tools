@@ -176,6 +176,8 @@ class ZeroZeroReadMe:
             result["stamp"] = self.stamp
         if self.nohyperref is not None:
             result["nohyperref"] = self.nohyperref
+        if self.texlive_version is not None:
+            result["texlive_version"] = self.texlive_version
         return result
 
     def init_from_file(self, file: str) -> None:

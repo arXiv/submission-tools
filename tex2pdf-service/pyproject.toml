@@ -10,26 +10,26 @@ include = ["LICENSE", "README.md"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.115.13"
-pikepdf = "^8.7.1"
-python-json-logger = "^2.0.7"
-ruamel-yaml = "^0.18.5"
-pillow = "^10.4.0"
-python-multipart = "^0.0.20"
-psutil = "^5.9.8"
+fastapi = "*"
+pikepdf = "*"
+python-json-logger = "*"
+ruamel-yaml = "*"
+pillow = "*"
+python-multipart = "*"
+psutil = "*"
 arxiv-tex2pdf-tools = {git = "https://github.com/arXiv/submission-tools.git", subdirectory = "tex2pdf-tools" }
-hypercorn = {extras = ["h2"], version = "^0.16.0"}
-pymupdf = "^1.24.10"
-requests = "^2.32.4"
+hypercorn = {extras = ["h2"], version = "*"}
+pymupdf = "*"
+requests = "*"
 arxiv-base = {git = "https://github.com/arXiv/arxiv-base.git", branch = "update-pydantic" }
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-pylint = "^3.2.7"
-click = "^8.1.7"
+pytest = "*"
+pylint = "*"
+click = "*"
 mypy = "*"
 mypy-extensions = "*"
-tqdm = "^4.66.2"
+tqdm = "*"
 types-requests = "*"
 
 [build-system]

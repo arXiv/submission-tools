@@ -23,6 +23,12 @@ from pydantic import BaseModel, Field
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
 
+# Feature flag style: enable features via environment variables
+ENABLE_BIB_BBL: bool = bool(os.environ.get("ENABLE_BIB_BBL", ""))
+ENABLE_PDFETEX: bool = bool(os.environ.get("ENABLE_PDFETEX", ""))
+ENABLE_XELATEX: bool = bool(os.environ.get("ENABLE_XELATEX", ""))
+ENABLE_LUALATEX: bool = bool(os.environ.get("ENABLE_LUALATEX", ""))
+
 MODULE_PATH = os.path.dirname(__file__)
 
 T = TypeVar("T")
@@ -405,6 +411,7 @@ class IssueType(str, Enum):
     index_definition_missing = "index_definition_missing"
     bbl_version_mismatch = "bbl_version_mismatch"
     bbl_file_missing = "bbl_file_missing"
+    bbl_bib_file_missing = "bbl_bib_file_missing"
     multiple_bibliography_types = "multiple_bibliography_types"
     bbl_usage_mismatch = "bbl_usage_mismatch"
     other = "other"
@@ -431,6 +438,7 @@ class ParsedTeXFile(BaseModel):
     _graphicspath: list[list[str]] = []
     _uses_bibliography: bool = False
     _uses_bbl_file_type: set[BblType] = set()
+    _missing_bib_files: set[str] = set()
     language: LanguageType = LanguageType.unknown
     contains_documentclass: bool = False
     contains_bye: bool = False
@@ -559,7 +567,9 @@ class ParsedTeXFile(BaseModel):
                 logging.debug("Setting graphicspath to %s", self._graphicspath)
 
             # deal with some specially tricky commands
-            for i in re.findall(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*({[^}]+})", data, re.MULTILINE):
+            for i in re.findall(
+                rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", data, re.MULTILINE
+            ):
                 logging.debug("%s regex found %s", self.filename, i)
                 try:
                     ii = [x.decode("utf-8") for x in i]
@@ -664,6 +674,10 @@ class ParsedTeXFile(BaseModel):
             include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
             for f in include_argument.split(","):
                 file_incspec[f"""{{tikz,pgf}}library{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
+        elif incdef.cmd == "tcbuselibrary":
+            include_argument = re.sub(r"%.*$", "", include_argument, flags=re.MULTILINE)
+            for f in include_argument.split(","):
+                file_incspec[f"""tcb{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliographystyle":
             self._uses_bbl_file_type.add(BblType.plain)
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
@@ -962,13 +976,14 @@ ALL_IMAGE_EXTS: str = " ".join(_extss)
 
 # only parse file with these extensions
 # .pdf_tex are generated tex files from the svg.sty packages
+# .pdf_t are generated tex files from the ??? packages
 # we do not parse .cls and .clo files because they at times contain
 # calls to macros that we use to detect language or bib type (\documentstyle, \bibliographystyle, etc.)
 # which leads to misdetection and errors
 # Examples:
 # - cup-journal.cls contains \bibliographystyle
 # - revtex4-1.cls contains \documentstyle
-PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex"]
+PARSED_FILE_EXTENSIONS = [".tex", ".sty", ".ltx", ".pdf_tex", ".pdf_t"]
 ONLY_IMAGE_PARSE_FILE_EXTENSIONS = [".cls", ".clo"]
 # extensions of files we want to keep but cannot detect in preflight directly
 MAYBE_USED_FILE_EXTENSIONS = [
@@ -1233,8 +1248,28 @@ FONTSPEC_ALLOWED_COMPILERS_STR = [c.compiler_string for c in FONTSPEC_ALLOWED_CO
 for c in ALL_COMPILERS:
     assert c.compiler_string is not None
 # the following order also gives the preference!
-SUPPORTED_COMPILERS: list[CompilerSpec] = [COMPILER["pdflatex"], COMPILER["latex"], COMPILER["tex"]]
+# fmt: off
+SUPPORTED_COMPILERS: list[CompilerSpec] = [
+    COMPILER["pdflatex"], COMPILER["latex"]] + ( # latex without unicode support, we prefer pdflatex
+    [COMPILER["pdftex"]] * ENABLE_PDFETEX +      # plain tex via pdftex if enabled
+    [COMPILER["tex"]] +                          # plain tex via tex/dvips
+    [COMPILER["xelatex"]] * ENABLE_XELATEX +     # xelatex if enabled
+    [COMPILER["lualatex"]] * ENABLE_LUALATEX     # lualatex if enabled
+)
+# fmt: on
 SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
+
+
+def update_list_of_supported_compilers() -> None:
+    """Update the list of supported compilers."""
+    global SUPPORTED_COMPILERS, SUPPORTED_COMPILERS_STR  # noqa: PLW0603
+    SUPPORTED_COMPILERS = (
+        [COMPILER["pdflatex"], COMPILER["latex"]]
+        + ([COMPILER["pdftex"]] * ENABLE_PDFETEX)
+        + [COMPILER["tex"]]
+        + ([COMPILER["xelatex"]] * ENABLE_XELATEX + [COMPILER["lualatex"]] * ENABLE_LUALATEX)
+    )
+    SUPPORTED_COMPILERS_STR = [c.compiler_string for c in SUPPORTED_COMPILERS]
 
 
 #
@@ -1484,9 +1519,13 @@ def update_nodes_with_kpse_info(
                 # * it is not loaded via InputIfFileExists
                 # * it is not a bib file
                 # then record an issue
+                # If it is a bib file, record it in internal field _missing_bib_files
                 if found == "":
-                    if v.cmd != "InputIfFileExists" and v.type != FileType.bib:
-                        n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
+                    if v.cmd != "InputIfFileExists":
+                        if v.type == FileType.bib:
+                            n._missing_bib_files.add(f)
+                        else:
+                            n.issues.append(TeXFileIssue(IssueType.file_not_found, f))
                     continue
                 if only_tex:
                     if v.type == FileType.tex:
@@ -1724,6 +1763,14 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         if selected_compiler_string:
             tl.process.compiler = CompilerSpec(compiler=selected_compiler_string)
 
+        tl.issues = issues
+
+
+def update_toplevel_issues(toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
+    """Add a toplevel issue if there are issues in subfiles."""
+    for f, tl in toplevel_files.items():
+        issues: list[TeXFileIssue] = tl.issues
+        tl_n = nodes[f]
         # count issues in sub files
         for fn, nr_issues in tl_n.walk_document_tree(lambda n: [tuple((n.filename, len(n.issues)))]):
             if nr_issues > 0:
@@ -1736,6 +1783,24 @@ def deal_with_bibliographies(
 ) -> None:
     """Check for inclusion of bib files and presence .bbl files."""
     for tl_f, tl_n in toplevel_files.items():
+        bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
+        bbl_file_full_path = os.path.join(rundir, bbl_file)
+        bbl_file_present = os.path.isfile(bbl_file_full_path)
+
+        # if the bbl file is not present, go over all nodes and add issues if bib files are missing
+        bib_file_issue_found: bool = False
+        if not bbl_file_present:
+            logging.debug("bbl file %s not present, checking for bib files", bbl_file)
+            selected_nodes = nodes[tl_f].recursive_collect_files(FileType.tex).copy()
+            selected_nodes.append(tl_f)
+            for _, n in nodes.items():
+                if tl_n and selected_nodes and n.filename not in selected_nodes:
+                    logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, tl_n.filename)
+                    continue
+                for bib_file in n._missing_bib_files:
+                    bib_file_issue_found = True
+                    n.issues.append(TeXFileIssue(IssueType.file_not_found, "bib file missing", bib_file))
+
         node = nodes[tl_f]
         uses_bibliography: bool = node.generic_walk_document_tree(
             lambda x: x._uses_bibliography, lambda x, y: x or y, False
@@ -1750,8 +1815,10 @@ def deal_with_bibliographies(
             continue
         if len(bbl_types_used) == 0:
             # we default to plain type
+            logging.debug("no bibliography type used, defaulting to plain")
             bbl_types_used = set([BblType.plain])
         if len(bbl_types_used) > 1:
+            logging.debug("multiple bbl types used, add issue")
             # multiple bibliography types used, skip
             tl_n.issues.append(
                 TeXFileIssue(
@@ -1760,9 +1827,7 @@ def deal_with_bibliographies(
                 )
             )
             continue
-        bbl_file = tl_f.removesuffix(".tex").removesuffix(".TEX") + ".bbl"
-        bbl_file_full_path = os.path.join(rundir, bbl_file)
-        bbl_file_present = os.path.isfile(bbl_file_full_path)
+
         # we have only one bibliography type, check if it is biber or bibtex
         is_biblatex_bbl: bool = bbl_types_used.pop() == BblType.biblatex
         if bbl_file_present:
@@ -1817,7 +1882,15 @@ def deal_with_bibliographies(
         tl_n.process.bibliography = BibProcessSpec(
             processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
         )
-        tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
+        # we have activated bib->bbl generation, so no issue needs to be reported
+        # we also already added issues to the single files if bib is missing and bbl not available
+        # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
+        if ENABLE_BIB_BBL:
+            if bib_file_issue_found and not bbl_file_present:
+                tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
+        else:
+            # if we do not allow bib->bbl generation, we need to report the missing bbl file
+            tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
 
 
 def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
@@ -1949,11 +2022,10 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
                     tl_n.filename,
                     nodes[tlf].used_other_files,
                 )
-            # determine compilation settings
             guess_compilation_parameters(toplevel_files, nodes)
-            # deal with bibliographies, which is painful
             deal_with_bibliographies(rundir, toplevel_files, nodes)
             deal_with_indices(rundir, toplevel_files, nodes)
+            update_toplevel_issues(toplevel_files, nodes)
             # TODO check for suspicious status!
             status = PreflightStatus(key=PreflightStatusValues.success)
     return PreflightResponse(
