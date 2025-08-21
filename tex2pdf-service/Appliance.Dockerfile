@@ -33,6 +33,7 @@ RUN apt-get -q update && \
     rm -rf /var/log/dpkg.log
 
 RUN useradd -m -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
+RUN chown worker:users $WORKER_HOME
 USER worker
 WORKDIR $WORKER_HOME
 COPY poetry.lock pyproject.toml ./
@@ -50,6 +51,19 @@ RUN poetry install --without=dev
 FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    WORKER_HOME="/home/worker" \
+    VENV_PATH="/home/worker/.venv" \
+    PORT=8080 \
+    GIT_COMMIT_HASH=${GIT_COMMIT_HASH} \
+    TEXLIVE_BASE_RELEASE=${TEXLIVE_BASE_RELEASE}
+
 # install the arXiv specific changes:
 # - special settings in texmf.cnf
 COPY texlive/common/texmf.cnf /usr/local/texlive/${TEXLIVE_BASE_RELEASE}/
@@ -58,6 +72,7 @@ COPY --from=arxiv-texlive-builder $WORKER_HOME $WORKER_HOME
 
 # -M don't create home since we copied it above
 RUN useradd -M -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
+RUN chown worker:users $WORKER_HOME
 USER worker
 WORKDIR $WORKER_HOME
 
