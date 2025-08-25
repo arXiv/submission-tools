@@ -213,6 +213,7 @@ def healthcheck() -> str:
     },
 )
 async def convert_pdf(
+    request: Request,
     incoming: UploadFile,
     use_addon_tree: typing.Annotated[
         bool, Query(title="Use addon tree", description="Determines whether an addon tree is used.")
@@ -251,6 +252,7 @@ async def convert_pdf(
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()
+    logger.debug("Request: %s", request.url, extra=log_extra)
     logger.info("%s", incoming.filename)
     tag = os.path.basename(filename)
     while True:
