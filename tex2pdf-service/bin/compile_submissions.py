@@ -141,7 +141,9 @@ def compile(
     def local_submit_tarball(tarball: str) -> None:
         outcome_file = tarball_to_outcome_path(tarball)
         try:
-            service_process_tarball(service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect)
+            service_process_tarball(
+                service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect=auto_detect
+            )
         except FileExistsError:
             logging.info(f"Not recreating already existing {outcome_file}.")
             pass
