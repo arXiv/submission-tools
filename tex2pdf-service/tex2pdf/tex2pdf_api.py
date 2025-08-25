@@ -1,6 +1,7 @@
 """Tex2PDF FastAPI."""
 
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -10,6 +11,8 @@ from enum import Enum
 from pathlib import Path
 
 import requests
+from arxiv.identifier import Identifier as arXivID
+from arxiv.identifier import IdentifierException
 from fastapi import FastAPI, Query, UploadFile
 from fastapi import status as STATCODE
 from fastapi.exceptions import RequestValidationError
@@ -33,7 +36,7 @@ from . import (
     TEXLIVE_BASE_RELEASE,
     USE_ADDON_TREE,
 )
-from .converter_driver import ConversionOutcomeMaker, ConverterDriver
+from .converter_driver import AutoTeXConverterDriver, ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
 from .service_logger import get_logger
@@ -646,6 +649,106 @@ async def stamp_pdf(
     }
     background_tasks.add_task(tempdir.cleanup)
     return FileResponse(out_file, headers=headers)
+
+
+@app.post(
+    "/autotex/",
+    responses={
+        STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}}, "description": "Conversion result"},
+        STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
+        STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+        STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message},
+    },
+)
+async def autotex_pdf(
+    incoming: UploadFile,
+    arxivid: typing.Annotated[str | None, Query(title="arXiv ID", description="arXiv identifier")] = None,
+    timeout: typing.Annotated[int | None, Query(title="Time out", description="Time out in seconds.")] = None,
+) -> Response:
+    """Get a tarball, and convert to PDF using autotex."""
+    filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
+    log_extra = {"source_filename": filename}
+    logger = get_logger()
+    logger.info("%s", incoming.filename)
+    tag = os.path.basename(filename)
+    while True:
+        [stem, ext] = os.path.splitext(tag)
+        if ext in [".gz", ".zip", ".tar"]:
+            tag = stem
+            continue
+        break
+    # now tag points to the bare basename without extensions of the upload filename
+    arxiv_identifier: arXivID | None = None
+    arxiv_identifier_id: str | None = None
+    if arxivid is not None:
+        # check for arxivid as \d+ (in-process submissions)
+        if re.match(r"[0-9]+$", arxivid):
+            arxiv_identifier_id = arxivid
+        else:
+            try:
+                arxiv_identifier = arXivID(arxivid)
+                arxiv_identifier_id = arxiv_identifier.id
+            except IdentifierException:
+                logger.warning("Unparsable arXiv identifier: %s - trying to detect from filename", tag, exc_info=True)
+    # if we still not have an identifier, then either the passed in arxivid
+    # could not be parsed, or it wasn't passed in. Try parsing it from the filename.
+    if arxiv_identifier_id is None:
+        # try to determine arXiv ID from the filename
+        if re.match(r"[0-9]+$", tag):
+            arxiv_identifier_id = tag
+        else:
+            try:
+                arxiv_identifier = arXivID(tag)
+                arxiv_identifier_id = arxiv_identifier.id
+            except IdentifierException:
+                return JSONResponse(
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    content={"message": "Cannot determine arXiv identifier."},
+                )
+    if arxiv_identifier_id is None:
+        # this should not happen, but I don't want an assertion here
+        return JSONResponse(
+            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Unexpected internal error, please report - arxivid is None."},
+        )
+    # now we have and arxiv_identifier!
+    with tempfile.TemporaryDirectory(prefix=tag) as tempdir:
+        in_dir, out_dir = prep_tempdir(tempdir)
+        await save_stream(in_dir, incoming, filename, log_extra)
+        timeout_secs = float(MAX_TIME_BUDGET)
+        if timeout is not None:
+            try:
+                timeout_secs = float(timeout)
+            except ValueError:
+                pass
+            pass
+        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxiv_identifier_id, max_time_budget=timeout_secs)
+        try:
+            _pdf_file = driver.generate_pdf()
+        except RemovedSubmission:
+            # TODO how can we detect this???
+            logger.info("Archive is marked deleted.")
+            return JSONResponse(
+                status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
+            )
+
+        except Exception as exc:
+            logger.error("Exception %s", str(exc), exc_info=True)
+            return JSONResponse(
+                status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": traceback.format_exc()}
+            )
+
+        out_dir_files = os.listdir(out_dir)
+        outcome_maker = ConversionOutcomeMaker(tempdir, tag)
+        outcome_maker.create_outcome(driver, driver.outcome, outcome_files=out_dir_files)
+
+        content = open(os.path.join(tempdir, outcome_maker.outcome_file), "rb")
+        filename = os.path.basename(outcome_maker.outcome_file)
+        headers = {
+            "Content-Type": "application/gzip",
+            "Content-Disposition": f"attachment; filename={filename}",
+        }
+        return GzipResponse(content, headers=headers, background=closer(content, filename, log_extra))
 
 
 @app.get("/texlive/info")
