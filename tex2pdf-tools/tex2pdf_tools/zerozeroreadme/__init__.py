@@ -1,6 +1,8 @@
 """00README file parsing and handling."""
 
+import glob
 import json
+import logging
 import os
 import typing
 from collections import OrderedDict
@@ -17,11 +19,13 @@ from ..preflight import (
     BibCompiler,
     CompilerSpec,
     EngineType,
+    FileType,
     LanguageType,
     MainProcessSpec,
     OutputType,
     PostProcessType,
     PreflightResponse,
+    PreflightStatusValues,
     ToplevelFile,
     string_to_bool,
 )
@@ -618,3 +622,34 @@ class ZeroZeroReadMe:
     def to_toml(self) -> str:
         """Provide TOML representation of ZZRM."""
         return tomli_w.dumps(self.to_dict())
+
+    def unused_files(self, directory: str, pf: PreflightResponse) -> list[str]:
+        """Return all files that are not listed as being in used but present in directory."""
+        if pf.status.key != PreflightStatusValues.success:
+            raise ZZRMException(f"Preflight failed with status {pf.status.key}")
+        # we assume that the ZZRM self is already updated with the preflight results
+        all_used_file = set()
+        for f in pf.tex_files:
+            if f.filename in self.toplevels:
+                # found a toplevel file
+                all_used_file.add(f.filename)
+                all_used_file.update(f.recursive_collect_files(FileType.tex))
+                all_used_file.update(f.recursive_collect_files(FileType.other))
+                all_used_file.update(f.recursive_collect_files(FileType.bib))
+                all_used_file.update(f.recursive_collect_files(FileType.bbl))
+                all_used_file.update(f.recursive_collect_files(FileType.idx))
+                all_used_file.update(f.recursive_collect_files(FileType.ind))
+        logging.debug(f"ZZRM/PF unused_files: all used files: {all_used_file}")
+        # remove all files that are not detected as being used by preflight
+        # faster options than glob are available, see:
+        # https://stackoverflow.com/questions/18394147/how-to-do-a-recursive-sub-folder-search-and-return-files-in-a-list
+        len_path = len(directory) + 1
+        ret = []
+        zzrm_ignored_files = [fn for fn in self.sources.keys() if self.sources[fn].usage == FileUsageType.ignore]
+        for in_file in glob.glob(f"{directory}/**/*", recursive=True):
+            if os.path.isfile(in_file):
+                bn = in_file[len_path:]
+                if bn not in all_used_file and bn not in zzrm_ignored_files and not bn.lower().startswith("00readme"):
+                    logging.debug(f"ZZRM/PF unused_files: removing {in_file}")
+                    ret.append(bn)
+        return ret
