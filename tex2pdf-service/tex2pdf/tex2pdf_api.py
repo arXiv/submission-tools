@@ -131,6 +131,9 @@ class PreflightVersion(Enum):
 def determine_compilation_system(ts: int | None, texlive_version: int | None) -> str:
     """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
     logger = get_logger()
+    logger.debug("determine_compilation_system: ts=%s texlive_version=%s", ts, texlive_version)
+    logger.debug("determine_compilation_system: TEX2PDF_SCOPES = %s", TEX2PDF_SCOPES)
+    logger.debug("determine_compilation_system: TEX2PDF_KEYS_TO_URLS = %s", TEX2PDF_KEYS_TO_URLS)
     # texlive_version takes priority:
     if texlive_version is not None:
         if str(texlive_version) == TEXLIVE_BASE_RELEASE:
