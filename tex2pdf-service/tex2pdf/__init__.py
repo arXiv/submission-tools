@@ -31,22 +31,61 @@ GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
 TEXLIVE_BASE_RELEASE: str = os.environ.get("TEXLIVE_BASE_RELEASE", "")
 AUTOTEX_BRANCH: str = os.environ.get("AUTOTEX_BRANCH", "")
 
+PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
+PROJECT_NR: int = int(os.environ.get("PROJECT_NR", "0"))
+
 # The default TeX Live version to use for compilation
 # Default is empty, so use the current built-in version.
 TEX2PDF_PROXY_RELEASE = os.environ.get("TEX2PDF_PROXY_RELEASE", "0")
-_DEFAULT_TEX2PDF_SCOPES: str = ""
-TEX2PDF_SCOPES: str = _DEFAULT_TEX2PDF_SCOPES
+TEX2PDF_SCOPES: str = ""
 TEX2PDF_KEYS_TO_URLS: dict[str, str] = {}
 # check whether deployment is a proxy deployment
 # only if TEX2PDF_PROXY_RELEASE is set to 1 we allow for proxy setup
 if TEX2PDF_PROXY_RELEASE == "1":
-    TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", _DEFAULT_TEX2PDF_SCOPES)
     # initialize TEX2PDF_KEYS_TO_URLS from env vars
-    #   TEX2PDF_KEYS_TO_URLS_<key> = <url>
+    #   _TEX2PDF_KEYS_TO_URLS_<key> = <url>
+    _TEX2PDF_KEYS_TO_URLS: dict[str, str] = {}
     for key, value in os.environ.items():
         if key.startswith("TEX2PDF_KEYS_TO_URLS_"):
             url_key = key[len("TEX2PDF_KEYS_TO_URLS_") :]
-            TEX2PDF_KEYS_TO_URLS[url_key] = value
+            _TEX2PDF_KEYS_TO_URLS[url_key] = value
+    if _TEX2PDF_KEYS_TO_URLS:
+        TEX2PDF_KEYS_TO_URLS = _TEX2PDF_KEYS_TO_URLS
+        TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", "")
+    elif PROJECT_NR != 0:
+        # defaults
+        TEX2PDF_KEYS_TO_URLS = {
+            "autotex-te2": f"https://tex2pdf-autotex-te2-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "autotex-te3": f"https://tex2pdf-autotex-te3-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "autotex-tl2009": f"https://tex2pdf-autotex-tl2009-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "autotex-tl2011": f"https://tex2pdf-autotex-tl2011-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "autotex-tl2016": f"https://tex2pdf-autotex-tl2016-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "autotex-tl2020": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "autotex-tl2023": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
+            "tl2023": f"https://tex-to-pdf-2023-{PROJECT_NR}.us-central1.run.app/convert/",
+            "tl2025": f"https://tex-to-pdf-2025-{PROJECT_NR}.us-central1.run.app/convert/",
+        }
+        # TODO how to deal with parallel v1 and v1.5 submissions where we have autotex-tl2023 and tl2023?
+        # Idea to be implemented:
+        # - allow for autotex-XXXX and XXXX in the left part of the scope
+        # - check for presence of autotex-XXXX prefix to distinguish between v1 and v1.5 submissions
+        # - we also need a "auto" variant that uses the ZZRM set version!
+        DEFAULT_SCOPES = (
+            "autotex-te2:1162425600:"
+            "autotex-te3:1262217600:"
+            "autotex-tl2009:1323129600:"
+            "autotex-tl2011:1486670400:"
+            "autotex-tl2016:1601553600:"
+            "autotex-tl2020:1684778400:"
+            "autotex-tl2023,tl2023:1767225600:"
+            "tl2025"
+        )
+        TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", DEFAULT_SCOPES)
+    else:
+        # neither env vars nor project number set, just default to no proxy
+        TEX2PDF_PROXY_RELEASE = "0"
+        TEX2PDF_KEYS_TO_URLS = {}
+        TEX2PDF_SCOPES = ""
 
 
 class CustomJsonFormatter(JsonFormatter):
