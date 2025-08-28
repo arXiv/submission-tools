@@ -1,4 +1,5 @@
 {
+  "comment": 42,
   "process": {
     "compiler": "latex",
     "fontmaps": [
@@ -30,6 +31,5 @@
       "filename": "jackson-5.tex"
     }
   ],
-  "stamp": "no",
-  "spec_version":100
+  "stamp": "no"
 }

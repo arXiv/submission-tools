@@ -30,7 +30,14 @@ from ..preflight import (
 # Version history:
 # - Version 1: everything before introducing the version parameter, but json/yaml/... format
 # - Version 2: added `version` and `texlive_version`
-ZZRM_CURRENT_VERSION: int = 2
+# The above versions are for the old `version` which we ignore now
+# We start with a clean slate and use `spec_version = 1` for the first
+# documented version.
+
+ZZRM_CURRENT_VERSION: int = 1
+
+DEFAULT_ZZRM_COMMENT = """This is the specification file for processing source files for individual arXiv submissions.
+Details on the specification are at https://info.arxiv.org/help/00README.html"""
 
 # 00README extensions
 ZZRM_V1_EXTS: list[str] = [".xxx"]
@@ -144,7 +151,8 @@ class ZeroZeroReadMe:
 
     def __init__(self, dir_or_file: str | None = None, filetype_version: int = 1):
         self.filetype_version: int = filetype_version  # classic 00README.XXX is v1, dict i/o is v2.
-        self.version: int = 1  # we default to version 1 (no version specified in the zzrm file)
+        self.spec_version: int = 1  # default version of the ZZRM specification
+        self._version: int | None = None  # old name of spec_version, kept for consistency check
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
         self.process: MainProcessSpec = MainProcessSpec()
@@ -152,6 +160,7 @@ class ZeroZeroReadMe:
         self.stamp: bool | None = True
         self.nohyperref: bool | None = None
         self.texlive_version: int | None = None
+        self.comment: str | None = None
         if dir_or_file is None:
             return
         elif os.path.isdir(dir_or_file):
@@ -161,9 +170,14 @@ class ZeroZeroReadMe:
         else:
             raise ZZRMFileNotFoundError(f"File {dir_or_file} not found")
 
-    def to_dict(self) -> OrderedDict:
+    def to_dict(self, add_default_comment: bool = True) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
         result: OrderedDict[str, typing.Any] = OrderedDict()
+        if self.comment is None and add_default_comment:
+            self.comment = DEFAULT_ZZRM_COMMENT
+        # The comment should be at the top of the file
+        if self.comment:
+            result["comment"] = self.comment
         result["process"] = self.process.model_dump(exclude_none=True, exclude_defaults=True)
         # the zzrm.process.compiler should be the compiler_string, not the actual object
         if self.process.compiler is not None:
@@ -178,6 +192,7 @@ class ZeroZeroReadMe:
             result["nohyperref"] = self.nohyperref
         if self.texlive_version is not None:
             result["texlive_version"] = self.texlive_version
+        result["spec_version"] = self.spec_version
         return result
 
     def init_from_file(self, file: str) -> None:
@@ -354,10 +369,8 @@ class ZeroZeroReadMe:
         if zzrm:
             self.filetype_version = 2
             self.from_dict(zzrm)
-            # Version consistency check
-            if self.version == 1:
-                if self.texlive_version is not None:
-                    raise ZZRMInvalidFormatError("Version 1 ZZRM with texlive_version set")
+            # Spec checks
+            # for now there are none since we start with spec_version = 1 as the fist public version
 
     def from_dict(self, zzrm: dict) -> None:
         """Initialize a ZZRM from a dictionary."""
@@ -402,16 +415,27 @@ class ZeroZeroReadMe:
                 else:
                     self.nohyperref = string_to_bool(v)
             elif k == "version":
+                # ignore version but keep it for consistency check
                 if isinstance(v, int):
-                    self.version = v
+                    self._version = v
                 elif isinstance(v, str):
                     try:
-                        self.version = int(v)
+                        self._version = int(v)
+                    except ValueError:
+                        # we ignore incorrectly set version
+                        pass
+            elif k == "spec_version" or k == "spec-version":
+                if isinstance(v, int):
+                    self.spec_version = v
+                elif isinstance(v, str):
+                    try:
+                        self.spec_version = int(v)
                     except ValueError:
                         raise ZZRMParseError(f"Invalid version: {v}")
                 # check for proper range of ZZRM version
-                if self.version:
-                    if self.version < 1 or self.version > ZZRM_CURRENT_VERSION:
+                if self.spec_version:
+                    # check version range
+                    if self.spec_version < 1 or self.spec_version > ZZRM_CURRENT_VERSION:
                         raise ZZRMParseError(f"Version number out of range (1-{ZZRM_CURRENT_VERSION}): {v}")
             elif k == "texlive_version" or k == "texlive-version":
                 if isinstance(v, int):
@@ -427,6 +451,10 @@ class ZeroZeroReadMe:
                                 raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
                 else:
                     raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
+            elif k == "comment":
+                # we allow comments in the ZZRM for the sake of links to the info pages with the ZZRM spec
+                # we always convert to string
+                self.comment = str(v)
             else:
                 raise ZZRMParseError(f"Invalid key for 00README: {k}")
 
@@ -596,7 +624,7 @@ class ZeroZeroReadMe:
                 assembly.append(strip_to_basename(fn, ".pdf"))
         return assembly
 
-    def to_yaml(self, output: typing.TextIO) -> typing.TextIO:
+    def to_yaml(self, output: typing.TextIO, add_default_comment: bool = True) -> typing.TextIO:
         """Provide YAML representation of ZZRM."""
         yaml = YAML()
         yaml.representer.add_representer(str, yaml_repr_str)
@@ -608,13 +636,13 @@ class ZeroZeroReadMe:
         yaml.representer.add_representer(FileUsageType, yaml_repr_str)
         yaml.representer.add_representer(OrientationType, yaml_repr_str)
         yaml.representer.add_representer(BibCompiler, yaml_repr_str)
-        yaml.dump(self.to_dict(), output)
+        yaml.dump(self.to_dict(add_default_comment), output)
         return output
 
-    def to_json(self, indent: int | None = 4) -> str:
+    def to_json(self, indent: int | None = 4, add_default_comment: bool = True) -> str:
         """Provide JSON representation of ZZRM."""
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(self.to_dict(add_default_comment), indent=indent)
 
-    def to_toml(self) -> str:
+    def to_toml(self, add_default_comment: bool = True) -> str:
         """Provide TOML representation of ZZRM."""
-        return tomli_w.dumps(self.to_dict())
+        return tomli_w.dumps(self.to_dict(add_default_comment))
