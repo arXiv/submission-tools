@@ -54,6 +54,19 @@ if TEX2PDF_PROXY_RELEASE == "1":
         TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", "")
     elif PROJECT_NR != 0:
         # defaults
+        # AutoTeX has the following definitions for cutover, which we need to duplicate here
+        #           CUTOVER2023  => 1684778400, # Date::Parse::str2time('2023-05-22T18:00', 'GMT')
+        #           CUTOVER2020  => 1601553600, # Date::Parse::str2time('2020-10-01T12:00', 'GMT')
+        #           CUTOVER2016  => 1486670400, # Date::Parse::str2time('2017-02-09T20:00', 'GMT')
+        #           CUTOVER2011  => 1323129600, # Date::Parse::str2time('2011-12-06', 'GMT')
+        #           CUTOVER2009  => 1262217600, # Date::Parse::str2time('2009-12-31', 'GMT')
+        #           CUTOVER2006  => 1162425600, # Date::Parse::str2time('2006-11-02', 'GMT')
+        #           CUTOVER2004  => 1072915200, # Date::Parse::str2time('2004-01-01', 'GMT')
+        #           CUTOVER2003  => 1041379200, # Date::Parse::str2time('2003-01-01', 'GMT')
+        #           CUTOVER2002  => 1030838400, # Date::Parse::str2time('2002-09-01', 'GMT')
+        # where CUTOVER2002/2003/2004 are all for teTeX2 with different TEXMFCNF files
+        #
+        # for tl2025 default for now we used Date::Parse::str2time('2025-09-15T00:00', 'GMT')
         TEX2PDF_KEYS_TO_URLS = {
             "autotex-te2": f"https://tex2pdf-autotex-te2-{PROJECT_NR}.us-central1.run.app/autotex/",
             "autotex-te3": f"https://tex2pdf-autotex-te3-{PROJECT_NR}.us-central1.run.app/autotex/",
@@ -65,11 +78,6 @@ if TEX2PDF_PROXY_RELEASE == "1":
             "tl2023": f"https://tex-to-pdf-2023-{PROJECT_NR}.us-central1.run.app/convert/",
             "tl2025": f"https://tex-to-pdf-2025-{PROJECT_NR}.us-central1.run.app/convert/",
         }
-        # TODO how to deal with parallel v1 and v1.5 submissions where we have autotex-tl2023 and tl2023?
-        # Idea to be implemented:
-        # - allow for autotex-XXXX and XXXX in the left part of the scope
-        # - check for presence of autotex-XXXX prefix to distinguish between v1 and v1.5 submissions
-        # - we also need a "auto" variant that uses the ZZRM set version!
         DEFAULT_SCOPES = (
             "autotex-te2:1162425600:"
             "autotex-te3:1262217600:"
@@ -77,7 +85,7 @@ if TEX2PDF_PROXY_RELEASE == "1":
             "autotex-tl2011:1486670400:"
             "autotex-tl2016:1601553600:"
             "autotex-tl2020:1684778400:"
-            "autotex-tl2023,tl2023:1767225600:"
+            "autotex-tl2023,tl2023:1757894400:"
             "tl2025"
         )
         TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", DEFAULT_SCOPES)

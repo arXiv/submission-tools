@@ -128,7 +128,7 @@ class PreflightVersion(Enum):
     V2 = 2
 
 
-def determine_compilation_system(ts: int | None, texlive_version: int | None) -> str:
+def determine_compilation_system(ts: int | None, texlive_version: int | None, with_zzrm: bool) -> str:
     """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
     logger = get_logger()
     logger.debug("determine_compilation_system: ts=%s texlive_version=%s", ts, texlive_version)
@@ -152,13 +152,16 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
     # and select either local _generate_pdf or remote depending on the
     # time frame
     # Input comes from an environment variable
-    # TEX2PDF_DATE_SCOPES="tetex2:CUTOF1:tetex3:CUTOF1:tl2009:...:CUTOFN:tl2023"
+    # TEX2PDF_DATE_SCOPES="autotex-te2:CUTOF1:autotex-te3:CUTOF1:tl2009:...:CUTOFN:tl2023"
     # with the interpretations:
-    # - submission date < CUTOF1 -> use tetex2
-    # - CUTOF1 <= submission date < CUTOF2 -> use tetex3
+    # - submission date < CUTOF1 -> use autotex-te2
+    # - CUTOF1 <= submission date < CUTOF2 -> use autotex-te3
     # ...
     # - CUTOFEND <= submission date -> use tl2023
     # Format of CUTOVERXXX: epoch seconds!
+    # The entries between the CUTOF ts are comma-separated keys into TEX2PDF_KEYS_TO_URLS
+    # This is necessary since we have times when both tl2023 and autotex-tl2023 were running
+    #
     # all of the following is only necessary if we actually have multiple
     # TeX systems running
     if TEX2PDF_SCOPES != "" and ts is not None:
@@ -169,8 +172,9 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
         # check for correct format and ordering!
         last_date: float = 0
         for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
-            if tex_key not in TEX2PDF_KEYS_TO_URLS.keys():
-                raise ValueError(f"Invalid tex key: {tex_key}")
+            for tex_key_entry in tex_key.split(","):
+                if tex_key_entry not in TEX2PDF_KEYS_TO_URLS.keys():
+                    raise ValueError(f"Invalid tex key: {tex_key_entry}")
             curr_date: float = float(cut_of_day)
             if curr_date < last_date:
                 raise ValueError(f"Invalid scope definition, not increasing time stamps: {scope_list}")
@@ -183,7 +187,28 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None) ->
             logger.debug("Checking submission date against curdate: %s", cut_of_day)
             curr_date = float(cut_of_day)
             if ts < curr_date:
-                tex_system_key = tex_key
+                # we allow for comma-separated keys when autotex and tex2pdf services were used in parallel
+                if "," in tex_key:
+                    # we need to distinguish between v1 and v1.5 submissions
+                    # v1 submissions have keys starting with "autotex-"
+                    # v1.5 submissions have keys without that prefix
+                    tex_key_a, tex_key_b = tex_key.split(",")
+                    if not with_zzrm:
+                        if tex_key_a.startswith("autotex-"):
+                            tex_system_key = tex_key_a
+                        elif tex_key_b.startswith("autotex-"):
+                            tex_system_key = tex_key_b
+                        else:
+                            raise ValueError(f"Invalid tex key for v1 submission: {tex_key}")
+                    else:
+                        if not tex_key_a.startswith("autotex-"):
+                            tex_system_key = tex_key_a
+                        elif not tex_key_b.startswith("autotex-"):
+                            tex_system_key = tex_key_b
+                        else:
+                            raise ValueError(f"Invalid tex key for v1.5 submission: {tex_key}")
+                else:
+                    tex_system_key = tex_key
                 break
         if tex_system_key is None:
             tex_system_key = "current"
@@ -327,7 +352,10 @@ async def convert_pdf(
             # load ZZRM and check whether a texlive version is set
             try:
                 zzrm = ZeroZeroReadMe(in_dir)
-                compile_service = determine_compilation_system(ts, zzrm.texlive_version)
+                # in case there is a zzrm file or we enable auto_detect, we select the new-style system
+                compile_service = determine_compilation_system(
+                    ts, zzrm.texlive_version, (zzrm.readme_filename is not None) or auto_detect
+                )
             except ZZRMException as e:
                 logger.error("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
                 return JSONResponse(
@@ -418,13 +446,26 @@ def _convert_pdf_remote(
                 }
                 logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
                 logger.debug("uploading = %s", uploading, extra=log_extra)
-                res = requests.post(
-                    compile_service,
-                    files=uploading,
-                    timeout=timeout,
-                    allow_redirects=False,
-                    params=args_dict,
-                )
+                try:
+                    res = requests.post(
+                        compile_service,
+                        files=uploading,
+                        timeout=timeout,
+                        allow_redirects=False,
+                        params=args_dict,
+                    )
+                except ConnectionError as e:
+                    logger.warning(
+                        "Failed to submit tarball %s to %s, connection error: %s",
+                        tarball,
+                        compile_service,
+                        e,
+                        extra=log_extra,
+                    )
+                    return JSONResponse(
+                        status_code=422,
+                        content={"message": "Failed to submit tarball: connection error"},
+                    )
                 status_code = res.status_code
                 logger.debug("Received status code %d from POST to %s", status_code, res.url, extra=log_extra)
                 if status_code == 504:
