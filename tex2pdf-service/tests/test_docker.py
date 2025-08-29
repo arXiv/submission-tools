@@ -211,9 +211,10 @@ def docker_container(request):
             [
                 "--network", "host",
                 "--env",     "TEX2PDF_PROXY_RELEASE=1",
-                "--env",     f"TEX2PDF_SCOPES=tl2023:{TL2023_CUTOFF}",
+                "--env",     f"TEX2PDF_SCOPES=tl2023,autotex-tl2023:{TL2023_CUTOFF}",
                 "--env",     f"TEX2PDF_KEYS_TO_URLS_tl2023=http://localhost:{PORT_2023}/convert/",
                 "--env",     f"TEX2PDF_KEYS_TO_URLS_tl2025=http://localhost:{PORT_2025}/convert/",
+                "--env",     "TEX2PDF_KEYS_TO_URLS_autotex-tl2023=http://localhost:9999/no-such-autotex/",
             ],
         )
         # fmt: on
@@ -258,7 +259,7 @@ def test_api_texlive_version_info(docker_container):
     assert response.status_code == 200
     ret = response.json()
     assert ret["version"] == "2024"
-    assert sorted(ret["proxy_version"]) == ["tl2023", "tl2025"]
+    assert sorted(ret["proxy_version"]) == ["autotex-tl2023", "tl2023", "tl2025"]
 
 
 # this test doesn't work with the remote compilation since the status changes from 500 to 400 ???
