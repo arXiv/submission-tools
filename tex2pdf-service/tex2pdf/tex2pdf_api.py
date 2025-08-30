@@ -271,6 +271,13 @@ async def convert_pdf(
             description="Timestamp to determine compilation system.",
         ),
     ] = None,
+    arxivid: typing.Annotated[
+        str | None,
+        Query(
+            title="arXiv or submission ID",
+            description="arXiv identifier (or submission id) to determine compilation system.",
+        ),
+    ] = None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
@@ -395,6 +402,7 @@ async def convert_pdf(
             logger.info("Using RemoteConverterDriver")
             return _convert_pdf_remote(
                 compile_service=compile_service,
+                arxivid=arxivid,
                 tempdir=tempdir,
                 in_dir=in_dir,
                 tag=tag,
@@ -413,6 +421,7 @@ async def convert_pdf(
 
 def _convert_pdf_remote(
     compile_service: str,
+    arxivid: str | None,
     tempdir: str,
     in_dir: str,
     tag: str,
@@ -429,21 +438,29 @@ def _convert_pdf_remote(
 ) -> Response:
     logger = get_logger()
     tarball = os.path.join(tempdir, source)
+    # make sure we have a trailing slash
+    compile_service = compile_service.rstrip("/") + "/"
     with open(tarball, "rb") as data_fd:
         uploading = {"incoming": (source, data_fd, "application/gzip")}
         retries = 2
         for attempt in range(1 + retries):
             try:
-                args_dict = {
-                    "timeout": timeout,
-                    "use_addon_tree": use_addon_tree,
-                    "max_tex_files": max_tex_files,
-                    "max_appending_files": max_appending_files,
-                    "watermark_text": watermark_text,
-                    "watermark_link": watermark_link,
-                    "auto_detect": auto_detect,
-                    "hide_anc_dir": hide_anc_dir,
-                }
+                if compile_service.endswith("convert/"):
+                    args_dict = {
+                        "timeout": timeout,
+                        "use_addon_tree": use_addon_tree,
+                        "max_tex_files": max_tex_files,
+                        "max_appending_files": max_appending_files,
+                        "watermark_text": watermark_text,
+                        "watermark_link": watermark_link,
+                        "auto_detect": auto_detect,
+                        "hide_anc_dir": hide_anc_dir,
+                    }
+                else:
+                    args_dict = {
+                        "timeout": timeout,
+                        "arxivid": arxivid,
+                    }
                 logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
                 logger.debug("uploading = %s", uploading, extra=log_extra)
                 try:
