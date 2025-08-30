@@ -6,6 +6,8 @@ from typing import Any
 
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
+from .service_logger import get_logger
+
 # local_exec is True for running this with IDE, and using the local docker image as command.
 local_exec = os.environ.get("LOCAL_EXEC") == "y"
 
@@ -44,15 +46,24 @@ TEX2PDF_KEYS_TO_URLS: dict[str, str] = {}
 if TEX2PDF_PROXY_RELEASE == "1":
     # initialize TEX2PDF_KEYS_TO_URLS from env vars
     #   _TEX2PDF_KEYS_TO_URLS_<key> = <url>
+    logger = get_logger()
+    logger.debug("Running in proxy mode")
+    logger.debug("Setting up TEX2PDF_KEYS_TO_URLS from environment variables")
     _TEX2PDF_KEYS_TO_URLS: dict[str, str] = {}
     for key, value in os.environ.items():
         if key.startswith("TEX2PDF_KEYS_TO_URLS_"):
             url_key = key[len("TEX2PDF_KEYS_TO_URLS_") :]
             _TEX2PDF_KEYS_TO_URLS[url_key] = value
     if _TEX2PDF_KEYS_TO_URLS:
+        logger.debug("Found TEX2PDF_KEYS_TO_URLS in environment variables")
+        logger.debug("TEX2PDF_KEYS_TO_URLS: %s", _TEX2PDF_KEYS_TO_URLS)
         TEX2PDF_KEYS_TO_URLS = _TEX2PDF_KEYS_TO_URLS
         TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", "")
-    elif PROJECT_NR != 0:
+        logger.debug("TEX2PDF_SCOPES: %s", TEX2PDF_SCOPES)
+    elif PROJECT_NR != "0" and PROJECT_NR != 0:
+        logger.debug("No TEX2PDF_KEYS_TO_URLS found in environment variables")
+        logger.debug("Setting up TEX2PDF_KEYS_TO_URLS with project number %d", PROJECT_NR)
+        # set up TEX2PDF_KEYS_TO_URLS with known keys and project number
         # defaults
         # AutoTeX has the following definitions for cutover, which we need to duplicate here
         #           CUTOVER2023  => 1684778400, # Date::Parse::str2time('2023-05-22T18:00', 'GMT')
@@ -88,7 +99,10 @@ if TEX2PDF_PROXY_RELEASE == "1":
             "autotex-tl2023,tl2023:1757894400"
         )
         TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", DEFAULT_SCOPES)
+        logger.debug("TEX2PDF_KEYS_TO_URLS: %s", TEX2PDF_KEYS_TO_URLS)
+        logger.debug("TEX2PDF_SCOPES: %s", TEX2PDF_SCOPES)
     else:
+        logger.debug("No TEX2PDF_KEYS_TO_URLS found in environment variables and no PROJECT_NR - initialize empty")
         # neither env vars nor project number set, just default to no proxy
         TEX2PDF_PROXY_RELEASE = "0"
         TEX2PDF_KEYS_TO_URLS = {}
