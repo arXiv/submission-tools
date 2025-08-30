@@ -85,8 +85,7 @@ if TEX2PDF_PROXY_RELEASE == "1":
             "autotex-tl2011:1486670400:"
             "autotex-tl2016:1601553600:"
             "autotex-tl2020:1684778400:"
-            "autotex-tl2023,tl2023:1757894400:"
-            "tl2025"
+            "autotex-tl2023,tl2023:1757894400"
         )
         TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", DEFAULT_SCOPES)
     else:
