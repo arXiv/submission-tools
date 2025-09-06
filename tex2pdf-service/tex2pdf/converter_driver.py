@@ -664,7 +664,7 @@ class RemoteConverterDriver(ConverterDriver):
                     meta.update(json.load(json_file))
                 break
         self.outcome = meta
-        # logger.debug("Dumping meta %s", meta)
+        logger.debug("Dumping meta %s", meta)
         logger.debug("Checking for ZZRM")
 
         # we need to get ZZRM
@@ -678,6 +678,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         logger.debug("Directory listing of %s is: %s", self.out_dir, os.listdir(self.out_dir))
 
+        logger.debug("Outcome pdf file: %s", self.outcome.get("pdf_file"))
         return self.outcome.get("pdf_file")
 
 
