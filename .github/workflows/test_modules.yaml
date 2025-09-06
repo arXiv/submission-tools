@@ -46,9 +46,7 @@ jobs:
         cd tex2pdf-tools
         export PYTHONPATH=$PWD
         poetry run pytest tests
-    - name: ruff check
-      run: |
-        cd tex2pdf-tools
-        export PYTHONPATH=$PWD
-        poetry run ruff check .
+    - uses: astral-sh/ruff-action@v3
+    - run: ruff check
+    - run: ruff format --check --diff
 

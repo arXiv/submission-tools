@@ -35,6 +35,7 @@ def serialize_data(data: dict, format: str) -> str:
         case _:
             raise ValueError("Unsupported format. Use 'yaml', 'json', or 'toml'.")
 
+
 def write_readme_file(file_path: str, content: str) -> None:
     """
     Write content to a 00README file.
@@ -255,7 +256,7 @@ class DirectiveManager:
             write_readme_file(new_00readme_path, serialized_data)
 
             print(f"Upgraded to v2 and saved as {new_00readme_path}")
-        except (json.JSONDecodeError, ZZRMInvalidFormatError)  as e:
+        except (json.JSONDecodeError, ZZRMInvalidFormatError) as e:
             raise ValueError(f"Error parsing {new_00readme_path} build directives file: {e}")
 
     def process_directives(self, dest_format: str = "json"):
@@ -268,7 +269,7 @@ class DirectiveManager:
             self.readme_object = zzrm
 
             data = zzrm.to_dict()
-        
+
         except (json.JSONDecodeError, ZZRMInvalidFormatError) as e:
             error_message = f"Error parsing {zzrm_filename} build directives file: {e}"
             raise ValueError(error_message)
