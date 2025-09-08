@@ -662,6 +662,19 @@ class RemoteConverterDriver(ConverterDriver):
             if f.startswith("outcome-") and f.endswith(".json"):
                 with open(os.path.join(self.work_dir, f)) as json_file:
                     meta.update(json.load(json_file))
+                # we cannot directly update meta to what is loaded
+                # since it contains incorrect paths!
+                out_dir = os.path.join(self.work_dir, "out")
+                pdf_files = [fname for fname in os.listdir(out_dir) if fname.endswith(".pdf")]
+                if len(pdf_files) == 0:
+                    logger.warning("Outcome contains no PDF files")
+                    meta["pdf_file"] = None
+                elif len(pdf_files) > 1:
+                    logger.warning("Outcome contains multiple PDF files: %s", pdf_files)
+                    meta["pdf_file"] = None
+                else:
+                    logger.debug(f"Found PDF file: {pdf_files[0]}")
+                    meta["pdf_file"] = pdf_files[0]
                 break
         self.outcome = meta
         # logger.debug("Dumping meta %s", meta)
