@@ -116,8 +116,7 @@ class CustomJsonFormatter(JsonFormatter):
         super().__init__(*args, **kwargs, rename_fields={"levelname": LOG_LEVEL_NAME, "asctime": "time"})
 
     def _perform_rename_log_fields(self, log_record: dict) -> None:
-        if "color_message" in log_record:
-            del log_record["color_message"]
+        log_record.pop("color_message", None)
         for old_field_name, new_field_name in self.rename_fields.items():
             log_field = log_record.get(old_field_name)
             if log_field:

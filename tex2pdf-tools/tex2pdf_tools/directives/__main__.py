@@ -70,12 +70,9 @@ def main():
         parser.error("Arguments --base_dir and --root_dir cannot be used together.")
 
     if args.root_dir and not os.path.exists(args.root_dir):
-        parser.error(
-            f"Arguments root directory does not exist {args.root_dir}"
-        )
+        parser.error(f"Arguments root directory does not exist {args.root_dir}")
 
-    if not args.root_dir and args.base and not os.path.exists(args.base)\
-            and not (args.preflight_file and args.src_dir):
+    if not args.root_dir and args.base and not os.path.exists(args.base) and not (args.preflight_file and args.src_dir):
         # Allow override when both preflight file and src directory are specified.
         parser.error(
             f"Arguments base directory does not exist {args.base}: Use --root_dir or both --base and --identifier."
