@@ -727,6 +727,8 @@ async def autotex_pdf(
     incoming: UploadFile,
     arxivid: typing.Annotated[str | None, Query(title="arXiv ID", description="arXiv identifier")] = None,
     timeout: typing.Annotated[int | None, Query(title="Time out", description="Time out in seconds.")] = None,
+    watermark_text: str | None = None,
+    watermark_link: str | None = None,
 ) -> Response:
     """Get a tarball, and convert to PDF using autotex."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
@@ -785,7 +787,10 @@ async def autotex_pdf(
             except ValueError:
                 pass
             pass
-        driver = AutoTeXConverterDriver(tempdir, filename, tag=arxiv_identifier_id, max_time_budget=timeout_secs)
+        water = Watermark(watermark_text, watermark_link) if watermark_text else None
+        driver = AutoTeXConverterDriver(
+            tempdir, filename, tag=arxiv_identifier_id, max_time_budget=timeout_secs, watermark=water
+        )
         try:
             _pdf_file = driver.generate_pdf()
         except RemovedSubmission:
