@@ -637,12 +637,15 @@ class RemoteConverterDriver(ConverterDriver):
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
         success = service_process_tarball(
             self.service,
-            local_tarball,
+            self.work_dir,
+            tag,
+            self.source,
             outcome_file,
             int(self.max_time_budget),
-            self.post_timeout,
-            self.auto_detect,
-            self.hide_anc_dir,
+            watermark_text=self.water.text,
+            watermark_link=self.water.link,
+            auto_detect=self.auto_detect,
+            hide_anc_dir=self.hide_anc_dir,
         )
 
         if not success:
@@ -691,6 +694,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         logger.debug("Directory listing of %s is: %s", self.out_dir, os.listdir(self.out_dir))
 
+        logger.debug("Outcome pdf file: %s", self.outcome.get("pdf_file"))
         return self.outcome.get("pdf_file")
 
 

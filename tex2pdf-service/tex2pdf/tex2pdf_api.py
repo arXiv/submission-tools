@@ -4,13 +4,11 @@ import os
 import re
 import subprocess
 import tempfile
-import time
 import traceback
 import typing
 from enum import Enum
 from pathlib import Path
 
-import requests
 from arxiv.identifier import Identifier as arXivID
 from arxiv.identifier import IdentifierException
 from fastapi import FastAPI, Query, UploadFile
@@ -39,6 +37,7 @@ from . import (
 from .converter_driver import AutoTeXConverterDriver, ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
 from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
+from .remote_call import convert_pdf_remote
 from .service_logger import get_logger
 from .tarball import (
     RemovedSubmission,
@@ -399,14 +398,13 @@ async def convert_pdf(
                 log_extra=log_extra,
             )
         else:
-            logger.info("Using RemoteConverterDriver")
-            return _convert_pdf_remote(
+            logger.info("Using convert_pdf_remote")
+            status_code, msg = convert_pdf_remote(
                 compile_service=compile_service,
                 arxivid=arxivid,
-                tempdir=tempdir,
-                in_dir=in_dir,
+                output_dir=tempdir,
                 tag=tag,
-                source=filename,
+                source_path=local_tarball,
                 use_addon_tree=use_addon_tree,
                 timeout=timeout_secs,
                 max_tex_files=max_tex_files,
@@ -417,158 +415,15 @@ async def convert_pdf(
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
             )
-
-
-def _convert_pdf_remote(
-    compile_service: str,
-    arxivid: str | None,
-    tempdir: str,
-    in_dir: str,
-    tag: str,
-    source: str,
-    use_addon_tree: bool,
-    timeout: float | None,
-    max_tex_files: int | None,
-    max_appending_files: int | None,
-    watermark_text: str | None = None,
-    watermark_link: str | None = None,
-    auto_detect: bool = False,
-    hide_anc_dir: bool = False,
-    log_extra: dict[str, typing.Any] = {},
-) -> Response:
-    logger = get_logger()
-    tarball = os.path.join(tempdir, source)
-    # make sure we have a trailing slash
-    compile_service = compile_service.rstrip("/") + "/"
-    with open(tarball, "rb") as data_fd:
-        uploading = {"incoming": (source, data_fd, "application/gzip")}
-        retries = 2
-        for attempt in range(1 + retries):
-            try:
-                if compile_service.endswith("convert/"):
-                    args_dict = {
-                        "timeout": timeout,
-                        "use_addon_tree": use_addon_tree,
-                        "max_tex_files": max_tex_files,
-                        "max_appending_files": max_appending_files,
-                        "watermark_text": watermark_text,
-                        "watermark_link": watermark_link,
-                        "auto_detect": auto_detect,
-                        "hide_anc_dir": hide_anc_dir,
-                    }
-                else:
-                    args_dict = {
-                        "timeout": timeout,
-                        "arxivid": arxivid,
-                    }
-                logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
-                logger.debug("uploading = %s", uploading, extra=log_extra)
-                try:
-                    res = requests.post(
-                        compile_service,
-                        files=uploading,
-                        timeout=timeout,
-                        allow_redirects=False,
-                        params=args_dict,
-                    )
-                except ConnectionError as e:
-                    logger.warning(
-                        "Failed to submit tarball %s to %s, connection error: %s",
-                        tarball,
-                        compile_service,
-                        e,
-                        extra=log_extra,
-                    )
-                    return JSONResponse(
-                        status_code=422,
-                        content={"message": "Failed to submit tarball: connection error"},
-                    )
-                status_code = res.status_code
-                logger.debug("Received status code %d from POST to %s", status_code, res.url, extra=log_extra)
-                if status_code == 504:
-                    # This is the only place we retry, and at most 3 times in total.
-                    logger.warning("Got 504 for %s", compile_service, extra=log_extra)
-                    time.sleep(1)
-                    # we need to rewind the data_fd otherwise the next request will send
-                    # an empty file.
-                    data_fd.seek(0)
-                    continue
-
-                # Deal with failures
-                if status_code == 400 or status_code == 422 or status_code == 500:
-                    logger.warning(
-                        "Failed to submit tarball %s to %s, status code: %d, %s",
-                        tarball,
-                        compile_service,
-                        status_code,
-                        res.text,
-                        extra=log_extra,
-                    )
-                    return JSONResponse(
-                        status_code=status_code,
-                        content={"message": f"Failed to submit tarball: {res.text}"},
-                    )
-
-                elif status_code == 200:
-                    # it would be better to forward the streaming response directly to the caller
-                    # one approach is explained here: https://stackoverflow.com/a/73299661
-                    if res.content:
-                        out_filename = f"{tag}-outcome.tar.gz"
-                        out_path = os.path.join(tempdir, out_filename)
-                        with open(out_path, "wb") as out_file:
-                            out_file.write(res.content)
-                        headers = {
-                            "Content-Type": "application/gzip",
-                            "Content-Disposition": f"attachment; filename={out_filename}",
-                        }
-                        content = open(out_path, "rb")
-                        return GzipResponse(content, headers=headers, background=closer(content, source, log_extra))
-                    else:
-                        logger.warning(
-                            "Failed to submit tarball %s to %s, status code: %d, %s",
-                            tarball,
-                            compile_service,
-                            status_code,
-                            res.text,
-                            extra=log_extra,
-                        )
-                        return JSONResponse(
-                            status_code=status_code,
-                            content={"message": f"Failed to submit tarball: {res.text}"},
-                        )
-                else:
-                    logger.warning(
-                        "Unexpected status code %d from %s: %s",
-                        status_code,
-                        compile_service,
-                        res.text,
-                        extra=log_extra,
-                    )
-                    return JSONResponse(
-                        status_code=status_code,
-                        content={"message": f"Unexpected status code: {status_code}"},
-                    )
-
-            except TimeoutError:
-                logger.warning("%s: Connection to %s timed out", tarball, compile_service, extra=log_extra)
-                return JSONResponse(
-                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"message": "Timeout contacting remote service"},
-                )
-            except Exception as exc:
-                logger.warning("Exception submitting tarball: %s", exc, exc_info=True, extra=log_extra)
-                logger.warning("%s: %s", tarball, str(exc), extra=log_extra)
-                return JSONResponse(
-                    status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"message": "General exception: " + traceback.format_exc()},
-                )
-        logger.error(
-            "Failed to submit tarball %s to %s after %d attempts", tarball, compile_service, retries, extra=log_extra
-        )
-        return JSONResponse(
-            status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": "Failed to submit tarball after multiple attempts"},
-        )
+            if status_code == 200:
+                headers = {
+                    "Content-Type": "application/gzip",
+                    "Content-Disposition": f"attachment; filename={os.path.basename(msg)}",
+                }
+                content = open(msg, "rb")
+                return GzipResponse(content, headers=headers, background=closer(content, msg, log_extra))
+            else:
+                return JSONResponse(status_code=status_code, content={"message": msg})
 
 
 def _convert_pdf_current(
