@@ -678,7 +678,7 @@ class RemoteConverterDriver(ConverterDriver):
                     meta["pdf_file"] = pdf_files[0]
                 break
         self.outcome = meta
-        logger.debug("Dumping meta %s", meta)
+        # logger.debug("Dumping meta %s", meta)
         logger.debug("Checking for ZZRM")
 
         # we need to get ZZRM
