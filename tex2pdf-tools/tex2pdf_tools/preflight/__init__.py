@@ -625,9 +625,9 @@ class ParsedTeXFile(BaseModel):
             include_extra2_argument = "{}"
 
         # check for syntactic correctness of arguments/options
-        assert (
-            include_command in INCLUDE_COMMANDS_DICT.keys()
-        ), f"{include_command} not in {INCLUDE_COMMANDS_DICT.keys()}"
+        assert include_command in INCLUDE_COMMANDS_DICT.keys(), (
+            f"{include_command} not in {INCLUDE_COMMANDS_DICT.keys()}"
+        )
         assert include_options.startswith("[")
         assert include_options.endswith("]")
         assert include_argument.startswith("{")

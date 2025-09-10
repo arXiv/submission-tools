@@ -42,7 +42,7 @@ class DiffProfiles:
             removes = [(path, value) for action, path, value in self.diffs if action == "remove"]
             changes = [(path, value) for action, path, value in self.diffs if action == "change"]
 
-            if len(removes):
+            if removes:
                 print("\nOnly in LEFT", file=file)
                 for path, value in removes:
                     for toplevel, rest in value:
@@ -58,7 +58,7 @@ class DiffProfiles:
                         pass
                     pass
 
-            if len(adds):
+            if adds:
                 print("\nOnly in RIGHT", file=file)
                 for path, value in adds:
                     for toplevel, rest in value:
@@ -68,7 +68,7 @@ class DiffProfiles:
                     pass
                 pass
 
-            if len(changes):
+            if changes:
                 print("\nChanged between LEFT and RIGHT", file=file)
                 for path, value in changes:
                     print(f"{path}: {value[0]} --> {value[1]}", file=file)

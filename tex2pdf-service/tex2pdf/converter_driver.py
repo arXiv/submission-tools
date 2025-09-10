@@ -662,6 +662,19 @@ class RemoteConverterDriver(ConverterDriver):
             if f.startswith("outcome-") and f.endswith(".json"):
                 with open(os.path.join(self.work_dir, f)) as json_file:
                     meta.update(json.load(json_file))
+                # we cannot directly update meta to what is loaded
+                # since it contains incorrect paths!
+                out_dir = os.path.join(self.work_dir, "out")
+                pdf_files = [fname for fname in os.listdir(out_dir) if fname.endswith(".pdf")]
+                if len(pdf_files) == 0:
+                    logger.warning("Outcome contains no PDF files")
+                    meta["pdf_file"] = None
+                elif len(pdf_files) > 1:
+                    logger.warning("Outcome contains multiple PDF files: %s", pdf_files)
+                    meta["pdf_file"] = None
+                else:
+                    logger.debug(f"Found PDF file: {pdf_files[0]}")
+                    meta["pdf_file"] = pdf_files[0]
                 break
         self.outcome = meta
         logger.debug("Dumping meta %s", meta)
@@ -685,9 +698,18 @@ class RemoteConverterDriver(ConverterDriver):
 class AutoTeXConverterDriver(ConverterDriver):
     """Uses autotex for conversion."""
 
-    def __init__(self, work_dir: str, source: str, tag: str | None = None, max_time_budget: float | None = None):
+    def __init__(
+        self,
+        work_dir: str,
+        source: str,
+        tag: str | None = None,
+        max_time_budget: float | None = None,
+        watermark: Watermark | None = None,
+    ):
         # Default are all already ok
-        super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
+        super().__init__(
+            work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget, watermark=watermark
+        )
         self.zzrm = ZeroZeroReadMe()
 
     def generate_pdf(self) -> str | None:
@@ -704,6 +726,11 @@ class AutoTeXConverterDriver(ConverterDriver):
         arxivID = self.tag
         # maybe it is already source
         extra_args = ["-b", AUTOTEX_BRANCH] if AUTOTEX_BRANCH else []
+        if self.water:
+            if self.water.text:
+                extra_args += ["-l", self.water.text]
+            if self.water.link:
+                extra_args += ["-L", self.water.link]
         worker_args = [
             "autotex.pl",
             *extra_args,
