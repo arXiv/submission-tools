@@ -697,9 +697,18 @@ class RemoteConverterDriver(ConverterDriver):
 class AutoTeXConverterDriver(ConverterDriver):
     """Uses autotex for conversion."""
 
-    def __init__(self, work_dir: str, source: str, tag: str | None = None, max_time_budget: float | None = None):
+    def __init__(
+        self,
+        work_dir: str,
+        source: str,
+        tag: str | None = None,
+        max_time_budget: float | None = None,
+        watermark: Watermark | None = None,
+    ):
         # Default are all already ok
-        super().__init__(work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget)
+        super().__init__(
+            work_dir, source, use_addon_tree=False, tag=tag, max_time_budget=max_time_budget, watermark=watermark
+        )
         self.zzrm = ZeroZeroReadMe()
 
     def generate_pdf(self) -> str | None:
@@ -716,6 +725,11 @@ class AutoTeXConverterDriver(ConverterDriver):
         arxivID = self.tag
         # maybe it is already source
         extra_args = ["-b", AUTOTEX_BRANCH] if AUTOTEX_BRANCH else []
+        if self.water:
+            if self.water.text:
+                extra_args += ["-l", self.water.text]
+            if self.water.link:
+                extra_args += ["-L", self.water.link]
         worker_args = [
             "autotex.pl",
             *extra_args,
