@@ -402,9 +402,9 @@ async def convert_pdf(
             status_code, msg = convert_pdf_remote(
                 compile_service=compile_service,
                 arxivid=arxivid,
-                tempdir=tempdir,
+                output_dir=tempdir,
                 tag=tag,
-                source=filename,
+                source_path=local_tarball,
                 use_addon_tree=use_addon_tree,
                 timeout=timeout_secs,
                 max_tex_files=max_tex_files,

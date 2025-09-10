@@ -637,10 +637,11 @@ class RemoteConverterDriver(ConverterDriver):
         logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
         success = service_process_tarball(
             self.service,
-            local_tarball,
+            self.work_dir,
+            tag,
+            self.source,
             outcome_file,
             int(self.max_time_budget),
-            self.post_timeout,
             self.auto_detect,
             self.hide_anc_dir,
         )
