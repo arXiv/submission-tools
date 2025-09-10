@@ -642,8 +642,10 @@ class RemoteConverterDriver(ConverterDriver):
             self.source,
             outcome_file,
             int(self.max_time_budget),
-            self.auto_detect,
-            self.hide_anc_dir,
+            watermark_text=self.water.text,
+            watermark_link=self.water.link,
+            auto_detect=self.auto_detect,
+            hide_anc_dir=self.hide_anc_dir,
         )
 
         if not success:

@@ -54,7 +54,7 @@ def convert_pdf_remote(
     :param max_tex_files: maximum number of .tex files allowed to be compiled
     :param max_appending_files: maximum number of files allowed to be appended
     :param watermark_text: optional watermark text to add to the PDF
-    :param watermark_link: optional link for the watermark
+    :param watermark_link: optional watermark link to add to the PDF
     :param auto_detect: whether to auto-detect the main .tex file using preflight
     :param hide_anc_dir: whether to hide the ancillary directory during compilation
     :param log_extra: extra context for logging
@@ -69,14 +69,13 @@ def convert_pdf_remote(
         retries = 2
         for attempt in range(1 + retries):
             try:
+                args_dict: dict[str, typing.Any]
                 if compile_service.endswith("convert/"):
                     args_dict = {
                         "timeout": timeout,
                         "use_addon_tree": use_addon_tree,
                         "max_tex_files": max_tex_files,
                         "max_appending_files": max_appending_files,
-                        "watermark_text": watermark_text,
-                        "watermark_link": watermark_link,
                         "auto_detect": auto_detect,
                         "hide_anc_dir": hide_anc_dir,
                     }
@@ -85,6 +84,10 @@ def convert_pdf_remote(
                         "timeout": timeout,
                         "arxivid": arxivid,
                     }
+                if watermark_text:
+                    args_dict["watermark_text"] = watermark_text
+                    if watermark_link:
+                        args_dict["watermark_link"] = watermark_link
                 logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
                 logger.debug("uploading = %s", uploading, extra=log_extra)
                 try:
@@ -180,6 +183,8 @@ def service_process_tarball(
     tarball: str,
     outcome_file: str,
     post_timeout: int,
+    watermark_text: str | None = None,
+    watermark_link: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
@@ -191,6 +196,8 @@ def service_process_tarball(
     :param tag: tag to use in naming the outcome tarball
     :param tarball: path to the source tarball to submit
     :param outcome_file: path to save the outcome tarball
+    :param watermark_text: optional watermark text to add to the PDF
+    :param watermark_link: optional watermark link to add to the PDF
     :param post_timeout: timeout for the request in seconds
     :param auto_detect: whether to auto-detect the main .tex file using preflight
     :param hide_anc_dir: whether to hide the ancillary directory during compilation
@@ -213,6 +220,8 @@ def service_process_tarball(
         tarball,
         False,
         post_timeout,
+        watermark_text=watermark_text,
+        watermark_link=watermark_link,
         max_tex_files=None,
         max_appending_files=None,
         auto_detect=auto_detect,
