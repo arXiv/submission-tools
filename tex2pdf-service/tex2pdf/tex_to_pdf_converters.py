@@ -263,7 +263,7 @@ class BaseConverter:
         # support SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE set in the environment
         # also make sure we forward TEXMFVAR settings which are set to a session
         # specific directory
-        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE", "TEXMFVAR"]:
+        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE", "TEXMFVAR", "DOCKER_PDFLATEX_IMAGE_NAME"]:
             if os.getenv(senv):
                 cmdenv[senv] = os.getenv(senv, "")  # the "" is only here to placate mypy :-(
         # try detecting incompatible bbl version and adjust TEXMFAUXTREES to make it compile
