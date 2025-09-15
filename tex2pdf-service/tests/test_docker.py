@@ -176,6 +176,11 @@ def _check_docker_api_ready(container_name: str, external_port: int):
         raise RuntimeError(f"API at {container_name} did not start in time")
 
 
+@pytest.fixture(params=[None, TL2023_TS])
+def ts(request):
+    return request.param
+
+
 @pytest.fixture(scope="module")
 def docker_container(request):
     global PORT_2023  # noqa: PLW0603
@@ -275,7 +280,6 @@ def test_api_smoke(docker_container):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_git_hash(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
@@ -289,7 +293,6 @@ def test_api_git_hash(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_test2(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
@@ -303,7 +306,6 @@ def test_api_test2(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_test3(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
@@ -318,7 +320,6 @@ def test_api_test3(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_test4(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
@@ -332,7 +333,6 @@ def test_api_test4(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_test_anc_ignore(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-anc-ignore/test-anc-ignore.tar.gz")
@@ -345,7 +345,6 @@ def test_api_test_anc_ignore(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_test_anc_ignore_no_ancfiles(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
@@ -361,7 +360,6 @@ def test_api_test_anc_ignore_no_ancfiles(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_preflight(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test3/test3.tar.gz")
@@ -412,7 +410,6 @@ def test_remote2023_anc_ignore(docker_container) -> None:
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_missing_graphics(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-img/test-missing-img.tar.gz")
@@ -424,7 +421,6 @@ def test_api_missing_graphics(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_missing_glo(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-missing-glo/test-missing-glo.tar.gz")
@@ -440,7 +436,6 @@ def test_api_missing_glo(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_api_broken_tex(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-broken-tex/test-broken-tex.tar.gz")
@@ -457,7 +452,6 @@ def test_api_broken_tex(docker_container, ts):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_bbl_32(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
@@ -547,7 +541,6 @@ def test_always_changing_labels(docker_container):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("ts", [None, TL2023_TS])
 def test_latex_as_tex_fails(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/latex-as-tex-fails/latex-as-tex-fails.tar.gz")
