@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # bwrap-tex.sh
 set -eu
 
@@ -40,6 +40,33 @@ set -eu
 
 echo "bubblewrapping call $*" >&2
 
+tmpdir=`mktemp -d`
+
+# for TeX Live, we only bind the necessary basic libs
+# TODO we might need some more libs for metafont?
+RO_BIND_TEXLIVE="\
+    --ro-bind /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/libdl.so.2 \
+    --ro-bind /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/libm.so.6 \
+    --ro-bind /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 \
+    --ro-bind /usr/local/texlive/ /usr/local/texlive/ \
+"
+
+# for all other program, that is ps2pdf at the moment, we bind a lot ...
+RO_BIND_BIN="\
+    --ro-bind /lib/x86_64-linux-gnu/ /lib/x86_64-linux-gnu/ \
+    --ro-bind /usr/share/ghostscript/ /usr/share/ghostscript/ \
+    --ro-bind /usr/share/color/icc/ghostscript/ /usr/share/color/icc/ghostscript/ \
+    --ro-bind /etc/paperspecs /etc/paperspects \
+"
+
+CMD="$1"
+FULLPATH_CMD=$(type -p "$CMD")
+case "$FULLPATH_CMD" in
+  /usr/bin/*) RO_BIND="$RO_BIND_BIN" ;;
+  /usr/local/texlive/*) RO_BIND="$RO_BIND_TEXLIVE" ;;
+  *) echo "Unknown location of binary: $FULLPATH_CMD for call $*, exiting." >&2; exit 1 ;;
+esac
+
 bwrap \
     --unshare-all --share-net \
     --new-session \
@@ -47,14 +74,13 @@ bwrap \
     --as-pid-1 \
     --uid 65534 --gid 65534 \
     --cap-drop ALL \
+    --bind $tmpdir /tmp \
     --ro-bind /etc/profile /etc/profile \
     --ro-bind /bin/ /bin/ \
-    --ro-bind /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/libdl.so.2 \
-    --ro-bind /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/libm.so.6 \
-    --ro-bind /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 \
+    --ro-bind /usr/bin/ /usr/bin/ \
     --ro-bind /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 \
     --ro-bind /usr/lib/locale/ /usr/lib/locale/ \
-    --ro-bind /usr/local/texlive/ /usr/local/texlive/ \
+    $RO_BIND \
     --setenv PATH /bin \
     --bind . /home/nobody/work/ \
     --chdir /home/nobody/work/ \

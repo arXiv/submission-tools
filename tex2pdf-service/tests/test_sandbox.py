@@ -45,7 +45,7 @@ def docker_container(request):
 
 
 @pytest.mark.integration
-def test_api_bwrap(docker_container):
+def test_api_bwrap_pdflatex(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test2/test2.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test2.outcome.tar.gz")
@@ -60,3 +60,24 @@ def test_api_bwrap(docker_container):
     assert "bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/pdflatex" in meta["converters"][0]["runs"][
         1
     ].get("stderr")
+
+
+@pytest.mark.integration
+def test_api_latex_dvips_ps2pdf(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test4/test4.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test4.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    assert meta.get("pdf_file") == "test4.pdf"
+    assert meta.get("tex_files") == ["main.tex", "gdp.tex"]
+    assert len(meta.get("converters", [])) == 2
+    assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvi2ps, ps2pdf
+    # fmt: off
+    assert "bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/latex" \
+           in meta["converters"][0]["runs"][1].get("stderr")
+    assert "bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/dvips" \
+           in meta["converters"][0]["runs"][2].get("stderr")
+    assert "bubblewrapping call /usr/bin/ps2pdf" \
+           in meta["converters"][0]["runs"][3].get("stderr")
+    # fmt: on
