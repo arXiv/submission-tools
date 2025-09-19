@@ -67,10 +67,12 @@ case "$FULLPATH_CMD" in
   *) echo "Unknown location of binary: $FULLPATH_CMD for call $*, exiting." >&2; exit 1 ;;
 esac
 
+# we don't need --clearenv since we already clear the environment in the Python code
+# and need some env vars to be passed through (like TEXMFAUXTREES)
+
 bwrap \
     --unshare-all --share-net \
     --new-session \
-    --clearenv \
     --as-pid-1 \
     --uid 65534 --gid 65534 \
     --cap-drop ALL \

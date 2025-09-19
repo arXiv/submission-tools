@@ -11,7 +11,7 @@ SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 @pytest.fixture(scope="module")
 def docker_container(request):
     image_2025_name = "public-tex2pdf-app-2025-2025-08-03"
-    container_2025_name = "test-arxiv-tex2pdf-2025"
+    container_2025_name = "test-arxiv-tex2pdf-2025-sandbox"
 
     if not request.config.getoption("--no-docker-setup"):
         subprocess.call(["docker", "kill", container_2025_name])
@@ -25,12 +25,7 @@ def docker_container(request):
             pass
 
         # for sandboxing support we need gvisor runtime
-        # fmt: off
-        _start_docker_container(
-            image_2025_name, container_2025_name, PORT_DEFAULT,
-            ["--runtime=runsc", "-e", "ENABLE_SANDBOX=1"]
-        )
-        # fmt: on
+        _start_docker_container(image_2025_name, container_2025_name, PORT_DEFAULT)
 
     _check_docker_api_ready(container_2025_name, PORT_DEFAULT)
 

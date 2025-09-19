@@ -56,9 +56,11 @@ def docker_container(request):
         _start_docker_container(image_2023_name, container_2023_name, PORT_2023)
         _start_docker_container(image_2025_name, container_2025_name, PORT_2025)
         # fmt: off
+        # we cannot run the proxy under gvisor since the --network=host
+        # somehow makes the service unavailable
         _start_docker_container(
             image_2024_name, container_2024_name, PORT_DEFAULT,
-            [
+            extra_args=[
                 "--network", "host",
                 "--env",     "TEX2PDF_PROXY_RELEASE=1",
                 "--env",     f"TEX2PDF_SCOPES=tl2023,autotex-tl2023:{TL2023_CUTOFF}",
@@ -66,6 +68,7 @@ def docker_container(request):
                 "--env",     f"TEX2PDF_KEYS_TO_URLS_tl2025=http://localhost:{PORT_2025}/convert/",
                 "--env",     "TEX2PDF_KEYS_TO_URLS_autotex-tl2023=http://localhost:9999/no-such-autotex/",
             ],
+            gvisor=False
         )
         # fmt: on
 

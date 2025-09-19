@@ -134,13 +134,20 @@ def submit_file(
 
 
 def _start_docker_container(
-    image_name: str, container_name: str, external_port: int, extra_args: list[str] = [], internal_port: int = 8080
+    image_name: str,
+    container_name: str,
+    external_port: int,
+    extra_args: list[str] = [],
+    internal_port: int = 8080,
+    gvisor: bool = True,
 ):
     """Start the docker container if it is not already running."""
     # Start the container
+    GVISOR_ARGS = ["--runtime=runsc", "-e", "ENABLE_SANDBOX=1"] if gvisor else []
     # fmt: off
     args = [
         "docker", "run",
+        *GVISOR_ARGS,
         "--security-opt", "no-new-privileges=true",
         "--cpus", "1",
         "--rm", "-d",
