@@ -137,24 +137,19 @@ def _start_docker_container(
 ):
     """Start the docker container if it is not already running."""
     # Start the container
+    # fmt: off
     args = [
-        "docker",
-        "run",
-        "--security-opt",
-        "no-new-privileges=true",
-        "--cpus",
-        "1",
-        "--rm",
-        "-d",
-        "-p",
-        f"{external_port}:{internal_port}",
-        "-e",
-        f"PORT={internal_port}",
+        "docker", "run",
+        "--security-opt", "no-new-privileges=true",
+        "--cpus", "1",
+        "--rm", "-d",
+        "-p", f"{external_port}:{internal_port}",
+        "-e", f"PORT={internal_port}",
         *extra_args,
-        "--name",
-        container_name,
+        "--name", container_name,
         image_name,
     ]
+    # fmt: on
     docker = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
     if docker.returncode != 0:
         logging.error(f"tex2pdf container {container_name} did not start")
@@ -708,3 +703,16 @@ def test_no_bib_processor(docker_container):
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
     assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+
+
+def test_tl2023_on_zzrm_without_texlive_version(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(
+        SELF_DIR, "fixture/tarballs/tl2023-zzrm-without-texlive-version/tl2023-zzrm-without-texlive-version.tar.gz"
+    )
+    outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # since the default proxy is 2024, but we have a ZZRM with no texlive version set
+    # we treat it as TL2023!
+    assert "TeX Live 2023" in meta["converters"][0]["runs"][1].get("log")
