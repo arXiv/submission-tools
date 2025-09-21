@@ -716,3 +716,13 @@ def test_tl2023_on_zzrm_without_texlive_version(docker_container):
     # since the default proxy is 2024, but we have a ZZRM with no texlive version set
     # we treat it as TL2023!
     assert "TeX Live 2023" in meta["converters"][0]["runs"][1].get("log")
+
+
+@pytest.mark.integration
+def test_first_line(docker_container, ts):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/first-line/first-line.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/first-line.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    assert meta is not None
+    assert meta.get("pdf_file") == "first-line.pdf"
