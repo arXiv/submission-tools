@@ -23,7 +23,8 @@ WITH_SHELL_ESCAPE = False
 # -halt-on-error ensures that if an included file is missing, then La(TeX) does not
 #  continue to process the file and produce a PDF, but returns an error.
 # -file-line-error changes the formatting of the error messages
-COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder"]
+# -no-parse-first-line disables the parsing of lines %&latex to specify a format
+COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-no-parse-first-line"]
 # extra latex command line arguments
 EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
 
