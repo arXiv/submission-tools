@@ -295,16 +295,14 @@ class BaseConverter:
                                 logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
                         else:
                             # currently the case for TL2024/TL2025
+                            # we cannot support 3.2 on TL2025, so give a warning.
                             if bbl_version == b"3.3":
                                 logger.debug(
                                     f"bbl version 3.3 found in {TEXLIVE_BASE_RELEASE}, no adjustments necessary",
                                     extra=extra,
                                 )
                             elif bbl_version == b"3.2":
-                                logger.debug("bbl version 3.2 found, activating biblatex extra tree", extra=extra)
-                                cmdenv["TEXMFAUXTREES"] = (
-                                    "/usr/local/texlive/texmf-biblatex-32,"  # we need a final comma!
-                                )
+                                logger.warning("bbl version 3.2 found, this does not work!!!", extra=extra)
                             else:
                                 logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
                     else:
