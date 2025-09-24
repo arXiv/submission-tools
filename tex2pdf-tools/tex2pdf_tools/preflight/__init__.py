@@ -62,7 +62,13 @@ UNICODE_TEX_PACKAGES = ["fontspec", "polyglossia", "unicode-math"]
 
 # we only support 3.2 and 3.3 via the extra tree
 # this needs to be bytes since we read files in byte mode!
-CURRENT_ARXIV_TEX_BBL_VERSIONS = [b"3.2", b"3.3"]
+# We only support two TeX Live versions at each time during submission
+CURRENT_ARXIV_TEX_BBL_VERSIONS = {
+    "2023": [b"3.2", b"3.3"],
+    "2025": [b"3.3"],
+}
+CURRENT_TEXLIVE_VERSION = "2025"
+PREVIOUS_TEXLIVE_VERSION = "2023"
 
 #
 # CLASSES AND TYPES
@@ -410,6 +416,7 @@ class IssueType(str, Enum):
     issue_in_subfile = "issue_in_subfile"
     index_definition_missing = "index_definition_missing"
     bbl_version_mismatch = "bbl_version_mismatch"
+    bbl_version_needs_previous_version = "bbl_version_needs_previous_version"
     bbl_file_missing = "bbl_file_missing"
     bbl_bib_file_missing = "bbl_bib_file_missing"
     multiple_bibliography_types = "multiple_bibliography_types"
@@ -1858,16 +1865,29 @@ def deal_with_bibliographies(
                 else:
                     if head[1].startswith(b"% $ biblatex bbl format version "):
                         bbl_version = head[1].removeprefix(b"% $ biblatex bbl format version ").removesuffix(b" $")
-                        if bbl_version not in CURRENT_ARXIV_TEX_BBL_VERSIONS:
-                            bbl_version_utf8 = bbl_version.decode("utf-8")
-                            good_versions = [x.decode("ascii") for x in CURRENT_ARXIV_TEX_BBL_VERSIONS]
-                            node.issues.append(
-                                TeXFileIssue(
-                                    IssueType.bbl_version_mismatch,
-                                    f"Expected one of {good_versions} but got {bbl_version_utf8}",
-                                    bbl_file,
+                        bbl_version_utf8 = bbl_version.decode("utf-8")
+                        if bbl_version not in CURRENT_ARXIV_TEX_BBL_VERSIONS[CURRENT_TEXLIVE_VERSION]:
+                            # try other releases
+                            if bbl_version in CURRENT_ARXIV_TEX_BBL_VERSIONS[PREVIOUS_TEXLIVE_VERSION]:
+                                node.issues.append(
+                                    TeXFileIssue(
+                                        IssueType.bbl_version_needs_previous_version,
+                                        f"Used bbl version {bbl_version_utf8} is only supported in "
+                                        f"TeX Live {PREVIOUS_TEXLIVE_VERSION}",
+                                        bbl_file,
+                                    )
                                 )
-                            )
+                            else:
+                                good_versions = [
+                                    x.decode("ascii") for x in CURRENT_ARXIV_TEX_BBL_VERSIONS[CURRENT_TEXLIVE_VERSION]
+                                ]
+                                node.issues.append(
+                                    TeXFileIssue(
+                                        IssueType.bbl_version_mismatch,
+                                        f"Expected one of {good_versions} but got {bbl_version_utf8}",
+                                        bbl_file,
+                                    )
+                                )
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
             # TODO this should detect `backend=bibtex` in the biblatex options!
             tl_n.process.bibliography = BibProcessSpec(
