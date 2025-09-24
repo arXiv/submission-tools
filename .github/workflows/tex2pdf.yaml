@@ -12,7 +12,7 @@ on:
 env:
   PROJECT_ID: 'arxiv-development'
   AR_URL: 'gcr.io'
-  SERVICE_ACCOUNT: 'artifact-pull-push@arxiv-development.iam.gserviceaccount.com' 
+  SERVICE_ACCOUNT: 'gha-worker@arxiv-development.iam.gserviceaccount.com'
   WORKLOAD_IDENTITY_PROVIDER: 'projects/874717964009/locations/global/workloadIdentityPools/github/providers/github-actions-provider'
 
 jobs:
