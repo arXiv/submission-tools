@@ -591,6 +591,7 @@ class ParsedTeXFile(BaseModel):
             todore = ARGS_INCLUDE_REGEX.encode("utf-8")
 
         # check for the rest of include commands
+        logging.debug(f"searching for {'only images' if only_images else 'all'} in {self.filename}")
         for i in re.findall(todore, data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             try:
@@ -686,6 +687,7 @@ class ParsedTeXFile(BaseModel):
             for f in include_argument.split(","):
                 file_incspec[f"""tcb{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliographystyle":
+            logging.debug(f"Detected BblType.plain for {self.filename}")
             self._uses_bbl_file_type.add(BblType.plain)
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
             # TODO detect more possible add*resource commands of biblatex
@@ -1301,7 +1303,7 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
-    n.detect_included_files()
+    n.detect_included_files(only_images=only_image)
     logging.debug("parse_file: starting detect_language")
     n.detect_language()
     logging.debug("parse_file: finished parsing")
@@ -1325,6 +1327,7 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     # files = os.listdir(rundir)
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
+    logging.debug(f"Detected files for {rundir} = {tex_files}")
     if not tex_files:
         # we didn't find any tex file, check for a single PDF file
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
@@ -1348,7 +1351,9 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
                         maybe_files,
                     )
     only_image_files = [t for t in files if os.path.splitext(t)[1].lower() in ONLY_IMAGE_PARSE_FILE_EXTENSIONS]
+    logging.debug(f"First round of tex file parsing: {tex_files}")
     nodes = {f: parse_file(rundir, f) for f in tex_files}
+    logging.debug(f"Second round of tex file parsing (only_image=True): {only_image_files}")
     nodes_imgs = {f: parse_file(rundir, f, only_image=True) for f in only_image_files}
     nodes.update(nodes_imgs)
     # print(nodes)
