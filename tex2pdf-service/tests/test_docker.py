@@ -447,11 +447,11 @@ def test_api_broken_tex(docker_container, ts):
 
 
 @pytest.mark.integration
-def test_bbl_32(docker_container, ts):
+def test_bbl_32_2023(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": TL2023_TS})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-32.pdf"
     assert len(meta.get("converters", [])) == 1
@@ -480,10 +480,10 @@ def test_bbl_32_2024(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32-2024.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
-    assert meta.get("pdf_file") == "test-bbl-32.pdf"
+    # generation should fail because a bbl file vers 3.2 is uploaded, which should trigger an error
+    assert meta.get("pdf_file") is None
     assert len(meta.get("converters", [])) == 1
-    assert len(meta["converters"][0]["runs"]) == 3
-    assert "/usr/local/texlive/texmf-biblatex-32" in meta["converters"][0]["runs"][2].get("log")
+    assert len(meta["converters"][0]["runs"]) == 2  # we fail in the second run
 
 
 @pytest.mark.integration
