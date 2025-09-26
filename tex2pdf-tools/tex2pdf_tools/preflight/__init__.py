@@ -471,6 +471,11 @@ class ParsedTeXFile(BaseModel):
         # we check for \bye first, so that if a file contains both
         # \documentclass and \bye (which is a syntax error!)
         logging.debug("Detecting language for: %s", self.filename)
+        if self.filename.endswith(".cls") or self.filename.endswith(".clo"):
+            self.language = LanguageType.latex
+            # don't do more parsing here, in particular for \pdfoutput etc
+            # which is often \if...ed and then fails
+            return
         self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
             logging.debug("Found .sty, setting language to latex")
@@ -591,6 +596,7 @@ class ParsedTeXFile(BaseModel):
             todore = ARGS_INCLUDE_REGEX.encode("utf-8")
 
         # check for the rest of include commands
+        logging.debug(f"searching for {'only images' if only_images else 'all'} in {self.filename}")
         for i in re.findall(todore, data, re.MULTILINE | re.VERBOSE):
             logging.debug("%s regex found %s", self.filename, i)
             try:
@@ -686,6 +692,7 @@ class ParsedTeXFile(BaseModel):
             for f in include_argument.split(","):
                 file_incspec[f"""tcb{f.strip().strip('"')}.code.tex"""] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliographystyle":
+            logging.debug(f"Detected BblType.plain for {self.filename}")
             self._uses_bbl_file_type.add(BblType.plain)
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
             # TODO detect more possible add*resource commands of biblatex
@@ -1301,7 +1308,7 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
-    n.detect_included_files()
+    n.detect_included_files(only_images=only_image)
     logging.debug("parse_file: starting detect_language")
     n.detect_language()
     logging.debug("parse_file: finished parsing")
@@ -1325,6 +1332,7 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     # files = os.listdir(rundir)
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
+    logging.debug(f"Detected files for {rundir} = {tex_files}")
     if not tex_files:
         # we didn't find any tex file, check for a single PDF file
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
@@ -1348,7 +1356,9 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
                         maybe_files,
                     )
     only_image_files = [t for t in files if os.path.splitext(t)[1].lower() in ONLY_IMAGE_PARSE_FILE_EXTENSIONS]
+    logging.debug(f"First round of tex file parsing: {tex_files}")
     nodes = {f: parse_file(rundir, f) for f in tex_files}
+    logging.debug(f"Second round of tex file parsing (only_image=True): {only_image_files}")
     nodes_imgs = {f: parse_file(rundir, f, only_image=True) for f in only_image_files}
     nodes.update(nodes_imgs)
     # print(nodes)
@@ -1679,6 +1689,7 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
 
         # check all other files
         all_other = tl_n.recursive_collect_files(FileType.other)
+        logging.debug("Guess image types: files = %s", all_other)
         pdftex_exts = set(IMAGE_EXTENSIONS["pdftex"].split())
         dvips_exts = set(IMAGE_EXTENSIONS["dvips"].split())
         luatex_exts = set(IMAGE_EXTENSIONS["luatex"].split())
@@ -1686,6 +1697,7 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         all_exts = pdftex_exts | dvips_exts | luatex_exts | dvipdfmx_exts
         driver_paths = {"pdftex", "dvips", "dvipdfmx", "luatex"}
         for fn in all_other:
+            logging.debug("before discarding drivers, drive_paths = %s, fn = %s", driver_paths, fn)
             _, ext = os.path.splitext(fn)
             f_ext = ext[1:].lower()
             # if an extension is not supported by at least one engine,
@@ -1701,13 +1713,16 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                 driver_paths.discard("dvipdfmx")
             if f_ext not in luatex_exts:
                 driver_paths.discard("luatex")
+            logging.debug("after discarding drivers, drive_paths = %s, fn = %s", driver_paths, fn)
         if not driver_paths:
             issues.append(TeXFileIssue(IssueType.conflicting_engine_type, "included images force conflicting engines"))
 
+        logging.debug("Starting candidate_compiler updates: %s", candidate_compilers)
         if "luatex" not in driver_paths:
             candidate_compilers.difference_update(
                 set([c.compiler_string for c in ALL_COMPILERS if c.engine == EngineType.luatex])
             )
+        logging.debug("After luatex candidate_compiler updates: %s", candidate_compilers)
         if "dvipdfmx" not in driver_paths:
             candidate_compilers.difference_update(
                 set(
@@ -1718,10 +1733,12 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                     ]
                 )
             )
+        logging.debug("After dvipdmx candidate_compiler updates: %s", candidate_compilers)
         if "dvips" not in driver_paths:
             candidate_compilers.difference_update(
                 set([c.compiler_string for c in ALL_COMPILERS if c.postp == PostProcessType.dvips_ps2pdf])
             )
+        logging.debug("After dvips candidate_compiler updates: %s", candidate_compilers)
         if "pdftex" not in driver_paths:
             candidate_compilers.difference_update(
                 set(
@@ -1732,6 +1749,7 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                     ]
                 )
             )
+        logging.debug("After pdftex (end) candidate_compiler updates: %s", candidate_compilers)
 
         lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
 
