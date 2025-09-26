@@ -471,6 +471,11 @@ class ParsedTeXFile(BaseModel):
         # we check for \bye first, so that if a file contains both
         # \documentclass and \bye (which is a syntax error!)
         logging.debug("Detecting language for: %s", self.filename)
+        if self.filename.endswith(".cls") or self.filename.endswith(".clo"):
+            self.language = LanguageType.latex
+            # don't do more parsing here, in particular for \pdfoutput etc
+            # which is often \if...ed and then fails
+            return
         self.language = LanguageType.unknown
         if self.filename.endswith(".sty"):
             logging.debug("Found .sty, setting language to latex")
@@ -1684,6 +1689,7 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
 
         # check all other files
         all_other = tl_n.recursive_collect_files(FileType.other)
+        logging.debug("Guess image types: files = %s", all_other)
         pdftex_exts = set(IMAGE_EXTENSIONS["pdftex"].split())
         dvips_exts = set(IMAGE_EXTENSIONS["dvips"].split())
         luatex_exts = set(IMAGE_EXTENSIONS["luatex"].split())
@@ -1691,6 +1697,7 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
         all_exts = pdftex_exts | dvips_exts | luatex_exts | dvipdfmx_exts
         driver_paths = {"pdftex", "dvips", "dvipdfmx", "luatex"}
         for fn in all_other:
+            logging.debug("before discarding drivers, drive_paths = %s, fn = %s", driver_paths, fn)
             _, ext = os.path.splitext(fn)
             f_ext = ext[1:].lower()
             # if an extension is not supported by at least one engine,
@@ -1706,13 +1713,16 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                 driver_paths.discard("dvipdfmx")
             if f_ext not in luatex_exts:
                 driver_paths.discard("luatex")
+            logging.debug("after discarding drivers, drive_paths = %s, fn = %s", driver_paths, fn)
         if not driver_paths:
             issues.append(TeXFileIssue(IssueType.conflicting_engine_type, "included images force conflicting engines"))
 
+        logging.debug("Starting candidate_compiler updates: %s", candidate_compilers)
         if "luatex" not in driver_paths:
             candidate_compilers.difference_update(
                 set([c.compiler_string for c in ALL_COMPILERS if c.engine == EngineType.luatex])
             )
+        logging.debug("After luatex candidate_compiler updates: %s", candidate_compilers)
         if "dvipdfmx" not in driver_paths:
             candidate_compilers.difference_update(
                 set(
@@ -1723,10 +1733,12 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                     ]
                 )
             )
+        logging.debug("After dvipdmx candidate_compiler updates: %s", candidate_compilers)
         if "dvips" not in driver_paths:
             candidate_compilers.difference_update(
                 set([c.compiler_string for c in ALL_COMPILERS if c.postp == PostProcessType.dvips_ps2pdf])
             )
+        logging.debug("After dvips candidate_compiler updates: %s", candidate_compilers)
         if "pdftex" not in driver_paths:
             candidate_compilers.difference_update(
                 set(
@@ -1737,6 +1749,7 @@ def guess_compilation_parameters(toplevel_files: dict[str, ToplevelFile], nodes:
                     ]
                 )
             )
+        logging.debug("After pdftex (end) candidate_compiler updates: %s", candidate_compilers)
 
         lang: LanguageType = LanguageType.tex if found_language == LanguageType.unknown else found_language
 
