@@ -6,8 +6,12 @@ name: Tex2PDF Python application
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - 'tex2pdf-service/**'
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'tex2pdf-service/**'
 
 env:
   PROJECT_ID: 'arxiv-development'
