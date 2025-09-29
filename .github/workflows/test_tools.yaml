@@ -6,8 +6,12 @@ name: Submission Tools Test
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - 'tex2pdf-tools/**'
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'tex2pdf-tools/**'
 
 jobs:
   build:
