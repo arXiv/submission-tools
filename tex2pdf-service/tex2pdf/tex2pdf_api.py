@@ -129,26 +129,33 @@ class PreflightVersion(Enum):
     V2 = 2
 
 
-def determine_compilation_system(ts: int | None, texlive_version: int | None, with_zzrm: bool) -> str:
+def determine_compilation_system(ts: int | None, zzrm: ZeroZeroReadMe, auto_detect: bool) -> str:
     """Determine the compilation system based on TEX2PDF_SCOPES and the given arXiv ID."""
     logger = get_logger()
-    logger.debug("determine_compilation_system: ts=%s texlive_version=%s", ts, texlive_version)
+    logger.debug("determine_compilation_system: ts=%s texlive_version=%s", ts, zzrm.texlive_version)
     logger.debug("determine_compilation_system: TEX2PDF_SCOPES = %s", TEX2PDF_SCOPES)
     logger.debug("determine_compilation_system: TEX2PDF_KEYS_TO_URLS = %s", TEX2PDF_KEYS_TO_URLS)
     # texlive_version takes priority:
-    if texlive_version is not None:
-        if str(texlive_version) == TEXLIVE_BASE_RELEASE:
+    if zzrm.texlive_version is not None:
+        if str(zzrm.texlive_version) == TEXLIVE_BASE_RELEASE:
             # the requested version is the one included in the current docker image
             return "current"
         # if we have a texlive version, we can use it to determine the
         # compilation system.
         # We assume that our keys are called "tl2025" etc
-        tlver = f"tl{texlive_version}"
-        logger.debug("Using texlive version %s to determine compilation system", texlive_version)
+        tlver = f"tl{zzrm.texlive_version}"
+        logger.debug("Using texlive version %s to determine compilation system", zzrm.texlive_version)
         if tlver in TEX2PDF_KEYS_TO_URLS:
             return TEX2PDF_KEYS_TO_URLS[tlver]
         else:
             raise ValueError(f"Undefined TeX Live version requested in ZZRM: {tlver}")
+    # if we do have a ZZRM file submitted, it must be from the time when
+    # texlive_version was not saved into the ZZRM, and thus TL2023 was used.
+    if zzrm.readme_filename is not None and zzrm.texlive_version is None:
+        if "tl2023" in TEX2PDF_KEYS_TO_URLS:
+            return TEX2PDF_KEYS_TO_URLS["tl2023"]
+        else:
+            raise ValueError("TeX Live version 2023 requested implicitly in ZZRM but not defined")
     # we need to look into identifier
     # and select either local _generate_pdf or remote depending on the
     # time frame
@@ -184,6 +191,8 @@ def determine_compilation_system(ts: int | None, texlive_version: int | None, wi
         if ts is None:
             return "current"
         tex_system_key: str | None = None
+        # We are acting under zzrm when either the file is given or auto detection activated
+        with_zzrm = zzrm.readme_filename is not None or auto_detect
         for tex_key, cut_of_day in [scope_list[i : i + 2] for i in range(len(scope_list))[::2]]:
             logger.debug("Checking submission date against curdate: %s", cut_of_day)
             curr_date = float(cut_of_day)
@@ -360,10 +369,7 @@ async def convert_pdf(
             # load ZZRM and check whether a texlive version is set
             try:
                 zzrm = ZeroZeroReadMe(in_dir)
-                # in case there is a zzrm file or we enable auto_detect, we select the new-style system
-                compile_service = determine_compilation_system(
-                    ts, zzrm.texlive_version, (zzrm.readme_filename is not None) or auto_detect
-                )
+                compile_service = determine_compilation_system(ts, zzrm, auto_detect)
             except ZZRMException as e:
                 logger.error("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
                 return JSONResponse(

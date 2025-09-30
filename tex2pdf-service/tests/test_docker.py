@@ -300,11 +300,11 @@ def test_api_broken_tex(docker_container, ts):
 
 
 @pytest.mark.integration
-def test_bbl_32(docker_container, ts):
+def test_bbl_32_2023(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": TL2023_TS})
     assert meta is not None
     assert meta.get("pdf_file") == "test-bbl-32.pdf"
     assert len(meta.get("converters", [])) == 1
@@ -333,10 +333,10 @@ def test_bbl_32_2024(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32-2024.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
-    assert meta.get("pdf_file") == "test-bbl-32.pdf"
+    # generation should fail because a bbl file vers 3.2 is uploaded, which should trigger an error
+    assert meta.get("pdf_file") is None
     assert len(meta.get("converters", [])) == 1
-    assert len(meta["converters"][0]["runs"]) == 3
-    assert "/usr/local/texlive/texmf-biblatex-32" in meta["converters"][0]["runs"][2].get("log")
+    assert len(meta["converters"][0]["runs"]) == 2  # we fail in the second run
 
 
 @pytest.mark.integration
@@ -556,3 +556,26 @@ def test_no_bib_processor(docker_container):
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
     assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+
+
+def test_tl2023_on_zzrm_without_texlive_version(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(
+        SELF_DIR, "fixture/tarballs/tl2023-zzrm-without-texlive-version/tl2023-zzrm-without-texlive-version.tar.gz"
+    )
+    outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert meta is not None
+    # since the default proxy is 2024, but we have a ZZRM with no texlive version set
+    # we treat it as TL2023!
+    assert "TeX Live 2023" in meta["converters"][0]["runs"][1].get("log")
+
+
+@pytest.mark.integration
+def test_first_line(docker_container, ts):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/first-line/first-line.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/first-line.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
+    assert meta is not None
+    assert meta.get("pdf_file") == "first-line.pdf"

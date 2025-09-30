@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import re
 import shlex
 import subprocess
 import time
@@ -33,7 +34,8 @@ WITH_SHELL_ESCAPE = False
 # -halt-on-error ensures that if an included file is missing, then La(TeX) does not
 #  continue to process the file and produce a PDF, but returns an error.
 # -file-line-error changes the formatting of the error messages
-COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder"]
+# -no-parse-first-line disables the parsing of lines %&latex to specify a format
+COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-no-parse-first-line"]
 # extra latex command line arguments
 EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
 
@@ -191,6 +193,8 @@ class BaseConverter:
                 logger.debug("Second or later run has error exit code, failing")
                 name = run[base_format]["name"]
                 artifact_file = os.path.join(in_dir, name)
+                # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                # believes all is fine and continues with success!
                 if os.path.exists(artifact_file):
                     logger.debug("Output %s deleted due to failed run", name)
                     os.unlink(artifact_file)
@@ -214,6 +218,24 @@ class BaseConverter:
                         else:
                             status = "fail"
             for line in run["log"].splitlines():
+                if biblatex_format_needle.search(line):
+                    name = run[base_format]["name"]
+                    artifact_file = os.path.join(in_dir, name)
+                    # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                    # believes all is fine and continues with success!
+                    if os.path.exists(artifact_file):
+                        logger.debug("Output %s deleted due to failed run", name)
+                        os.unlink(artifact_file)
+                        run[base_format] = file_props(artifact_file)
+                    outcome.update(
+                        {
+                            "status": "fail",
+                            "step": step,
+                            "reason": "BibLaTeX version and bbl file version conflict",
+                            "runs": self.runs,
+                        }
+                    )
+                    return outcome
                 if line.find(rerun_needle) >= 0:
                     # Need retry
                     logger.debug("Found rerun needle")
@@ -304,16 +326,14 @@ class BaseConverter:
                                 logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
                         else:
                             # currently the case for TL2024/TL2025
+                            # we cannot support 3.2 on TL2025, so give a warning.
                             if bbl_version == b"3.3":
                                 logger.debug(
                                     f"bbl version 3.3 found in {TEXLIVE_BASE_RELEASE}, no adjustments necessary",
                                     extra=extra,
                                 )
                             elif bbl_version == b"3.2":
-                                logger.debug("bbl version 3.2 found, activating biblatex extra tree", extra=extra)
-                                cmdenv["TEXMFAUXTREES"] = (
-                                    "/usr/local/texlive/texmf-biblatex-32,"  # we need a final comma!
-                                )
+                                logger.warning("bbl version 3.2 found, this does not work!!!", extra=extra)
                             else:
                                 logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
                     else:
@@ -552,6 +572,7 @@ bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
 bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
 rerun_needle = "Rerun to get cross-references right."
+biblatex_format_needle = re.compile("Package biblatex Warning: File '.*' is wrong format version - expected")
 
 
 class BaseDviConverter(BaseConverter):

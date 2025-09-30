@@ -349,7 +349,8 @@ class TestPreflight(unittest.TestCase):
         self.assertTrue(tf.process.bibliography.pre_generated)
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
-        self.assertEqual(len(tf.issues), 0)
+        self.assertEqual(len(tf.issues), 1)
+        self.assertEqual(tf.issues[0].key, IssueType.bbl_version_needs_previous_version)
 
     def test_biber_good_version_33(self):
         """Test bbl version not matching arXiv TeX version."""
