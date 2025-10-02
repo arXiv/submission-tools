@@ -34,6 +34,8 @@ set -eu
 
 # does not work directly:
 # - fails with network -> add --share-net
+#	this is due to bubblewrap originally trying to call setup_loopback()
+#	the bwrap binary we use have this call disabled!
 # - fails with 
 #	bwrap: Can't make overlay mount on /newroot/home/nobody/work/ with options upperdir=/tmp-overlay-upper-0,workdir=/tmp-overlay-work-0,lowerdir=/oldroot/home/worker,userxattr: Invalid argument
 #   on overlays, so use bind-mont
@@ -71,7 +73,7 @@ esac
 # and need some env vars to be passed through (like TEXMFAUXTREES)
 
 bwrap \
-    --unshare-all --share-net \
+    --unshare-all \
     --new-session \
     --as-pid-1 \
     --uid 65534 --gid 65534 \
