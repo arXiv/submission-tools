@@ -50,6 +50,7 @@ RUN poetry install --without=dev
 
 FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE
+ARG GIT_COMMIT_HASH
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -69,6 +70,8 @@ ENV PYTHONUNBUFFERED=1 \
 COPY texlive/common/texmf.cnf /usr/local/texlive/${TEXLIVE_BASE_RELEASE}/
 
 COPY --from=arxiv-texlive-builder $WORKER_HOME $WORKER_HOME
+
+COPY bin/bwrap-tex.sh /usr/local/bin/bwrap-tex.sh
 
 # -M don't create home since we copied it above
 RUN useradd -M -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
