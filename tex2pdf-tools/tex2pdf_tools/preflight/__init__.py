@@ -23,11 +23,19 @@ from pydantic import BaseModel, Field
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
 
+
+def env_flag(env_var: str, default: bool = False) -> bool:
+    environ_string = os.environ.get(env_var, "").strip().lower()
+    if not environ_string:
+        return default
+    return environ_string in ["1", "true", "yes", "on", "y"]
+
+
 # Feature flag style: enable features via environment variables
-ENABLE_BIB_BBL: bool = bool(os.environ.get("ENABLE_BIB_BBL", ""))
-ENABLE_PDFETEX: bool = bool(os.environ.get("ENABLE_PDFETEX", ""))
-ENABLE_XELATEX: bool = bool(os.environ.get("ENABLE_XELATEX", ""))
-ENABLE_LUALATEX: bool = bool(os.environ.get("ENABLE_LUALATEX", ""))
+ENABLE_BIB_BBL: bool = env_flag("ENABLE_BIB_BBL")
+ENABLE_PDFETEX: bool = env_flag("ENABLE_PDFETEX")
+ENABLE_XELATEX: bool = env_flag("ENABLE_XELATEX")
+ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 MODULE_PATH = os.path.dirname(__file__)
 
