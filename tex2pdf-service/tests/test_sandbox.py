@@ -100,3 +100,24 @@ def test_basic_compilers(docker_container, compiler):
     assert f"bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/{bin_prog}" \
            in meta["converters"][0]["runs"][1].get("stderr")
     # fmt: on
+
+
+@pytest.mark.integration
+def test_mktextfm(docker_container):
+    """Test that LaTeX compilation triggers mktextfm for custom font metrics."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-mktextfm/test-mktextfm.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-mktextfm.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert meta is not None
+    assert status == 200
+    assert meta.get("pdf_file") == "test-mktextfm.pdf"
+    assert meta.get("status") == "success"
+    # Check that mktextfm was called in the log
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 4
+    log = meta["converters"][0]["runs"][0].get("stderr", "")
+    # this fails, the LaTeX code does not force mf-tfm-pk generation
+    # due to the presence of type1 fonts
+    # we probably need some cyrillic font
+    assert "mktextfm" in log
