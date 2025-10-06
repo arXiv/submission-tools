@@ -52,9 +52,10 @@ def test_api_bwrap_pdflatex(docker_container):
     # autotex says that the documents are combined alphabetically
     assert meta.get("documents") == ["out/fake-file-2.pdf"]
     # make sure we did run bubblewrap!
-    assert "bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/pdflatex" in meta["converters"][0]["runs"][
-        1
-    ].get("stderr")
+    # fmt: off
+    assert "bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/pdflatex" \
+           in meta["converters"][0]["runs"][1].get("stderr")
+    # fmt: on
 
 
 @pytest.mark.integration
@@ -75,4 +76,27 @@ def test_api_latex_dvips_ps2pdf(docker_container):
            in meta["converters"][0]["runs"][2].get("stderr")
     assert "bubblewrapping call /usr/bin/ps2pdf" \
            in meta["converters"][0]["runs"][3].get("stderr")
+    # fmt: on
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("compiler", ["pdftex", "xelatex", "lualatex"])
+def test_basic_compilers(docker_container, compiler):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, f"fixture/tarballs/{compiler}-basic/{compiler}-basic.tar.gz")
+    outcome = os.path.join(SELF_DIR, f"output/{compiler}-basic.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome)
+    if status != 200:
+        print(meta)
+    assert status == 200
+    assert meta is not None
+    assert meta.get("pdf_file") == f"{compiler}-basic.pdf"
+    assert meta.get("tex_files") == ["main.tex"]
+    bin_prog = "pdfetex" if compiler == "pdftex" else compiler
+    assert meta.get("converter").startswith(bin_prog)
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 2  # compiler, compiler
+    # fmt: off
+    assert f"bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/{bin_prog}" \
+           in meta["converters"][0]["runs"][1].get("stderr")
     # fmt: on

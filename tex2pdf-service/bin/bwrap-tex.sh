@@ -47,9 +47,7 @@ tmpdir=`mktemp -d`
 # for TeX Live, we only bind the necessary basic libs
 # TODO we might need some more libs for metafont?
 RO_BIND_TEXLIVE="\
-    --ro-bind /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/libdl.so.2 \
-    --ro-bind /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/libm.so.6 \
-    --ro-bind /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 \
+    --ro-bind /lib/x86_64-linux-gnu/ /lib/x86_64-linux-gnu/ \
     --ro-bind /usr/local/texlive/ /usr/local/texlive/ \
 "
 
@@ -85,6 +83,7 @@ bwrap \
     --ro-bind /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 \
     --ro-bind /usr/lib/locale/ /usr/lib/locale/ \
     $RO_BIND \
+    --bind /dev/null /dev/null \
     --setenv PATH /bin \
     --bind . /home/nobody/work/ \
     --chdir /home/nobody/work/ \
