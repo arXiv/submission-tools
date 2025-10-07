@@ -48,6 +48,23 @@ HTML_SUBMISSION_STRING = "html_submission"
 # packages that require unicode tex (xetex, luatex)
 UNICODE_TEX_PACKAGES = ["fontspec", "polyglossia", "unicode-math"]
 
+# Pre-compiled regex patterns for performance optimization
+# These patterns are used frequently during TeX file parsing
+_RE_BYE = re.compile(rb"^[^%\n]*\\bye(?![a-zA-Z])", re.MULTILINE)
+_RE_DOCUMENTCLASS = re.compile(rb"^[^%\n]*\\documentclass[^a-zA-Z]", re.MULTILINE)
+_RE_DOCUMENTSTYLE = re.compile(rb"^[^%\n]*\\documentstyle[^a-zA-Z]", re.MULTILINE)
+_RE_PDFOUTPUT_1 = re.compile(rb"^[^%\n]*\\pdfoutput\s*=\s*1", re.MULTILINE)
+_RE_PDFOUTPUT_0 = re.compile(rb"^[^%\n]*\\pdfoutput\s*=\s*0", re.MULTILINE)
+_RE_COMMENT = re.compile(rb"(?<!\\)%.*\n")
+_RE_INPUT = re.compile(rb"\\input\s+([-a-zA-Z0-9._]+)")
+_RE_GRAPHICSPATH = re.compile(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", re.MULTILINE)
+_RE_BRACE_GROUP = re.compile(rb"{([^}]*)}")
+_RE_ADDPLOT = re.compile(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", re.MULTILINE)
+_RE_OVERPIC = re.compile(r"begin\s*{\s*overpic\s*}")
+_RE_MACRO_ARG = re.compile(r"#[1-9]")
+_RE_COMMENT_STR = re.compile(r"%.*$", re.MULTILINE)
+_RE_LINE_ENDING = re.compile(rb"\r\n|\r|\n")
+
 # Version of the bbl file that is created by biber in the
 # current version of arxiv tex
 # TL2025
@@ -491,10 +508,10 @@ class ParsedTeXFile(BaseModel):
         # this is too dangerous, several plain tex macro packages define \section or \chapter
         # if re.search(rb"^[^%\n]*(\\text(bf|it|sl)|\\section|\\chapter)", self._data, re.MULTILINE):
         #    self.language = LanguageType.latex
-        if re.search(rb"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
+        if _RE_BYE.search(self._data):
             self.language = LanguageType.tex
             self.contains_bye = True
-        if re.search(rb"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
+        if _RE_DOCUMENTCLASS.search(self._data):
             logging.debug("Found documentclass, setting language to latex")
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
@@ -502,7 +519,7 @@ class ParsedTeXFile(BaseModel):
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
             self.language = LanguageType.latex
-        if re.search(rb"^[^%\n]*\\documentstyle[^a-zA-Z]", self._data, re.MULTILINE):
+        if _RE_DOCUMENTSTYLE.search(self._data):
             logging.debug("Found documentstyle, setting language to latex209")
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
@@ -510,9 +527,9 @@ class ParsedTeXFile(BaseModel):
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
             self.language = LanguageType.latex209
-        if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
+        if _RE_PDFOUTPUT_1.search(self._data):
             self.contains_pdfoutput_true = True
-        if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
+        if _RE_PDFOUTPUT_0.search(self._data):
             self.contains_pdfoutput_false = True
 
     def update_engine_based_on_system_files(self) -> None:
@@ -536,9 +553,9 @@ class ParsedTeXFile(BaseModel):
         # (contemplate whether this is strictly necessary!)
 
         # preprocess data to remove comments
-        data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
+        data = _RE_COMMENT.sub(b"", self._data)
         if not only_images:
-            for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
+            for f in _RE_INPUT.findall(data):
                 # f is a byte string, but corresponds to an input file.
                 logging.debug("%s regex found %s", self.filename, f)
                 try:
@@ -566,12 +583,12 @@ class ParsedTeXFile(BaseModel):
 
         if not only_images:
             # doing it with plain re
-            graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
+            graphicspath_occurrences = _RE_GRAPHICSPATH.findall(data)
             logging.debug("Found the following graphicspath entries: %s", graphicspath_occurrences)
             gp_entries: list[list[str]] = []
             for gp in graphicspath_occurrences:
                 inside_group = gp[0]  # this is the match inside the argument braces
-                all_path = re.findall(rb"{([^}]*)}", inside_group)
+                all_path = _RE_BRACE_GROUP.findall(inside_group)
                 this_gp_entry: list[str] = []
                 for d in all_path:
                     try:
@@ -587,9 +604,7 @@ class ParsedTeXFile(BaseModel):
                 logging.debug("Setting graphicspath to %s", self._graphicspath)
 
             # deal with some specially tricky commands
-            for i in re.findall(
-                rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", data, re.MULTILINE
-            ):
+            for i in _RE_ADDPLOT.findall(data):
                 logging.debug("%s regex found %s", self.filename, i)
                 try:
                     ii = [x.decode("utf-8") for x in i]
@@ -667,7 +682,7 @@ class ParsedTeXFile(BaseModel):
         file_incspec: dict[str, dict[str, IncludeSpec]] = {}
 
         # we ignore includes in self-defined macros
-        if re.match(r"#[1-9]", include_argument):
+        if _RE_MACRO_ARG.match(include_argument):
             self.issues.append(
                 TeXFileIssue(
                     IssueType.include_command_with_macro, f"command {include_command} used with macro parameter #"
@@ -1311,8 +1326,7 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     with open(f"{basedir}/{filename}", "rb") as f:
         data = f.read()
     # standardize line endings
-    line_ending_re = re.compile(rb"\r\n|\r|\n")
-    data = re.sub(line_ending_re, b"\n", data)
+    data = _RE_LINE_ENDING.sub(b"\n", data)
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
