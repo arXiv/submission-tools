@@ -121,3 +121,23 @@ def test_mktextfm(docker_container):
     # due to the presence of type1 fonts
     # we probably need some cyrillic font
     assert "mktextfm" in log
+
+
+@pytest.mark.integration
+def test_cmd_exec_luatex(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/cmd-exec-luatex/cmd-exec-luatex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/cmd-exec-luatex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert meta is not None
+    assert meta.get("pdf_file") is None
+
+
+@pytest.mark.integration
+def test_cmd_exec_pdftex(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/cmd-exec-pdftex/cmd-exec-pdftex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/cmd-exec-pdftex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert meta is not None
+    assert meta.get("pdf_file") is None
