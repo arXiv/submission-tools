@@ -9,5 +9,5 @@
    "process" : {
       "compiler" : "pdflatex"
    },
-   "version": 100
+   "spec_version": 100
 }

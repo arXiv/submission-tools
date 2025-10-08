@@ -12,6 +12,7 @@ import requests
 from bin.compile_submissions import get_outcome_meta_and_files_info
 from tex2pdf.converter_driver import RemoteConverterDriver
 from tex2pdf.tarball import unpack_tarball
+from tex2pdf_tools.zerozeroreadme import ZZRM_CURRENT_VERSION
 
 PORT_2023 = 33031
 PORT_2025 = 33032
@@ -586,17 +587,7 @@ def test_api_version_100(docker_container):
     outcome = os.path.join(SELF_DIR, "output/version-100.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
-    assert meta == "ZZRM cannot be loaded: Version number out of range (1-2): 100"
-
-
-@pytest.mark.integration
-def test_api_version_1_texlive_version(docker_container):
-    url = docker_container + "/convert"
-    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-1-texlive-version/version-1-texlive-version.tar.gz")
-    outcome = os.path.join(SELF_DIR, "output/version-1-texlive-version.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
-    assert status == 422
-    assert meta == "ZZRM cannot be loaded: Version 1 ZZRM with texlive_version set"
+    assert meta == f"ZZRM cannot be loaded: Version number out of range (1-{ZZRM_CURRENT_VERSION}): 100"
 
 
 @pytest.mark.integration
