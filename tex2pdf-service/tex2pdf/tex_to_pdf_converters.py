@@ -208,34 +208,36 @@ class BaseConverter:
                         else:
                             status = "fail"
             for line in run["log"].splitlines():
-                if biblatex_format_needle.search(line):
-                    name = run[base_format]["name"]
-                    artifact_file = os.path.join(in_dir, name)
-                    # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
-                    # believes all is fine and continues with success!
-                    if os.path.exists(artifact_file):
-                        logger.debug("Output %s deleted due to failed run", name)
-                        os.unlink(artifact_file)
-                        run[base_format] = file_props(artifact_file)
-                    outcome.update(
-                        {
-                            "status": "fail",
-                            "step": step,
-                            "reason": "BibLaTeX version and bbl file version conflict",
-                            "runs": self.runs,
-                        }
-                    )
-                    return outcome
-                if line.find(rerun_needle) >= 0:
-                    # Need retry
-                    logger.debug("Found rerun needle")
-                    if iteration == iteration_list[-1]:
-                        # we are in the last iteration, and labels are still changing
-                        # In line with autotex, let us accept this as a success.
-                        logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
-                        # don't break here so that we get to a successful outcome
-                    else:
-                        status = "fail"
+                for error_needle, error_msg in error_needles:
+                    if error_needle.search(line):
+                        name = run[base_format]["name"]
+                        artifact_file = os.path.join(in_dir, name)
+                        # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                        # believes all is fine and continues with success!
+                        if os.path.exists(artifact_file):
+                            logger.debug("Output %s deleted due to failed run", name)
+                            os.unlink(artifact_file)
+                            run[base_format] = file_props(artifact_file)
+                        outcome.update(
+                            {
+                                "status": "fail",
+                                "step": step,
+                                "reason": error_msg,
+                                "runs": self.runs,
+                            }
+                        )
+                        return outcome
+                for rerun_needle in rerun_needles:
+                    if line.find(rerun_needle) >= 0:
+                        # Need retry
+                        logger.debug(f"Found rerun needle {rerun_needle}")
+                        if iteration == iteration_list[-1]:
+                            # we are in the last iteration, and labels are still changing
+                            # In line with autotex, let us accept this as a success.
+                            logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        else:
+                            status = "fail"
+                        break
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
@@ -551,8 +553,15 @@ bad_for_pdftex_file_exts = [".ps", ".eps"]
 bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
 bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
-rerun_needle = "Rerun to get cross-references right."
-biblatex_format_needle = re.compile("Package biblatex Warning: File '.*' is wrong format version - expected")
+rerun_needles = [
+    "Rerun to get cross-references right\.",
+]
+error_needles = [
+    (
+        re.compile("Package biblatex Warning: File '.*' is wrong format version - expected"),
+        "BibLaTeX version and bbl file version conflict",
+    ),
+]
 
 
 class BaseDviConverter(BaseConverter):
