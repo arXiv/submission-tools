@@ -16,7 +16,7 @@ toml = "*"
 tomli_w = "*"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "*"
+ruff = "0.12.*"
 pytest = "*"
 pytest-cov = "*"
 mock = "*"
