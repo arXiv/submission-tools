@@ -9,6 +9,7 @@ import time
 import typing
 from abc import abstractmethod
 
+import xmltodict
 from tex2pdf_tools.preflight import BibCompiler
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
@@ -142,14 +143,45 @@ class BaseConverter:
 
         # if bib processer is requested, run it
         if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
+            bibopts = []
+            bibargs = [stem]
             if self.zzrm.process.bibliography.processor is BibCompiler.unknown:
                 logger.debug("Bib processer is not set, defaulting to bibtex")
                 bibprogram = "bibtex"
             else:
                 bibprogram = self.zzrm.process.bibliography.processor.value
+            if bibprogram == "biblatex":
+                # in case of biblatex, we parse the correct backend out of the .run.xml file generated
+                # if anything fails in this process, we fall back to calling biber
+                try:
+                    xmlrun_file = f"{in_dir}/{stem}.run.xml"
+                    xmlrun = open(xmlrun_file).read()
+                    xrd = xmltodict.parse(xmlrun)
+                    bibprogram = xrd["requests"]["external"]["cmdline"]["binary"]
+                    xrd_option = xrd["requests"]["external"]["cmdline"].get("option", [])  # options could be missing
+                    xrd_infile = xrd["requests"]["external"]["cmdline"]["infile"]
+                    if type(xrd_option) is str:
+                        bibopts = [xrd_option]
+                    elif type(xrd_option) is list:
+                        bibopts = xrd_option
+                    else:
+                        # what to do here???
+                        pass
+                    if type(xrd_infile) is str:
+                        bibargs = [xrd_infile]
+                    elif type(xrd_infile) is list:
+                        bibargs = xrd_infile
+                    else:
+                        bibargs = [stem]
+                except Exception:
+                    bibprogram = "biber"
+
+            # make sure that options with spaces are split and everything flattened
+            # for bibtex8, the option contains '--min_crossrefs 2'
+            bibopts = [y for ys in bibopts for y in str.split(ys)]
             bib_step = f"{bibprogram}_run"
             logger.debug(f"Starting {bibprogram} run")
-            bib_args = [f"/usr/bin/{bibprogram}", stem]
+            bib_args = [f"/usr/bin/{bibprogram}", *bibopts, *bibargs]
             bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
             self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
             if bib_run["return_code"] != 0:
