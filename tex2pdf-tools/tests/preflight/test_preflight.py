@@ -220,7 +220,7 @@ class TestPreflight(unittest.TestCase):
         )
         self.assertEqual(
             pf.detected_toplevel_files[0].process.bibliography.model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"pre_generated":true}"""
+            """{"pre_generated":true,"can_be_generated":true}"""
         )
         for tf in pf.tex_files:
             if tf.filename == "ms.tex":
@@ -468,12 +468,14 @@ class TestPreflight(unittest.TestCase):
 
     def test_bbl_bib(self):
         """Test submission with bbl and bib present."""
+        tex2pdf_tools.preflight.ENABLE_BIB_BBL = False
         dir_path = os.path.join(self.fixture_dir, "bbl-bib")
         pf: PreflightResponse = generate_preflight_response(dir_path)
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
         self.assertTrue(tf.process.bibliography.pre_generated)
+        self.assertTrue(tf.process.bibliography.can_be_generated)
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
         self.assertEqual(len(tf.issues), 0)
