@@ -101,7 +101,7 @@ tomli_w = "*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "a4da0275b21d4ba7263a41774a553c4c9dd4620c"
+resolved_reference = "f42073bb0456f30dade03b2c012772679933a754"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -2937,6 +2937,21 @@ markupsafe = "*"
 email = ["email-validator"]
 
 [[package]]
+name = "xmltodict"
+version = "1.0.2"
+description = "Makes working with XML feel like you are working with JSON"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d"},
+    {file = "xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649"},
+]
+
+[package.extras]
+test = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "zipp"
 version = "3.21.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
@@ -2959,4 +2974,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "d170a43266019a3a065edff67d31f75a32d1046e430e13a689ea214b66f1ca69"
+content-hash = "b31648ec1b2f85d023147b48fd32f89c1a7bfc144430955f2942dc4edef281a3"
