@@ -197,7 +197,7 @@ class IndexCompiler(str, Enum):
 
 
 class BibCompiler(str, Enum):
-    """Possible index compiler."""
+    """Possible bib-bbl compiler."""
 
     unknown = "unknown"
     bibtex = "bibtex"
@@ -205,6 +205,7 @@ class BibCompiler(str, Enum):
     bibtexu = "bibtexu"
     upbibtex = "upbibtex"
     biber = "biber"
+    biblatex = "biblatex"  # biblatex has backend configuration, and we parse run.xml for the correct one
 
 
 class BblType(str, Enum):
@@ -1931,7 +1932,7 @@ def deal_with_bibliographies(
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
             # TODO this should detect `backend=bibtex` in the biblatex options!
             tl_n.process.bibliography = BibProcessSpec(
-                processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=True
+                processor=BibCompiler.biblatex if is_biblatex_bbl else BibCompiler.unknown, pre_generated=True
             )
             # add bbl file to the list of used_other_files
             nodes[tl_f].used_other_files.append(bbl_file)
@@ -1940,7 +1941,7 @@ def deal_with_bibliographies(
         # toplevel filename .bbl is missing -> require .bib to be available,
         # TODO this should detect `backend=bibtex` in the biblatex options!
         tl_n.process.bibliography = BibProcessSpec(
-            processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
+            processor=BibCompiler.biblatex if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
         )
         # we have activated bib->bbl generation, so no issue needs to be reported
         # we also already added issues to the single files if bib is missing and bbl not available
