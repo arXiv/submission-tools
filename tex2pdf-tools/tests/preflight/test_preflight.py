@@ -345,7 +345,7 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
-        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biber)
+        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biblatex)
         self.assertTrue(tf.process.bibliography.pre_generated)
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
@@ -359,7 +359,7 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
-        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biber)
+        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biblatex)
         self.assertTrue(tf.process.bibliography.pre_generated)
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
@@ -372,7 +372,7 @@ class TestPreflight(unittest.TestCase):
         self.assertEqual(pf.status.key.value, "success")
         self.assertEqual(len(pf.detected_toplevel_files), 1)
         tf = pf.detected_toplevel_files[0]
-        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biber)
+        self.assertEqual(tf.process.bibliography.processor, BibCompiler.biblatex)
         self.assertTrue(tf.process.bibliography.pre_generated)
         self.assertEqual(len(pf.tex_files), 1)
         tf = pf.tex_files[0]
