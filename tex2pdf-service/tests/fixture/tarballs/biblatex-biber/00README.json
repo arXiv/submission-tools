@@ -8,7 +8,7 @@
    "process" : {
       "compiler" : "pdflatex",
       "bibliography": {
-	      "processor" : "biber",
+	      "processor" : "biblatex",
 	      "pre_generated" : false
 	}
    }
