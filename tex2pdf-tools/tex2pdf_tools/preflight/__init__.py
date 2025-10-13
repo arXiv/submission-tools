@@ -196,16 +196,16 @@ class IndexCompiler(str, Enum):
     mendex = "mendex"
 
 
-class BibCompiler(str, Enum):
-    """Possible bib-bbl compiler."""
-
-    unknown = "unknown"
-    bibtex = "bibtex"
-    bibtex8 = "bibtex8"
-    bibtexu = "bibtexu"
-    upbibtex = "upbibtex"
-    biber = "biber"
-    biblatex = "biblatex"  # biblatex has backend configuration, and we parse run.xml for the correct one
+# class BibCompiler(str, Enum):
+#     """Possible bib-bbl compiler."""
+#
+#     unknown = "unknown"
+#     bibtex = "bibtex"
+#     bibtex8 = "bibtex8"
+#     bibtexu = "bibtexu"
+#     upbibtex = "upbibtex"
+#     biber = "biber"
+#     biblatex = "biblatex"  # biblatex has backend configuration, and we parse run.xml for the correct one
 
 
 class BblType(str, Enum):
@@ -247,7 +247,7 @@ class IndexProcessSpec(BaseModel):
 class BibProcessSpec(BaseModel):
     """Specification of the bibliography process."""
 
-    processor: BibCompiler = BibCompiler.unknown
+    # processor: BibCompiler = BibCompiler.unknown
     pre_generated: bool
 
 
@@ -1837,16 +1837,16 @@ def deal_with_bibliographies(
 
         # if the bbl file is not present, go over all nodes and add issues if bib files are missing
         bib_file_issue_found: bool = False
-        if not bbl_file_present:
-            logging.debug("bbl file %s not present, checking for bib files", bbl_file)
-            selected_nodes = nodes[tl_f].recursive_collect_files(FileType.tex).copy()
-            selected_nodes.append(tl_f)
-            for _, n in nodes.items():
-                if tl_n and selected_nodes and n.filename not in selected_nodes:
-                    logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, tl_n.filename)
-                    continue
-                for bib_file in n._missing_bib_files:
-                    bib_file_issue_found = True
+        logging.debug("checking for bib files")
+        selected_nodes = nodes[tl_f].recursive_collect_files(FileType.tex).copy()
+        selected_nodes.append(tl_f)
+        for _, n in nodes.items():
+            if tl_n and selected_nodes and n.filename not in selected_nodes:
+                logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, tl_n.filename)
+                continue
+            for bib_file in n._missing_bib_files:
+                bib_file_issue_found = True
+                if not bbl_file_present:
                     n.issues.append(TeXFileIssue(IssueType.file_not_found, "bib file missing", bib_file))
 
         node = nodes[tl_f]
@@ -1859,7 +1859,8 @@ def deal_with_bibliographies(
         logging.debug(f"bbl types used: {bbl_types_used}")
         if not uses_bibliography:
             logging.debug("no bibliography use detected!")
-            # no bibliography used, skip
+            # no bibliography used, indicate via pre_generated = True
+            tl_n.process.bibliography = BibProcessSpec(pre_generated=True)
             continue
         if len(bbl_types_used) == 0:
             # we default to plain type
@@ -1879,6 +1880,7 @@ def deal_with_bibliographies(
         # we have only one bibliography type, check if it is biber or bibtex
         is_biblatex_bbl: bool = bbl_types_used.pop() == BblType.biblatex
         if bbl_file_present:
+            logging.debug("deal_with_bibliographies: bbl file is present")
             # check version of bbl file
             # First three lines of .bbl file:
             #
@@ -1930,24 +1932,32 @@ def deal_with_bibliographies(
                                     )
                                 )
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
-            # TODO this should detect `backend=bibtex` in the biblatex options!
-            tl_n.process.bibliography = BibProcessSpec(
-                processor=BibCompiler.biblatex if is_biblatex_bbl else BibCompiler.unknown, pre_generated=True
-            )
-            # add bbl file to the list of used_other_files
-            nodes[tl_f].used_other_files.append(bbl_file)
+            if ENABLE_BIB_BBL:
+                logging.debug("ENABLE_BIB_BBL is enabled, checking for bib issues")
+                if bib_file_issue_found:
+                    logging.debug("bib files missing it seems")
+                    # if not all bib files are found, force to use the bbl
+                    tl_n.process.bibliography = BibProcessSpec(pre_generated=True)
+                    nodes[tl_f].used_other_files.append(bbl_file)
+                else:
+                    logging.debug("no bib files missing")
+                    # if we allow for bib/bbl processing, and all bib files are found
+                    # set pre_generated to False to indicate that we can remove bbl file
+                    tl_n.process.bibliography = BibProcessSpec(pre_generated=False)
+            else:
+                logging.debug("ENABLE_BIB_BBL is disabled")
+                tl_n.process.bibliography = BibProcessSpec(pre_generated=True)
+                # add bbl file to the list of used_other_files
+                nodes[tl_f].used_other_files.append(bbl_file)
             continue
         # we are still here, so bbl_file_present is False
         # toplevel filename .bbl is missing -> require .bib to be available,
-        # TODO this should detect `backend=bibtex` in the biblatex options!
-        tl_n.process.bibliography = BibProcessSpec(
-            processor=BibCompiler.biblatex if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
-        )
+        tl_n.process.bibliography = BibProcessSpec(pre_generated=False)
         # we have activated bib->bbl generation, so no issue needs to be reported
         # we also already added issues to the single files if bib is missing and bbl not available
         # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
         if ENABLE_BIB_BBL:
-            if bib_file_issue_found and not bbl_file_present:
+            if bib_file_issue_found:
                 tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
         else:
             # if we do not allow bib->bbl generation, we need to report the missing bbl file
