@@ -2,7 +2,6 @@ import unittest
 
 from tex2pdf_tools.preflight import (
     TEX_EXTENSIONS,
-    BibCompiler,
     BibProcessSpec,
     CompilerSpec,
     FileType,
@@ -61,10 +60,9 @@ class TestBaseModels(unittest.TestCase):
         self.assertEqual(exp, ret)
 
     def test_bibprocessorspec(self):
-        ips = BibProcessSpec(processor=BibCompiler.biber, pre_generated=False)
+        ips = BibProcessSpec(pre_generated=False)
         ret = ips.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
-    "processor": "biber",
     "pre_generated": false
 }"""
         self.assertEqual(exp, ret)
@@ -142,9 +140,9 @@ class TestBaseModels(unittest.TestCase):
         self.assertEqual(
             MainProcessSpec(
                 compiler=CompilerSpec(engine="tex", lang="latex", output="pdf", postp="none"),
-                bibliography=BibProcessSpec(processor=BibCompiler.bibtex, pre_generated=True),
+                bibliography=BibProcessSpec(pre_generated=True),
                 index=IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True),
                 fontmaps=[]
             ).model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"compiler":{"engine":"tex","lang":"latex","output":"pdf","postp":"none"},"bibliography":{"processor":"bibtex","pre_generated":true},"index":{"processor":"makeindex","pre_generated":true},"fontmaps":[]}"""
+            """{"compiler":{"engine":"tex","lang":"latex","output":"pdf","postp":"none"},"bibliography":{"pre_generated":true},"index":{"processor":"makeindex","pre_generated":true},"fontmaps":[]}"""
         )

@@ -14,7 +14,6 @@ from ruamel.yaml import YAML, MappingNode, ScalarNode
 from ruamel.yaml.representer import RoundTripRepresenter
 
 from ..preflight import (
-    BibCompiler,
     CompilerSpec,
     EngineType,
     LanguageType,
@@ -635,7 +634,6 @@ class ZeroZeroReadMe:
         yaml.representer.add_representer(PostProcessType, yaml_repr_str)
         yaml.representer.add_representer(FileUsageType, yaml_repr_str)
         yaml.representer.add_representer(OrientationType, yaml_repr_str)
-        yaml.representer.add_representer(BibCompiler, yaml_repr_str)
         yaml.dump(self.to_dict(add_default_comment), output)
         return output
 
