@@ -2,6 +2,7 @@ import unittest
 
 from tex2pdf_tools.preflight import (
     TEX_EXTENSIONS,
+    BibCompiler,
     BibProcessSpec,
     CompilerSpec,
     FileType,
@@ -51,19 +52,22 @@ class TestBaseModels(unittest.TestCase):
         self.assertEqual(exp, ret)
 
     def test_indexprocessorspec(self):
-        ips = IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True)
+        ips = IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True, can_be_generated=False)
         ret = ips.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
     "processor": "makeindex",
-    "pre_generated": true
+    "pre_generated": true,
+    "can_be_generated": false
 }"""
         self.assertEqual(exp, ret)
 
     def test_bibprocessorspec(self):
-        ips = BibProcessSpec(pre_generated=False)
+        ips = BibProcessSpec(processor=BibCompiler.biber, pre_generated=False, can_be_generated=False)
         ret = ips.model_dump_json(indent=4, exclude_none=True, exclude_defaults=True)
         exp = """{
-    "pre_generated": false
+    "processor": "biber",
+    "pre_generated": false,
+    "can_be_generated": false
 }"""
         self.assertEqual(exp, ret)
 
@@ -140,9 +144,9 @@ class TestBaseModels(unittest.TestCase):
         self.assertEqual(
             MainProcessSpec(
                 compiler=CompilerSpec(engine="tex", lang="latex", output="pdf", postp="none"),
-                bibliography=BibProcessSpec(pre_generated=True),
-                index=IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True),
+                bibliography=BibProcessSpec(processor=BibCompiler.bibtex, pre_generated=True, can_be_generated=False),
+                index=IndexProcessSpec(processor=IndexCompiler.makeindex, pre_generated=True, can_be_generated=False),
                 fontmaps=[]
             ).model_dump_json(exclude_none=True, exclude_defaults=True),
-            """{"compiler":{"engine":"tex","lang":"latex","output":"pdf","postp":"none"},"bibliography":{"pre_generated":true},"index":{"processor":"makeindex","pre_generated":true},"fontmaps":[]}"""
+            """{"compiler":{"engine":"tex","lang":"latex","output":"pdf","postp":"none"},"bibliography":{"processor":"bibtex","pre_generated":true,"can_be_generated":false},"index":{"processor":"makeindex","pre_generated":true,"can_be_generated":false},"fontmaps":[]}"""
         )

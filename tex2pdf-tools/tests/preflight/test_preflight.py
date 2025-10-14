@@ -235,11 +235,11 @@ def test_index_biblio_1():
     assert \
         pf.detected_toplevel_files[0].process.index.model_dump_json(exclude_none=True, exclude_defaults=True) \
         == \
-        """{"pre_generated":true}"""
+        """{"pre_generated":true,"can_be_generated":false}"""
     assert \
         pf.detected_toplevel_files[0].process.bibliography.model_dump_json(exclude_none=True, exclude_defaults=True) \
         == \
-        """{"pre_generated":true}"""
+        """{"pre_generated":true,"can_be_generated":true}"""
     for tf in pf.tex_files:
         if tf.filename == "ms.tex":
             assert tf.used_tex_files == ["the-rest.tex"]
@@ -364,7 +364,8 @@ def test_biber_good_version_32(bib2bbl_enabled):
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
-    assert tf.process.bibliography.pre_generated != bib2bbl_enabled
+    assert tf.process.bibliography.pre_generated == True
+    assert tf.process.bibliography.can_be_generated == True
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 1
@@ -378,7 +379,8 @@ def test_biber_good_version_33(bib2bbl_enabled):
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
-    assert tf.process.bibliography.pre_generated != bib2bbl_enabled
+    assert tf.process.bibliography.pre_generated == True
+    assert tf.process.bibliography.can_be_generated == True
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
@@ -391,7 +393,8 @@ def test_biber_bad_version_31(bib2bbl_enabled):
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
-    assert tf.process.bibliography.pre_generated != bib2bbl_enabled
+    assert tf.process.bibliography.pre_generated == True
+    assert tf.process.bibliography.can_be_generated == True
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 1
@@ -493,7 +496,8 @@ def test_bbl_bib(bib2bbl_enabled):
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
-    assert tf.process.bibliography.pre_generated != bib2bbl_enabled
+    assert tf.process.bibliography.pre_generated == True
+    assert tf.process.bibliography.can_be_generated == True
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
@@ -513,6 +517,7 @@ def test_bbl_no_bib(bib2bbl_enabled):
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
     assert tf.process.bibliography.pre_generated
+    assert tf.process.bibliography.can_be_generated == False
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
@@ -528,7 +533,8 @@ def test_bib_no_bbl(bib2bbl_enabled):
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
-    assert not tf.process.bibliography.pre_generated
+    assert tf.process.bibliography.pre_generated == False
+    assert tf.process.bibliography.can_be_generated
     # bbl is missing, but we have bib around
     if bib2bbl_enabled:
         assert len(tf.issues) == 0
@@ -551,6 +557,7 @@ def test_multi_bib_no_bbl(bib2bbl_enabled):
     assert len(pf.detected_toplevel_files) == 1
     tf = pf.detected_toplevel_files[0]
     assert not tf.process.bibliography.pre_generated
+    assert not tf.process.bibliography.can_be_generated
     # bbl is missing, but we have bib around
     assert len(tf.issues) == 2
     if bib2bbl_enabled:
