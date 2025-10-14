@@ -9,7 +9,7 @@ from json import JSONDecodeError
 
 import toml
 import tomli_w
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 from ruamel.yaml import YAML, MappingNode, ScalarNode
 from ruamel.yaml.representer import RoundTripRepresenter
 
@@ -137,6 +137,8 @@ class OrientationType(str, Enum):
 class UserFile(BaseModel):
     """Representation of a file related information provided by users."""
 
+    model_config = ConfigDict(extra="forbid")
+
     filename: str | None = None
     usage: FileUsageType | None = None
     orientation: OrientationType | None = None
@@ -146,6 +148,8 @@ class UserFile(BaseModel):
 
 class ZZRMProcessSpec(BaseModel):
     """Specification of the process to compile a document."""
+
+    model_config = ConfigDict(extra="forbid")
 
     compiler: CompilerSpec | None = None
     fontmaps: list[str] | None = None
