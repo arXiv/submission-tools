@@ -115,6 +115,77 @@ class BaseConverter:
         """Run the base engine of the converter."""
         pass
 
+    def _determine_bib_bbl_processor(self, in_dir: str) -> tuple[str, list[str], list[str]]:
+        logger = get_logger()
+        stem = self.stem
+        # if bib processer is requested, run it
+        bbl_file = f"{in_dir}/{stem}.bbl"
+        if os.path.exists(bbl_file):
+            logger.debug("bbl file present, do not run any bib-to-bbl processor")
+            return "", [], []
+        else:
+            # try to determine the correct bib-to-bbl processor
+            bibprog = ""
+            bibopts = []
+            bibargs = []
+            xmlrun_file = f"{in_dir}/{stem}.run.xml"
+            if os.path.exists(xmlrun_file):
+                try:
+                    xmlrun = open(xmlrun_file).read()
+                    xrd = xmltodict.parse(xmlrun)
+                except Exception:
+                    # we cannot open the xml file, fall back to bibtex
+                    xrd = {}
+                # extract bibprogram if all components are defined and set, otherwise give ""
+                bibprog = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("binary", "")
+                if bibprog == "":
+                    # we cannot parse the .xml.run file or cannot get the correct value,
+                    # Maybe the .run.xml file was create not from biblatex?
+                    logger.debug("determine_bib_bbl_processor: parsing .run.xml did not find bib program")
+                    # do not return so that we can continue parsing the .aux file
+                else:
+                    xrd_option = (
+                        xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("option", [])
+                    )  # options could be missing
+                    xrd_infile = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("infile", "stem")
+                    if type(xrd_option) is str:
+                        bibopts = [xrd_option]
+                    elif type(xrd_option) is list:
+                        bibopts = xrd_option
+                    else:
+                        # what should that be?
+                        bibopts = []
+                    if type(xrd_infile) is str:
+                        bibargs = [xrd_infile]
+                    elif type(xrd_infile) is list:
+                        bibargs = xrd_infile
+                    else:
+                        # what should that be?
+                        bibargs = [stem]
+                    return bibprog, bibopts, bibargs
+
+            # we are still here, check .aux file for traces of \bibstyle
+            aux_file = f"{in_dir}/{stem}.aux"
+            if os.path.exists(aux_file):
+                aux_lines: list[str] = []
+                with open(aux_file) as f:
+                    aux_lines = [x.rstrip() for x in f]
+                bibstyle_re = re.compile(r"^\\bibstyle{(.*)}$")
+                bibstyle = ""
+                for line in aux_lines:
+                    if ma := bibstyle_re.match(line):
+                        bibstyle = ma.group(1)
+                        break
+                if bibstyle:
+                    logger.debug("determine_bib_bbl_processor: found some bibstyle, assuming bibtex")
+                    return "bibtex", [], [stem]
+                else:
+                    logger.debug("determine_bib_bbl_processor: no \\bibstyle found in .aux file.")
+                    return "", [], []
+            else:
+                logger.warning("determine_bib_bbl_processor: no aux file found, strange.")
+                return "", [], []
+
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
     ) -> dict:
@@ -140,79 +211,28 @@ class BaseConverter:
             )
             return outcome
 
-        # if bib processer is requested, run it
-        bbl_file = f"{in_dir}/{stem}.bbl"
-        if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
-            if os.path.exists(bbl_file):
-                # if bbl file is present, the submitter choose to keep the bbl file despite all bib files being
-                # present. Honor this and use the bbl file
-                logger.debug("bib handling: pre_generated == False but bbl file present, using it")
-            else:
-                # we have pre_generated == False and no bbl file present -> determine compiler automatically
-                logger.debug("bib handling: pre_generated == False and bbl file missing")
-                xmlrun_file = f"{in_dir}/{stem}.run.xml"
-                if os.path.exists(xmlrun_file):
-                    try:
-                        xmlrun_file = f"{in_dir}/{stem}.run.xml"
-                        xmlrun = open(xmlrun_file).read()
-                        xrd = xmltodict.parse(xmlrun)
-                    except Exception:
-                        # we cannot open the xml file, fall back to bibtex
-                        xrd = {}
-                    # extract bibprogram if all components are defined and set, otherwise give ""
-                    bibprogram = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("binary", "")
-                    if bibprogram == "":
-                        # we cannot parse the .xml.run file or cannot get the correct value,
-                        # assume the .xml.run file was created by some other package but biblatex,
-                        # and default to bibtex as processor
-                        bibprogram = "bibtex"
-                        bibopts = []
-                        bibargs = [stem]
-                    else:
-                        xrd_option = (
-                            xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("option", [])
-                        )  # options could be missing
-                        xrd_infile = (
-                            xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("infile", "stem")
-                        )
-                        if type(xrd_option) is str:
-                            bibopts = [xrd_option]
-                        elif type(xrd_option) is list:
-                            bibopts = xrd_option
-                        else:
-                            # what should that be?
-                            bibopts = []
-                        if type(xrd_infile) is str:
-                            bibargs = [xrd_infile]
-                        elif type(xrd_infile) is list:
-                            bibargs = xrd_infile
-                        else:
-                            # what should that be?
-                            bibargs = [stem]
-                else:
-                    bibprogram = "bibtex"
-                    bibopts = []
-                    bibargs = [stem]
+        bibprog, bibopts, bibargs = self._determine_bib_bbl_processor(in_dir)
 
-                # make sure that options with spaces are split and everything flattened
-                # for bibtex8, the option contains '--min_crossrefs 2'
-                bibopts = [y for ys in bibopts for y in str.split(ys)]
-                bib_step = f"{bibprogram}_run"
-                logger.debug(f"Starting {bibprogram} run")
-                bib_args = [f"/usr/bin/{bibprogram}", *bibopts, *bibargs]
-                bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
-                self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
-                if bib_run["return_code"] != 0:
-                    logger.debug(f"{bibprogram} run failed")
-                    outcome.update(
-                        {
-                            "status": "fail",
-                            "step": bib_step,
-                            "reason": f"{bibprogram} run returned error code",
-                            "runs": self.runs,
-                        }
-                    )
-                    return outcome
+        if bibprog:
+            # make sure that options with spaces are split and everything flattened
+            # for bibtex8, the option contains '--min_crossrefs 2'
+            bibopts = [y for ys in bibopts for y in str.split(ys)]
+            bib_step = f"{bibprog}_run"
+            logger.debug(f"Starting {bibprog} run")
+            bib_args = [f"/usr/bin/{bibprog}", *bibopts, *bibargs]
+            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+            if bib_run["return_code"] != 0:
+                logger.debug(f"{bibprog} run failed")
+                outcome.update(
+                    {
+                        "status": "fail",
+                        "step": bib_step,
+                        "reason": f"{bibprog} run returned error code",
+                        "runs": self.runs,
+                    }
+                )
+                return outcome
 
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
