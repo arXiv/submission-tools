@@ -124,6 +124,7 @@ class FileType(str, Enum):
     idx = "idx"  # source index, but can have arbitrary extensions!
     bbl = "bbl"  # generated bibliography
     ind = "ind"  # generated index, but can have arbitrary extensions!
+    bst = "bst"  # bibliography style files
     other = "other"
 
 
@@ -720,6 +721,7 @@ class ParsedTeXFile(BaseModel):
         elif incdef.cmd == "bibliographystyle":
             logging.debug(f"Detected BblType.plain for {self.filename}")
             self._uses_bbl_file_type.add(BblType.plain)
+            file_incspec[include_argument.strip().strip('"')] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
             # TODO detect more possible add*resource commands of biblatex
             # replace end of line comments with empty string
@@ -947,6 +949,8 @@ class ParsedTeXFile(BaseModel):
             idx = "used_tex_files"
         elif what == FileType.other:
             idx = "used_other_files"
+        elif what == FileType.bst:
+            idx = "used_other_files"
         elif what == "issues":
             idx = "issues"
         else:
@@ -1084,7 +1088,7 @@ INCLUDE_COMMANDS = [
         multi_args=False,
     ),
     IncludeSpec(cmd="bibliography", source="core", type=FileType.bib, extensions="bib", take_options=False),
-    IncludeSpec(cmd="bibliographystyle", source="core", type=FileType.other, extensions="blg", take_options=False),
+    IncludeSpec(cmd="bibliographystyle", source="core", type=FileType.other, extensions="bst", take_options=False),
     IncludeSpec(cmd="addbibresource", source="biblatex", type=FileType.bib),
     IncludeSpec(cmd="includegraphics", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="includegraphics*", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
