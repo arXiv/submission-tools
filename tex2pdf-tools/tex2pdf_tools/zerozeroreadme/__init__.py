@@ -17,7 +17,6 @@ from ..preflight import (
     CompilerSpec,
     EngineType,
     LanguageType,
-    MainProcessSpec,
     OutputType,
     PostProcessType,
     PreflightResponse,
@@ -145,6 +144,22 @@ class UserFile(BaseModel):
     fontmaps: list[str] | None = None
 
 
+class ZZRMProcessSpec(BaseModel):
+    """Specification of the process to compile a document."""
+
+    compiler: CompilerSpec | None = None
+    fontmaps: list[str] | None = None
+
+    def __init__(self, **kwargs: typing.Any) -> None:
+        """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
+        if "compiler" in kwargs and isinstance(kwargs["compiler"], str):
+            compiler = kwargs["compiler"]
+            del kwargs["compiler"]
+            super().__init__(compiler=CompilerSpec(compiler=compiler), **kwargs)
+        else:
+            super().__init__(**kwargs)
+
+
 class ZeroZeroReadMe:
     """Representation of 00README.json file."""
 
@@ -154,7 +169,7 @@ class ZeroZeroReadMe:
         self._version: int | None = None  # old name of spec_version, kept for consistency check
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
-        self.process: MainProcessSpec = MainProcessSpec()
+        self.process: ZZRMProcessSpec = ZZRMProcessSpec()
         self.sources: OrderedDict[str, UserFile] = OrderedDict()
         self.stamp: bool | None = True
         self.nohyperref: bool | None = None
@@ -378,7 +393,7 @@ class ZeroZeroReadMe:
             if k == "process":
                 if isinstance(v, dict):
                     try:
-                        self.process = MainProcessSpec(**v)
+                        self.process = ZZRMProcessSpec(**v)
                     except ValidationError as e:
                         raise ZZRMParseError(f"Validation error on parsing: {e}")
                 else:
