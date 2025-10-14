@@ -6,10 +6,6 @@
       }
    ],
    "process" : {
-      "compiler" : "pdflatex",
-      "bibliography": {
-	      "processor" : "bibtex",
-	      "pre_generated" : false
-	}
+      "compiler" : "pdflatex"
    }
 }
