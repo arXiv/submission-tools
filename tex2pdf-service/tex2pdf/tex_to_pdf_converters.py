@@ -652,6 +652,10 @@ class LatexConverter(BaseDviConverter):
 
         outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "dvi")
         if outcome["status"] == "fail":
+            pdf_file = os.path.join(in_dir, f"{self.stem}.pdf")
+            # delete also pdf file if someone sneaked in \pdfoutput=1
+            if os.path.exists(pdf_file):
+                os.unlink(pdf_file)
             return outcome
 
         # Third - run dvips
@@ -884,8 +888,12 @@ class VanillaTexConverter(BaseDviConverter):
                 msg = "failed to create dvi" if not dvi_size else "compiler run returned error code"
                 outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
                 dvi_file = os.path.join(in_dir, f"{self.stem}.dvi")
+                pdf_file = os.path.join(in_dir, f"{self.stem}.pdf")
                 if os.path.exists(dvi_file):
                     os.unlink(dvi_file)
+                # delete also pdf file if someone sneaked in \pdfoutput=1
+                if os.path.exists(pdf_file):
+                    os.unlink(pdf_file)
                 run["dvi"] = file_props(dvi_file)
                 return outcome
 
