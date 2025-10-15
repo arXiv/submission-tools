@@ -500,6 +500,7 @@ def _convert_pdf_current(
     # if pdf_file:
     #     more_files.append(pdf_file)
     out_dir_files = os.listdir(out_dir)
+    logger.debug(f"creating outcome marker: out_dir_files={out_dir_files}")
     outcome_maker = ConversionOutcomeMaker(tempdir, tag)
     outcome_maker.create_outcome(driver, driver.outcome, more_files=more_files, outcome_files=out_dir_files)
 
