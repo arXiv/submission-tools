@@ -48,6 +48,23 @@ HTML_SUBMISSION_STRING = "html_submission"
 # packages that require unicode tex (xetex, luatex)
 UNICODE_TEX_PACKAGES = ["fontspec", "polyglossia", "unicode-math"]
 
+# Pre-compiled regex patterns for performance optimization
+# These patterns are used frequently during TeX file parsing
+_RE_BYE = re.compile(rb"^[^%\n]*\\bye(?![a-zA-Z])", re.MULTILINE)
+_RE_DOCUMENTCLASS = re.compile(rb"^[^%\n]*\\documentclass[^a-zA-Z]", re.MULTILINE)
+_RE_DOCUMENTSTYLE = re.compile(rb"^[^%\n]*\\documentstyle[^a-zA-Z]", re.MULTILINE)
+_RE_PDFOUTPUT_1 = re.compile(rb"^[^%\n]*\\pdfoutput\s*=\s*1", re.MULTILINE)
+_RE_PDFOUTPUT_0 = re.compile(rb"^[^%\n]*\\pdfoutput\s*=\s*0", re.MULTILINE)
+_RE_COMMENT = re.compile(rb"(?<!\\)%.*\n")
+_RE_INPUT = re.compile(rb"\\input\s+([-a-zA-Z0-9._]+)")
+_RE_GRAPHICSPATH = re.compile(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", re.MULTILINE)
+_RE_BRACE_GROUP = re.compile(rb"{([^}]*)}")
+_RE_ADDPLOT = re.compile(rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", re.MULTILINE)
+_RE_OVERPIC = re.compile(r"begin\s*{\s*overpic\s*}")
+_RE_MACRO_ARG = re.compile(r"#[1-9]")
+_RE_COMMENT_STR = re.compile(r"%.*$", re.MULTILINE)
+_RE_LINE_ENDING = re.compile(rb"\r\n|\r|\n")
+
 # Version of the bbl file that is created by biber in the
 # current version of arxiv tex
 # TL2025
@@ -107,6 +124,7 @@ class FileType(str, Enum):
     idx = "idx"  # source index, but can have arbitrary extensions!
     bbl = "bbl"  # generated bibliography
     ind = "ind"  # generated index, but can have arbitrary extensions!
+    bst = "bst"  # bibliography style files
     other = "other"
 
 
@@ -180,7 +198,7 @@ class IndexCompiler(str, Enum):
 
 
 class BibCompiler(str, Enum):
-    """Possible index compiler."""
+    """Possible bib-bbl compiler."""
 
     unknown = "unknown"
     bibtex = "bibtex"
@@ -188,6 +206,7 @@ class BibCompiler(str, Enum):
     bibtexu = "bibtexu"
     upbibtex = "upbibtex"
     biber = "biber"
+    biblatex = "biblatex"  # biblatex has backend configuration, and we parse run.xml for the correct one
 
 
 class BblType(str, Enum):
@@ -224,6 +243,7 @@ class IndexProcessSpec(BaseModel):
 
     processor: IndexCompiler = IndexCompiler.unknown
     pre_generated: bool
+    can_be_generated: bool
 
 
 class BibProcessSpec(BaseModel):
@@ -231,6 +251,7 @@ class BibProcessSpec(BaseModel):
 
     processor: BibCompiler = BibCompiler.unknown
     pre_generated: bool
+    can_be_generated: bool
 
 
 class CompilerSpec(BaseModel):
@@ -491,10 +512,10 @@ class ParsedTeXFile(BaseModel):
         # this is too dangerous, several plain tex macro packages define \section or \chapter
         # if re.search(rb"^[^%\n]*(\\text(bf|it|sl)|\\section|\\chapter)", self._data, re.MULTILINE):
         #    self.language = LanguageType.latex
-        if re.search(rb"^[^%\n]*\\bye(?![a-zA-Z])", self._data, re.MULTILINE):
+        if _RE_BYE.search(self._data):
             self.language = LanguageType.tex
             self.contains_bye = True
-        if re.search(rb"^[^%\n]*\\documentclass[^a-zA-Z]", self._data, re.MULTILINE):
+        if _RE_DOCUMENTCLASS.search(self._data):
             logging.debug("Found documentclass, setting language to latex")
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
@@ -502,7 +523,7 @@ class ParsedTeXFile(BaseModel):
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
             self.language = LanguageType.latex
-        if re.search(rb"^[^%\n]*\\documentstyle[^a-zA-Z]", self._data, re.MULTILINE):
+        if _RE_DOCUMENTSTYLE.search(self._data):
             logging.debug("Found documentstyle, setting language to latex209")
             self.contains_documentclass = True
             if self.language == LanguageType.tex:
@@ -510,9 +531,9 @@ class ParsedTeXFile(BaseModel):
                     TeXFileIssue(IssueType.conflicting_file_type, "containing both bye and documentclass")
                 )
             self.language = LanguageType.latex209
-        if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*1", self._data, re.MULTILINE):
+        if _RE_PDFOUTPUT_1.search(self._data):
             self.contains_pdfoutput_true = True
-        if re.search(rb"^[^%\n]*\\pdfoutput\s*=\s*0", self._data, re.MULTILINE):
+        if _RE_PDFOUTPUT_0.search(self._data):
             self.contains_pdfoutput_false = True
 
     def update_engine_based_on_system_files(self) -> None:
@@ -536,9 +557,9 @@ class ParsedTeXFile(BaseModel):
         # (contemplate whether this is strictly necessary!)
 
         # preprocess data to remove comments
-        data = re.sub(re.compile(rb"(?<!\\)%.*\n"), b"", self._data)
+        data = _RE_COMMENT.sub(b"", self._data)
         if not only_images:
-            for f in re.findall(rb"\\input\s+([-a-zA-Z0-9._]+)", data):
+            for f in _RE_INPUT.findall(data):
                 # f is a byte string, but corresponds to an input file.
                 logging.debug("%s regex found %s", self.filename, f)
                 try:
@@ -566,12 +587,12 @@ class ParsedTeXFile(BaseModel):
 
         if not only_images:
             # doing it with plain re
-            graphicspath_occurrences = re.findall(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", data, re.MULTILINE)
+            graphicspath_occurrences = _RE_GRAPHICSPATH.findall(data)
             logging.debug("Found the following graphicspath entries: %s", graphicspath_occurrences)
             gp_entries: list[list[str]] = []
             for gp in graphicspath_occurrences:
                 inside_group = gp[0]  # this is the match inside the argument braces
-                all_path = re.findall(rb"{([^}]*)}", inside_group)
+                all_path = _RE_BRACE_GROUP.findall(inside_group)
                 this_gp_entry: list[str] = []
                 for d in all_path:
                     try:
@@ -587,9 +608,7 @@ class ParsedTeXFile(BaseModel):
                 logging.debug("Setting graphicspath to %s", self._graphicspath)
 
             # deal with some specially tricky commands
-            for i in re.findall(
-                rb"(addplot)(?:\+?)\s*(\[[^]]*\])?\s*table\s*(?:\[[^]]*\])?\s*({[^}]+})", data, re.MULTILINE
-            ):
+            for i in _RE_ADDPLOT.findall(data):
                 logging.debug("%s regex found %s", self.filename, i)
                 try:
                     ii = [x.decode("utf-8") for x in i]
@@ -667,7 +686,7 @@ class ParsedTeXFile(BaseModel):
         file_incspec: dict[str, dict[str, IncludeSpec]] = {}
 
         # we ignore includes in self-defined macros
-        if re.match(r"#[1-9]", include_argument):
+        if _RE_MACRO_ARG.match(include_argument):
             self.issues.append(
                 TeXFileIssue(
                     IssueType.include_command_with_macro, f"command {include_command} used with macro parameter #"
@@ -702,6 +721,7 @@ class ParsedTeXFile(BaseModel):
         elif incdef.cmd == "bibliographystyle":
             logging.debug(f"Detected BblType.plain for {self.filename}")
             self._uses_bbl_file_type.add(BblType.plain)
+            file_incspec[include_argument.strip().strip('"')] = {incdef.cmd: incdef}
         elif incdef.cmd == "bibliography" or incdef.cmd == "addbibresource":
             # TODO detect more possible add*resource commands of biblatex
             # replace end of line comments with empty string
@@ -929,6 +949,8 @@ class ParsedTeXFile(BaseModel):
             idx = "used_tex_files"
         elif what == FileType.other:
             idx = "used_other_files"
+        elif what == FileType.bst:
+            idx = "used_other_files"
         elif what == "issues":
             idx = "issues"
         else:
@@ -1066,7 +1088,7 @@ INCLUDE_COMMANDS = [
         multi_args=False,
     ),
     IncludeSpec(cmd="bibliography", source="core", type=FileType.bib, extensions="bib", take_options=False),
-    IncludeSpec(cmd="bibliographystyle", source="core", type=FileType.other, extensions="blg", take_options=False),
+    IncludeSpec(cmd="bibliographystyle", source="core", type=FileType.other, extensions="bst", take_options=False),
     IncludeSpec(cmd="addbibresource", source="biblatex", type=FileType.bib),
     IncludeSpec(cmd="includegraphics", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="includegraphics*", source="graphics", type=FileType.other, extensions=IMAGE_EXTENSIONS),
@@ -1311,8 +1333,7 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     with open(f"{basedir}/{filename}", "rb") as f:
         data = f.read()
     # standardize line endings
-    line_ending_re = re.compile(rb"\r\n|\r|\n")
-    data = re.sub(line_ending_re, b"\n", data)
+    data = _RE_LINE_ENDING.sub(b"\n", data)
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
@@ -1822,16 +1843,16 @@ def deal_with_bibliographies(
 
         # if the bbl file is not present, go over all nodes and add issues if bib files are missing
         bib_file_issue_found: bool = False
-        if not bbl_file_present:
-            logging.debug("bbl file %s not present, checking for bib files", bbl_file)
-            selected_nodes = nodes[tl_f].recursive_collect_files(FileType.tex).copy()
-            selected_nodes.append(tl_f)
-            for _, n in nodes.items():
-                if tl_n and selected_nodes and n.filename not in selected_nodes:
-                    logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, tl_n.filename)
-                    continue
-                for bib_file in n._missing_bib_files:
-                    bib_file_issue_found = True
+        logging.debug("checking for bib files")
+        selected_nodes = nodes[tl_f].recursive_collect_files(FileType.tex).copy()
+        selected_nodes.append(tl_f)
+        for _, n in nodes.items():
+            if tl_n and selected_nodes and n.filename not in selected_nodes:
+                logging.debug("Skipping %s, not in document tree below toplevel %s", n.filename, tl_n.filename)
+                continue
+            for bib_file in n._missing_bib_files:
+                bib_file_issue_found = True
+                if not bbl_file_present:
                     n.issues.append(TeXFileIssue(IssueType.file_not_found, "bib file missing", bib_file))
 
         node = nodes[tl_f]
@@ -1915,23 +1936,34 @@ def deal_with_bibliographies(
                                     )
                                 )
             # toplevel filename .bbl is available -> precompiled bib, ignore if bib files is missing
-            # TODO this should detect `backend=bibtex` in the biblatex options!
             tl_n.process.bibliography = BibProcessSpec(
-                processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=True
+                processor=BibCompiler.biblatex if is_biblatex_bbl else BibCompiler.unknown,
+                pre_generated=True,
+                can_be_generated=not bib_file_issue_found,
             )
+            # if we don't allow bib->bbl processing,
             # add bbl file to the list of used_other_files
-            nodes[tl_f].used_other_files.append(bbl_file)
+            logging.debug(
+                "bbl other files check: ENABLE_BIB_BBL = %s, bib_file_issue_found = %s",
+                ENABLE_BIB_BBL,
+                bib_file_issue_found,
+            )
+            if not ENABLE_BIB_BBL or bib_file_issue_found:
+                nodes[tl_f].used_other_files.append(bbl_file)
             continue
         # we are still here, so bbl_file_present is False
         # toplevel filename .bbl is missing -> require .bib to be available,
         # TODO this should detect `backend=bibtex` in the biblatex options!
         tl_n.process.bibliography = BibProcessSpec(
-            processor=BibCompiler.biber if is_biblatex_bbl else BibCompiler.unknown, pre_generated=False
+            processor=BibCompiler.biblatex if is_biblatex_bbl else BibCompiler.unknown,
+            pre_generated=False,
+            can_be_generated=not bib_file_issue_found,
         )
         # we have activated bib->bbl generation, so no issue needs to be reported
         # we also already added issues to the single files if bib is missing and bbl not available
         # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
         if ENABLE_BIB_BBL:
+            logging.debug("bib_file_issue_found = %s, bbl_file_present = %s", bib_file_issue_found, bbl_file_present)
             if bib_file_issue_found and not bbl_file_present:
                 tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
         else:
@@ -2009,9 +2041,17 @@ def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], node
                     nodes[tl_f].used_idx_files.remove(idx_file_pattern)
 
         if found_all_indices:
-            tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=True)
+            tl_n.process.index = IndexProcessSpec(
+                processor=IndexCompiler.unknown,
+                pre_generated=True,
+                can_be_generated=False,  # TODO this needs review!
+            )
         else:
-            tl_n.process.index = IndexProcessSpec(processor=IndexCompiler.unknown, pre_generated=False)
+            tl_n.process.index = IndexProcessSpec(
+                processor=IndexCompiler.unknown,
+                pre_generated=False,
+                can_be_generated=False,  # TODO this needs review!
+            )
 
 
 def _dump_nodes(nodes: dict[str, ParsedTeXFile]) -> None:

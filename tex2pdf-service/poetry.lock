@@ -45,7 +45,7 @@ develop = false
 [package.dependencies]
 bleach = "*"
 fastly = "*"
-fire = "^0.5.0"
+fire = "^0.6.0"
 flask = "3.0.*"
 flask-s3 = "*"
 google-auth = "^2.23.4"
@@ -55,9 +55,8 @@ google-cloud-pubsub = "^2.18.4"
 google-cloud-storage = "^2.5.0"
 jwcrypto = "^1.5.6"
 markupsafe = "*"
-mimesis = "*"
 mysqlclient = ">=2.1"
-pydantic = "^2.8.2"
+pydantic = "^2.11.7"
 pydantic-settings = "^2.5.2"
 pyjwt = "^2.9.0"
 pytz = "*"
@@ -65,7 +64,7 @@ redis = "==2.10.6"
 redis-py-cluster = "==1.3.6"
 retry = "^0.9.2"
 ruamel-yaml = "^0.18.6"
-setuptools = "^70.0.0"
+setuptools = "^78.1.1"
 sqlalchemy = "~=2.0.27"
 typing-extensions = "*"
 validators = "*"
@@ -73,13 +72,14 @@ wtforms = "*"
 
 [package.extras]
 postgres = ["psycopg2-binary (>=2.9.9)"]
+qa = ["gcld3 (>=3.0.13,<4.0.0)", "wheel (>=0.45.1,<0.46.0)"]
 sphinx = ["sphinx", "sphinx-autodoc-typehints", "sphinxcontrib-websupport"]
 
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/arxiv-base.git"
 reference = "update-pydantic"
-resolved_reference = "489fc90c55605abde2b189216832237270af8e48"
+resolved_reference = "717a07c03103bb75eba3f19f8a3e6b2d7e5005c8"
 
 [[package]]
 name = "arxiv-tex2pdf-tools"
@@ -101,7 +101,7 @@ tomli_w = "*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "457df53e3990530c476e0d3cb043b46d735707b9"
+resolved_reference = "a533181189c6dd24936c5810524ca33902e3005f"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
@@ -552,13 +552,13 @@ urllib3 = ">=1.25.3"
 
 [[package]]
 name = "fire"
-version = "0.5.0"
+version = "0.6.0"
 description = "A library for automatically generating command line interfaces."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "fire-0.5.0.tar.gz", hash = "sha256:a6b0d49e98c8963910021f92bba66f65ab440da2982b78eb1bbf95a0a34aacc6"},
+    {file = "fire-0.6.0.tar.gz", hash = "sha256:54ec5b996ecdd3c0309c800324a0703d6da512241bc73b553db959d98de0aa66"},
 ]
 
 [package.dependencies]
@@ -1476,22 +1476,6 @@ files = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
     {file = "mccabe-0.7.0.tar.gz", hash = "sha256:348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"},
 ]
-
-[[package]]
-name = "mimesis"
-version = "18.0.0"
-description = "Mimesis: Fake Data Generator."
-optional = false
-python-versions = "<4.0,>=3.10"
-groups = ["main"]
-files = [
-    {file = "mimesis-18.0.0-py3-none-any.whl", hash = "sha256:a51854a5ce63ebf2bd6a98e8841412e04cede38593be7e16d1d712848e6273df"},
-    {file = "mimesis-18.0.0.tar.gz", hash = "sha256:7d7c76ecd680ae48afe8dc4413ef1ef1ee7ef20e16f9f9cb42892add642fc1b2"},
-]
-
-[package.extras]
-factory = ["factory-boy (>=3.3.0,<4.0.0)"]
-pytest = ["pytest (>=7.2,<8.0)"]
 
 [[package]]
 name = "mypy"
@@ -2523,19 +2507,24 @@ crt = ["botocore[crt] (>=1.37.4,<2.0a.0)"]
 
 [[package]]
 name = "setuptools"
-version = "70.3.0"
+version = "78.1.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "setuptools-70.3.0-py3-none-any.whl", hash = "sha256:fe384da74336c398e0d956d1cae0669bc02eed936cdb1d49b57de1990dc11ffc"},
-    {file = "setuptools-70.3.0.tar.gz", hash = "sha256:f171bab1dfbc86b132997f26a119f6056a57950d058587841a0082e8830f9dc5"},
+    {file = "setuptools-78.1.1-py3-none-any.whl", hash = "sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561"},
+    {file = "setuptools-78.1.1.tar.gz", hash = "sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d"},
 ]
 
 [package.extras]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
-test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21) ; python_version >= \"3.9\" and sys_platform != \"cygwin\"", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "jaraco.test", "mypy (==1.10.0)", "packaging (>=23.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf ; sys_platform != \"cygwin\"", "pytest-ruff (>=0.3.2) ; sys_platform != \"cygwin\"", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
+check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\"", "ruff (>=0.8.0) ; sys_platform != \"cygwin\""]
+core = ["importlib_metadata (>=6) ; python_version < \"3.10\"", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1) ; python_version < \"3.11\"", "wheel (>=0.43.0)"]
+cover = ["pytest-cov"]
+doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
+enabler = ["pytest-enabler (>=2.2)"]
+test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21) ; python_version >= \"3.9\" and sys_platform != \"cygwin\"", "jaraco.envs (>=2.2)", "jaraco.path (>=3.7.2)", "jaraco.test (>=5.5)", "packaging (>=24.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-home (>=0.5)", "pytest-perf ; sys_platform != \"cygwin\"", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel (>=0.44.0)"]
+type = ["importlib_metadata (>=7.0.2) ; python_version < \"3.10\"", "jaraco.develop (>=7.21) ; sys_platform != \"cygwin\"", "mypy (==1.14.*)", "pytest-mypy"]
 
 [[package]]
 name = "six"
@@ -2977,6 +2966,21 @@ markupsafe = "*"
 email = ["email-validator"]
 
 [[package]]
+name = "xmltodict"
+version = "1.0.2"
+description = "Makes working with XML feel like you are working with JSON"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d"},
+    {file = "xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649"},
+]
+
+[package.extras]
+test = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "zipp"
 version = "3.21.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
@@ -2999,4 +3003,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "53d2bd669b5710c2f3c36949d8b7ba9538a86bb41a93cd11e3aec2b0ead79fe0"
+content-hash = "782cf462e7d97791b80eb4b36682c11ee7acae1976242c2a65b1010ec5846dfe"

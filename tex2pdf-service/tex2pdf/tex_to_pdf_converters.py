@@ -9,7 +9,7 @@ import time
 import typing
 from abc import abstractmethod
 
-from tex2pdf_tools.preflight import BibCompiler
+import xmltodict
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
@@ -125,6 +125,77 @@ class BaseConverter:
         """Run the base engine of the converter."""
         pass
 
+    def _determine_bib_bbl_processor(self, in_dir: str) -> tuple[str, list[str], list[str]]:
+        logger = get_logger()
+        stem = self.stem
+        # if bib processer is requested, run it
+        bbl_file = f"{in_dir}/{stem}.bbl"
+        if os.path.exists(bbl_file):
+            logger.debug("bbl file present, do not run any bib-to-bbl processor")
+            return "", [], []
+        else:
+            # try to determine the correct bib-to-bbl processor
+            bibprog = ""
+            bibopts = []
+            bibargs = []
+            xmlrun_file = f"{in_dir}/{stem}.run.xml"
+            if os.path.exists(xmlrun_file):
+                try:
+                    xmlrun = open(xmlrun_file).read()
+                    xrd = xmltodict.parse(xmlrun)
+                except Exception:
+                    # we cannot open the xml file, fall back to bibtex
+                    xrd = {}
+                # extract bibprogram if all components are defined and set, otherwise give ""
+                bibprog = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("binary", "")
+                if bibprog == "":
+                    # we cannot parse the .xml.run file or cannot get the correct value,
+                    # Maybe the .run.xml file was create not from biblatex?
+                    logger.debug("determine_bib_bbl_processor: parsing .run.xml did not find bib program")
+                    # do not return so that we can continue parsing the .aux file
+                else:
+                    xrd_option = (
+                        xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("option", [])
+                    )  # options could be missing
+                    xrd_infile = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("infile", "stem")
+                    if type(xrd_option) is str:
+                        bibopts = [xrd_option]
+                    elif type(xrd_option) is list:
+                        bibopts = xrd_option
+                    else:
+                        # what should that be?
+                        bibopts = []
+                    if type(xrd_infile) is str:
+                        bibargs = [xrd_infile]
+                    elif type(xrd_infile) is list:
+                        bibargs = xrd_infile
+                    else:
+                        # what should that be?
+                        bibargs = [stem]
+                    return bibprog, bibopts, bibargs
+
+            # we are still here, check .aux file for traces of \bibstyle
+            aux_file = f"{in_dir}/{stem}.aux"
+            if os.path.exists(aux_file):
+                aux_lines: list[str] = []
+                with open(aux_file) as f:
+                    aux_lines = [x.rstrip() for x in f]
+                bibstyle_re = re.compile(r"^\\bibstyle{(.*)}$")
+                bibstyle = ""
+                for line in aux_lines:
+                    if ma := bibstyle_re.match(line):
+                        bibstyle = ma.group(1)
+                        break
+                if bibstyle:
+                    logger.debug("determine_bib_bbl_processor: found some bibstyle, assuming bibtex")
+                    return "bibtex", [], [stem]
+                else:
+                    logger.debug("determine_bib_bbl_processor: no \\bibstyle found in .aux file.")
+                    return "", [], []
+            else:
+                logger.warning("determine_bib_bbl_processor: no aux file found, strange.")
+                return "", [], []
+
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
     ) -> dict:
@@ -150,25 +221,24 @@ class BaseConverter:
             )
             return outcome
 
-        # if bib processer is requested, run it
-        if self.zzrm and self.zzrm.process.bibliography and self.zzrm.process.bibliography.pre_generated is False:
-            if self.zzrm.process.bibliography.processor is BibCompiler.unknown:
-                logger.debug("Bib processer is not set, defaulting to bibtex")
-                bibprogram = "bibtex"
-            else:
-                bibprogram = self.zzrm.process.bibliography.processor.value
-            bib_step = f"{bibprogram}_run"
-            logger.debug(f"Starting {bibprogram} run")
-            bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprogram}", stem]
+        bibprog, bibopts, bibargs = self._determine_bib_bbl_processor(in_dir)
+
+        if bibprog:
+            # make sure that options with spaces are split and everything flattened
+            # for bibtex8, the option contains '--min_crossrefs 2'
+            bibopts = [y for ys in bibopts for y in str.split(ys)]
+            bib_step = f"{bibprog}_run"
+            logger.debug(f"Starting {bibprog} run")
+            bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts, *bibargs]
             bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
             self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
             if bib_run["return_code"] != 0:
-                logger.debug(f"{bibprogram} run failed")
+                logger.debug(f"{bibprog} run failed")
                 outcome.update(
                     {
                         "status": "fail",
                         "step": bib_step,
-                        "reason": f"{bibprogram} run returned error code",
+                        "reason": f"{bibprog} run returned error code",
                         "runs": self.runs,
                     }
                 )
@@ -218,34 +288,36 @@ class BaseConverter:
                         else:
                             status = "fail"
             for line in run["log"].splitlines():
-                if biblatex_format_needle.search(line):
-                    name = run[base_format]["name"]
-                    artifact_file = os.path.join(in_dir, name)
-                    # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
-                    # believes all is fine and continues with success!
-                    if os.path.exists(artifact_file):
-                        logger.debug("Output %s deleted due to failed run", name)
-                        os.unlink(artifact_file)
-                        run[base_format] = file_props(artifact_file)
-                    outcome.update(
-                        {
-                            "status": "fail",
-                            "step": step,
-                            "reason": "BibLaTeX version and bbl file version conflict",
-                            "runs": self.runs,
-                        }
-                    )
-                    return outcome
-                if line.find(rerun_needle) >= 0:
-                    # Need retry
-                    logger.debug("Found rerun needle")
-                    if iteration == iteration_list[-1]:
-                        # we are in the last iteration, and labels are still changing
-                        # In line with autotex, let us accept this as a success.
-                        logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
-                        # don't break here so that we get to a successful outcome
-                    else:
-                        status = "fail"
+                for error_needle, error_msg in error_needles:
+                    if error_needle.search(line):
+                        name = run[base_format]["name"]
+                        artifact_file = os.path.join(in_dir, name)
+                        # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                        # believes all is fine and continues with success!
+                        if os.path.exists(artifact_file):
+                            logger.debug("Output %s deleted due to failed run", name)
+                            os.unlink(artifact_file)
+                            run[base_format] = file_props(artifact_file)
+                        outcome.update(
+                            {
+                                "status": "fail",
+                                "step": step,
+                                "reason": error_msg,
+                                "runs": self.runs,
+                            }
+                        )
+                        return outcome
+                for rerun_needle in rerun_needles:
+                    if line.find(rerun_needle) >= 0:
+                        # Need retry
+                        logger.debug(f"Found rerun needle {rerun_needle}")
+                        if iteration == iteration_list[-1]:
+                            # we are in the last iteration, and labels are still changing
+                            # In line with autotex, let us accept this as a success.
+                            logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        else:
+                            status = "fail"
+                        break
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
@@ -571,8 +643,15 @@ bad_for_pdftex_file_exts = [".ps", ".eps"]
 bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
 bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
-rerun_needle = "Rerun to get cross-references right."
-biblatex_format_needle = re.compile("Package biblatex Warning: File '.*' is wrong format version - expected")
+rerun_needles = [
+    "Rerun to get cross-references right\.",
+]
+error_needles = [
+    (
+        re.compile("Package biblatex Warning: File '.*' is wrong format version - expected"),
+        "BibLaTeX version and bbl file version conflict",
+    ),
+]
 
 
 class BaseDviConverter(BaseConverter):

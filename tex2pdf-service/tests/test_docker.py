@@ -9,6 +9,7 @@ import requests
 from conftest import _check_docker_api_ready, _start_docker_container, submit_file, submit_tarball
 from tex2pdf.converter_driver import RemoteConverterDriver
 from tex2pdf.tarball import unpack_tarball
+from tex2pdf_tools.zerozeroreadme import ZZRM_CURRENT_VERSION
 
 PORT_2023 = 33031
 PORT_2025 = 33032
@@ -439,17 +440,7 @@ def test_api_version_100(docker_container):
     outcome = os.path.join(SELF_DIR, "output/version-100.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 422
-    assert meta == "ZZRM cannot be loaded: Version number out of range (1-2): 100"
-
-
-@pytest.mark.integration
-def test_api_version_1_texlive_version(docker_container):
-    url = docker_container + "/convert"
-    tarball = os.path.join(SELF_DIR, "fixture/tarballs/version-1-texlive-version/version-1-texlive-version.tar.gz")
-    outcome = os.path.join(SELF_DIR, "output/version-1-texlive-version.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
-    assert status == 422
-    assert meta == "ZZRM cannot be loaded: Version 1 ZZRM with texlive_version set"
+    assert meta == f"ZZRM cannot be loaded: Version number out of range (1-{ZZRM_CURRENT_VERSION}): 100"
 
 
 @pytest.mark.integration
@@ -534,15 +525,39 @@ def test_bibtex(docker_container):
 
 
 @pytest.mark.integration
-def test_biber(docker_container):
+def test_biblatex_biber(docker_container):
     url = docker_container + "/convert"
-    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-biber/test-biber.tar.gz")
-    outcome = os.path.join(SELF_DIR, "output/test-biber.outcome.tar.gz")
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/biblatex-biber/biblatex-biber.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/biblatex-biber.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, biber, pdflatex, pdflatex
     assert meta["converters"][0]["runs"][1]["step"] == "biber_run"
+
+
+@pytest.mark.integration
+def test_biblatex_bibtex(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/biblatex-bibtex/biblatex-bibtex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/biblatex-bibtex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+
+
+@pytest.mark.integration
+def test_biblatex_bibtex8(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/biblatex-bibtex8/biblatex-bibtex8.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/biblatex-bibtex8.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex8, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "bibtex8_run"
 
 
 @pytest.mark.integration

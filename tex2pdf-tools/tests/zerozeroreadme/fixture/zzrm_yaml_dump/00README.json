@@ -1,14 +1,6 @@
 {
   "process": {
-    "compiler": "pdftex",
-    "bibliography": {
-      "pre_generated": false,
-      "processer": "bibtex"
-    },
-    "index": {
-      "pre_generated": false,
-      "processer": "makeindex"
-    }
+    "compiler": "pdftex"
   },
   "sources": [
     {
