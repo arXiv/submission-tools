@@ -197,7 +197,15 @@ for _path, subv in pairs(fileexts) do
                 if not result then
                     for ext in string.gmatch(exts, "[^%s]+") do
                         _ddebug("searching for " .. gp .. path .. "." .. ext)
-                        result = kpse.find_file(gp .. path .. "." .. ext)
+                        _ddebug("Calling kpse.find_file " .. gp .. path .. "." .. ext .. " and second arg " .. ext)
+                        -- searching for bst files requires passing in the extension as second argument
+                        -- but we cannot do that for all calls, since `cls` is not allowed, it would need to
+                        -- be changed to `tex` as second argument.
+                        if ext == "bst" then
+                            result = kpse.find_file(gp .. path .. "." .. ext, ext)
+                        else
+                            result = kpse.find_file(gp .. path .. "." .. ext)
+                        end
                         if result then
                             _ddebug("Found it! B")
                             goto end_of_loops

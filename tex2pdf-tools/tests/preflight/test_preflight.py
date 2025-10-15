@@ -861,6 +861,25 @@ def test_tcblibrary():
     assert len(pf.tex_files) == 1
     assert len(pf.tex_files[0].issues) == 0
 
+def test_bst_included():
+    """Test detection of bst files included in submission."""
+    dir_path = os.path.join(FIXTURE_DIR, "bst-detection")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    assert len(pf.tex_files) == 1
+    assert len(pf.tex_files[0].issues) == 0
+    assert pf.tex_files[0].used_other_files == ["ieeetr.bst"]
+
+def test_bst_system():
+    """Test detection of bst files from system tree."""
+    dir_path = os.path.join(FIXTURE_DIR, "bst-detection-system")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    assert len(pf.tex_files) == 1
+    assert len(pf.tex_files[0].issues) == 0
+    assert pf.tex_files[0].used_other_files == []
 
 
 
