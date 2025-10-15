@@ -741,3 +741,25 @@ def test_first_line(docker_container, ts):
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
     assert meta.get("pdf_file") == "first-line.pdf"
+
+
+@pytest.mark.integration
+def test_missing_cite_bibtex(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/missing-cite-bibtex/missing-cite-bibtex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/missing-cite-bibtex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert meta is not None
+    # compilation must fail on missing citations
+    assert meta.get("status") == "fail"
+
+
+@pytest.mark.integration
+def test_missing_cite_biber(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/missing-cite-biber/missing-cite-biber.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/missing-cite-biber.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert meta is not None
+    # compilation must fail on missing citations
+    assert meta.get("status") == "fail"
