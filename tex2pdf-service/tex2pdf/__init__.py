@@ -50,6 +50,27 @@ ENABLE_SANDBOX: bool = env_flag("ENABLE_SANDBOX")
 PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
 PROJECT_NR: int = int(os.environ.get("PROJECT_NR", "0"))
 
+TEX2PDF_DEFAULT_KEYS_TO_URLS = {
+    "autotex-te2": f"https://tex2pdf-autotex-te2-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-te3": f"https://tex2pdf-autotex-te3-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-tl2009": f"https://tex2pdf-autotex-tl2009-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-tl2011": f"https://tex2pdf-autotex-tl2011-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-tl2016": f"https://tex2pdf-autotex-tl2016-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-tl2020": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-tl2023": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "tl2023": f"https://tex-to-pdf-2023-{PROJECT_NR}.us-central1.run.app/convert/",
+    "tl2025": f"https://tex-to-pdf-2025-{PROJECT_NR}.us-central1.run.app/convert/",
+}
+TEX2PDF_DEFAULT_SCOPES = (
+    "autotex-te2:1162425600:"
+    "autotex-te3:1262217600:"
+    "autotex-tl2009:1323129600:"
+    "autotex-tl2011:1486670400:"
+    "autotex-tl2016:1601553600:"
+    "autotex-tl2020:1684778400:"
+    "autotex-tl2023,tl2023:1757894400"
+)
+
 # The default TeX Live version to use for compilation
 # Default is empty, so use the current built-in version.
 TEX2PDF_PROXY_RELEASE = os.environ.get("TEX2PDF_PROXY_RELEASE", "0")
@@ -92,27 +113,8 @@ if TEX2PDF_PROXY_RELEASE == "1":
         # where CUTOVER2002/2003/2004 are all for teTeX2 with different TEXMFCNF files
         #
         # for tl2025 default for now we used Date::Parse::str2time('2025-09-15T00:00', 'GMT')
-        TEX2PDF_KEYS_TO_URLS = {
-            "autotex-te2": f"https://tex2pdf-autotex-te2-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "autotex-te3": f"https://tex2pdf-autotex-te3-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "autotex-tl2009": f"https://tex2pdf-autotex-tl2009-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "autotex-tl2011": f"https://tex2pdf-autotex-tl2011-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "autotex-tl2016": f"https://tex2pdf-autotex-tl2016-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "autotex-tl2020": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "autotex-tl2023": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
-            "tl2023": f"https://tex-to-pdf-2023-{PROJECT_NR}.us-central1.run.app/convert/",
-            "tl2025": f"https://tex-to-pdf-2025-{PROJECT_NR}.us-central1.run.app/convert/",
-        }
-        DEFAULT_SCOPES = (
-            "autotex-te2:1162425600:"
-            "autotex-te3:1262217600:"
-            "autotex-tl2009:1323129600:"
-            "autotex-tl2011:1486670400:"
-            "autotex-tl2016:1601553600:"
-            "autotex-tl2020:1684778400:"
-            "autotex-tl2023,tl2023:1757894400"
-        )
-        TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", DEFAULT_SCOPES)
+        TEX2PDF_KEYS_TO_URLS = TEX2PDF_DEFAULT_KEYS_TO_URLS
+        TEX2PDF_SCOPES = os.environ.get("TEX2PDF_SCOPES", TEX2PDF_DEFAULT_SCOPES)
         logger.debug("TEX2PDF_KEYS_TO_URLS: %s", TEX2PDF_KEYS_TO_URLS)
         logger.debug("TEX2PDF_SCOPES: %s", TEX2PDF_SCOPES)
     else:
