@@ -50,6 +50,7 @@ RUN poetry install --without=dev
 
 FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE
+ARG GIT_COMMIT_HASH
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
