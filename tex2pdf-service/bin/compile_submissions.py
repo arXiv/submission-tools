@@ -61,11 +61,10 @@ def cli() -> None:
     pass
 
 
-def tarball_to_outcome_path(tarball: str) -> str:
+def tarball_to_outcome_path(source_dir: str, tarball: str) -> str:
     """Map tarball to outcome file path."""
-    parent_dir, filename = os.path.split(tarball)
-    stem = filename[:-7]
-    return os.path.join(parent_dir, "outcomes", "outcome-" + stem + ".tar.gz")
+    stem = tarball[:-7]
+    return os.path.join(source_dir, "outcomes", "outcome-" + stem + ".tar.gz")
 
 
 def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str], list[str], list[str], str, int]:
@@ -87,13 +86,16 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
                     if (
                         filename.startswith("INPUT /usr/local/texlive/2023/texmf-arxiv")
                         or filename.startswith("INPUT /usr/local/texlive/2024/texmf-arxiv")
+                        or filename.startswith("INPUT /usr/local/texlive/2025/texmf-arxiv")
                         or filename.startswith("INPUT /usr/local/texlive/2023/texmf-local")
                         or filename.startswith("INPUT /usr/local/texlive/2024/texmf-local")
+                        or filename.startswith("INPUT /usr/local/texlive/2025/texmf-local")
                     ):
                         files.add(
                             filename.split()[1]
                             .removeprefix("/usr/local/texlive/2023/")
                             .removeprefix("/usr/local/texlive/2024/")
+                            .removeprefix("/usr/local/texlive/2025/")
                         )
                     # only collect class and style files from the texlive tree, not files included in the submission
                     elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".cls"):
@@ -101,12 +103,14 @@ def get_outcome_meta_and_files_info(outcome_file: str) -> tuple[dict, list[str],
                             filename.split()[1]
                             .removeprefix("/usr/local/texlive/2023/")
                             .removeprefix("/usr/local/texlive/2024/")
+                            .removeprefix("/usr/local/texlive/2025/")
                         )
                     elif filename.startswith("INPUT /usr/local/texlive/") and filename.endswith(".sty"):
                         styfiles.add(
                             filename.split()[1]
                             .removeprefix("/usr/local/texlive/2023/")
                             .removeprefix("/usr/local/texlive/2024/")
+                            .removeprefix("/usr/local/texlive/2025/")
                         )
         arxiv_id = meta.get("arxiv_id")
         pdfchecksum = hashlib.sha256()
@@ -137,20 +141,29 @@ def compile(
     submissions: str, service: str, score: str, tex2pdf_timeout: int, post_timeout: int, threads: int, auto_detect: bool
 ) -> None:
     """Compile submissions in a directory."""
+    source_dir = os.path.expanduser(submissions)
 
     def local_submit_tarball(tarball: str) -> None:
-        outcome_file = tarball_to_outcome_path(tarball)
+        outcome_file = tarball_to_outcome_path(source_dir, tarball)
+        print(f"outcome_filename = {outcome_file}, source_dir = {source_dir}, tarball = {tarball}")
         try:
-            service_process_tarball(
-                service, tarball, outcome_file, tex2pdf_timeout, post_timeout, auto_detect=auto_detect
+            success = service_process_tarball(
+                service,
+                source_dir,
+                tarball[:-7],
+                os.path.join(source_dir, tarball),
+                outcome_file,
+                int(tex2pdf_timeout),
+                auto_detect=auto_detect,
             )
+            if not success:
+                logging.info(f"Failed to compile submission {tarball}")
         except FileExistsError:
             logging.info(f"Not recreating already existing {outcome_file}.")
             pass
 
-    source_dir = os.path.expanduser(submissions)
     tarballs = [
-        os.path.join(source_dir, tarball)
+        tarball
         for tarball in os.listdir(source_dir)
         if tarball.endswith(".tar.gz") and not tarball.startswith("outcome-")
     ]
@@ -193,7 +206,7 @@ def register_outcomes(submissions: str, score: str, update: bool, purge_failed: 
                     skipped += 1
                     continue
 
-        outcome_file = tarball_to_outcome_path(tarball_path)
+        outcome_file = tarball_to_outcome_path(submissions, tarball)
         if os.path.exists(outcome_file):
             try:
                 meta, files, clsfiles, styfiles, pdfchecksum, nr_pages = get_outcome_meta_and_files_info(outcome_file)

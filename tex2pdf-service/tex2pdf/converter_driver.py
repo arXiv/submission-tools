@@ -632,9 +632,11 @@ class RemoteConverterDriver(ConverterDriver):
         tag = self.tag or os.path.basename(self.source)
 
         local_tarball = os.path.join(self.work_dir, self.source)
-        outcome_file = os.path.join(self.work_dir, f"{tag}-outcome.tar.gz")
+        outcome_file = f"{tag}-outcome.tar.gz"
 
-        logger.debug("Submitting %s to %s with output to %s", local_tarball, self.service, outcome_file)
+        logger.debug(
+            "Submitting %s to %s with output to %s in %s", local_tarball, self.service, outcome_file, self.work_dir
+        )
         success = service_process_tarball(
             self.service,
             self.work_dir,
