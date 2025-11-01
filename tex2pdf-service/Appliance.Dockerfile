@@ -71,6 +71,8 @@ COPY texlive/common/texmf.cnf /usr/local/texlive/${TEXLIVE_BASE_RELEASE}/
 
 COPY --from=arxiv-texlive-builder $WORKER_HOME $WORKER_HOME
 
+COPY bin/bwrap-tex.sh /usr/local/bin/bwrap-tex.sh
+
 # -M don't create home since we copied it above
 RUN useradd -M -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
 RUN chown worker:users $WORKER_HOME
