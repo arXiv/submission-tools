@@ -565,11 +565,16 @@ class BaseConverter:
         """
         return False
 
-    def _check_cmd_run(self, run: dict, artifact: str) -> None:
+    def _check_cmd_run(self, run: dict, artifact: str, remove_on_failure: bool = False) -> None:
         """Check the tex command run and kill the artifact when the tex command failed."""
         return_code = run.get("return_code")
         logger = get_logger()
-        if return_code is None or return_code == -9:
+        logger.debug(f"_check_cmd_run return_code = {return_code!s}")
+        # For now we cannot check for return_code != 0, since this would
+        # remove the artifact, and then the compilation rounds would stop
+        # after the first try and not do any retry at all.
+        # TODO: considerably rework the far to deeply nested calling path
+        if return_code is None or return_code == -9 or (remove_on_failure and return_code != 0):
             if artifact:
                 if os.path.exists(artifact):
                     os.unlink(artifact)
@@ -580,13 +585,21 @@ class BaseConverter:
                 logger.debug(f"Return code: {return_code!s}")
 
     def _to_pdf_run(
-        self, args: list[str], stem: str, step: str, work_dir: str, in_dir: str, out_dir: str, log_file: str
+        self,
+        args: list[str],
+        stem: str,
+        step: str,
+        work_dir: str,
+        in_dir: str,
+        out_dir: str,
+        log_file: str,
+        remove_on_failure: bool = False,
     ) -> dict:
         """Run a command to generate a pdf."""
         run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
         stem_filename = os.path.join(in_dir, stem)
-        self._check_cmd_run(run, pdf_filename)
+        self._check_cmd_run(run, pdf_filename, remove_on_failure=remove_on_failure)
         self._report_run(run, out, err, step, in_dir, out_dir, "pdf", pdf_filename)
         self.fetch_supp_hashes(stem_filename)
         if log_file:
@@ -703,7 +716,7 @@ class BaseDviConverter(BaseConverter):
 
         run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": tag})
         ps_filename = os.path.join(in_dir, f"{stem}.ps")
-        self._check_cmd_run(run, ps_filename)
+        self._check_cmd_run(run, ps_filename, remove_on_failure=True)
         self._report_run(run, out, err, tag, in_dir, work_dir, "ps", ps_filename)
         return run
 
@@ -726,7 +739,7 @@ class BaseDviConverter(BaseConverter):
         """Run ps2pdf command."""
         step = "ps_to_pdf"
         args = ["/usr/bin/ps2pdf", f"{stem}.ps", f"./{stem}.pdf"]
-        return self._to_pdf_run(args, stem, step, work_dir, in_dir, out_dir, "")
+        return self._to_pdf_run(args, stem, step, work_dir, in_dir, out_dir, "", remove_on_failure=True)
 
 
 class LatexConverter(BaseDviConverter):

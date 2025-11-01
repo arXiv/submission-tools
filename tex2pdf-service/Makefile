@@ -24,7 +24,9 @@ TEX2PDF_CPUS := $(shell echo $${TEX2PDF_CPUS:-4})
 TEX2PDF_WORKERS := $(shell echo $${TEX2PDF_WORKERS:-8})
 TEX2PDF_DOCKER_PLATFORM := $(shell echo $${TEX2PDF_DOCKER_PLATFORM:-linux/amd64})
 
-APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true"
+EXTRA_DOCKER_ARGS ?= 
+
+APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true" ${EXTRA_DOCKER_ARGS}
 
 .PHONY: HELLO app.docker app.run app.stop
 
@@ -59,7 +61,7 @@ app2023.docker:
 	@echo "tag: ${app_tag}-${base_2023_tag_version}:latest"
 	docker buildx build -f ./Appliance.Dockerfile \
 		--progress=plain \
-	    --build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2023_BASE_RELEASE} \
+		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2023_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2023_BASE_IMAGE_DATE} \
 		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
 		--platform=linux/amd64 -t ${app_tag}-${base_2023_tag_version}:latest .
@@ -74,7 +76,7 @@ app2024.docker:
 	@echo "tag: ${app_tag}-${base_2024_tag_version}:latest"
 	docker buildx build -f ./Appliance.Dockerfile \
 		--progress=plain \
-	    --build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2024_BASE_RELEASE} \
+		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2024_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2024_BASE_IMAGE_DATE} \
 		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
 		--platform=linux/amd64 -t ${app_tag}-${base_2024_tag_version}:latest .
@@ -89,7 +91,7 @@ app2025.docker:
 	@echo "tag: ${app_tag}-${base_2025_tag_version}:latest"
 	docker buildx build -f ./Appliance.Dockerfile \
 		--progress=plain \
-	    --build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2025_BASE_RELEASE} \
+		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2025_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2025_BASE_IMAGE_DATE} \
 		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
 		--platform=linux/amd64 -t ${app_tag}-${base_2025_tag_version}:latest .
@@ -112,7 +114,12 @@ app2023.run:
 
 # 2024 is run a the frontend proxy and thus needs the env vars set for proxying,
 # and also needs to run on the host network
+
 app2024.run:
+	${APP_DOCKER_RUN} -it --name ${app_2024_name} -p ${app_2024_port}:${dockerport} \
+		${app_tag}-${base_2024_tag_version}:latest
+
+app2024.proxy.run:
 	${APP_DOCKER_RUN} -it --name ${app_2024_name} -p ${app_2024_port}:${dockerport} \
         --env-file tests/local-proxy-test.env \
         --network host \
@@ -122,6 +129,11 @@ app2025.run:
 	${APP_DOCKER_RUN} -it --name ${app_2025_name} -p ${app_2025_port}:${dockerport} \
 		${app_tag}-${base_2025_tag_version}:latest
 
+app2025.proxy.run:
+	${APP_DOCKER_RUN} -it --name ${app_2025_name} -p ${app_2025_port}:${dockerport} \
+        --env-file tests/local-proxy-test-2025.env \
+        --network host \
+		${app_tag}-${base_2025_tag_version}:latest
 
 #-#
 #-# Command: app.stop

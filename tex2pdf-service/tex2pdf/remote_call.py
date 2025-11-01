@@ -35,6 +35,7 @@ def convert_pdf_remote(
     timeout: float | None,
     max_tex_files: int | None,
     max_appending_files: int | None,
+    outcome_filename: str | None = None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     auto_detect: bool = False,
@@ -53,6 +54,7 @@ def convert_pdf_remote(
     :param timeout: timeout for the request in seconds
     :param max_tex_files: maximum number of .tex files allowed to be compiled
     :param max_appending_files: maximum number of files allowed to be appended
+    :param outcome_filename: name for the outcome, defaults to "outcome-${tag}"
     :param watermark_text: optional watermark text to add to the PDF
     :param watermark_link: optional watermark link to add to the PDF
     :param auto_detect: whether to auto-detect the main .tex file using preflight
@@ -134,7 +136,7 @@ def convert_pdf_remote(
                     # it would be better to forward the streaming response directly to the caller
                     # one approach is explained here: https://stackoverflow.com/a/73299661
                     if res.content:
-                        out_filename = f"{tag}-outcome.tar.gz"
+                        out_filename = f"{tag}-outcome.tar.gz" if outcome_filename is None else outcome_filename
                         out_path = os.path.join(output_dir, out_filename)
                         with open(out_path, "wb") as out_file:
                             out_file.write(res.content)
@@ -178,7 +180,7 @@ def convert_pdf_remote(
 
 def service_process_tarball(
     service: str,
-    tempdir: str,
+    output_dir: str,
     tag: str,
     tarball: str,
     outcome_file: str,
@@ -192,10 +194,10 @@ def service_process_tarball(
     """Submit tarball to compilation service and receive result.
 
     :param service: URL of the compilation service
-    :param tempdir: temporary directory to use for output
+    :param output_dir: temporary directory to use for output
     :param tag: tag to use in naming the outcome tarball
     :param tarball: path to the source tarball to submit
-    :param outcome_file: path to save the outcome tarball
+    :param outcome_file: file name of the outcome tarball created in output_dir, defaults to outcome-${tag}.tar.gz
     :param watermark_text: optional watermark text to add to the PDF
     :param watermark_link: optional watermark link to add to the PDF
     :param post_timeout: timeout for the request in seconds
@@ -204,9 +206,10 @@ def service_process_tarball(
     :param log_extra: extra context for logging
     :return: True if compilation succeeded, False otherwise
     """
-    if os.path.exists(outcome_file):
-        raise FileExistsError(f"Outcome file {outcome_file} already exists!")
-    os.makedirs(os.path.dirname(outcome_file), exist_ok=True)
+    outcome_path = os.path.join(output_dir, outcome_file)
+    if os.path.exists(outcome_path):
+        raise FileExistsError(f"Outcome file {outcome_path} already exists!")
+    os.makedirs(output_dir, exist_ok=True)
     filename = os.path.basename(tarball)
     logging.info("File: %s", filename)
     meta = {}
@@ -215,15 +218,16 @@ def service_process_tarball(
     status_code, msg = convert_pdf_remote(
         service,
         None,
-        tempdir,
+        output_dir,
         tag,
         tarball,
         False,
         post_timeout,
-        watermark_text=watermark_text,
-        watermark_link=watermark_link,
         max_tex_files=None,
         max_appending_files=None,
+        outcome_filename=outcome_file,
+        watermark_text=watermark_text,
+        watermark_link=watermark_link,
         auto_detect=auto_detect,
         hide_anc_dir=hide_anc_dir,
         log_extra=log_extra,

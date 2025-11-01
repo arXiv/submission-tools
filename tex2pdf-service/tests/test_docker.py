@@ -606,3 +606,16 @@ def test_dvi_pdfoutput(docker_container, ts):
     assert meta is not None
     assert meta["status"] == "fail"
     assert meta.get("pdf_file") is None
+
+
+@pytest.mark.integration
+def test_failing_ps2pdf(docker_container, ts):
+    """Test submission where ps2pdf fails.."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/failing-ps2pdf/failing-ps2pdf.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/failing-ps2pdf.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
+    assert meta is not None
+    assert meta["status"] == "fail"
+    assert meta.get("pdf_file") is None
+    assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvips, ps2pdf
