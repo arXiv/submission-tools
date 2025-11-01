@@ -465,7 +465,7 @@ def _convert_pdf_current(
         hide_anc_dir=hide_anc_dir,
     )
     logger = get_logger()
-    logger.debug("XXXX work_dir: %s; source: %s", in_dir, source, extra=log_extra)
+    logger.debug("work_dir: %s; source: %s", in_dir, source, extra=log_extra)
     try:
         _pdf_file = driver.generate_pdf()
     except RemovedSubmission as exc:
