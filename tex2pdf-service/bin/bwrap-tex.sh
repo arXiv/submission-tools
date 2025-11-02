@@ -17,7 +17,9 @@ RO_BIND_TEXLIVE="\
 RO_BIND_BIN="\
     --ro-bind /lib/x86_64-linux-gnu/ /lib/x86_64-linux-gnu/ \
     --ro-bind /usr/share/ghostscript/ /usr/share/ghostscript/ \
+    --ro-bind /var/lib/ghostscript/ /var/lib/ghostscript/ \
     --ro-bind /usr/share/color/icc/ghostscript/ /usr/share/color/icc/ghostscript/ \
+    --ro-bind /usr/share/fonts/ /usr/share/fonts/ \
     --ro-bind /etc/paperspecs /etc/paperspecs \
 "
 
