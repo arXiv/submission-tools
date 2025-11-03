@@ -173,13 +173,13 @@ class BaseConverter:
             aux_file = f"{in_dir}/{stem}.aux"
             if os.path.exists(aux_file):
                 logger.debug("determine_bib_bbl: checking aux file")
-                aux_lines: list[str] = []
-                with open(aux_file) as f:
+                aux_lines: list[bytes] = []
+                with open(aux_file, "rb") as f:
                     aux_lines = [x.rstrip() for x in f]
-                bibstyle_re = re.compile(r"^\\bibstyle{(.*)}$")
-                bibdata_re = re.compile(r"^\\bibdata{(.*)}$")
-                bibstyle = ""
-                bibdata = ""
+                bibstyle_re = re.compile(rb"^\\bibstyle{(.*)}$")
+                bibdata_re = re.compile(rb"^\\bibdata{(.*)}$")
+                bibstyle = b""
+                bibdata = b""
                 for line in aux_lines:
                     if ma := bibstyle_re.match(line):
                         bibstyle = ma.group(1)
@@ -189,8 +189,8 @@ class BaseConverter:
                 # parsing done, check the actual content
                 bibdata_files_present = False
                 bibdata = bibdata.strip()
-                bibfiles = bibdata.split(",")
-                if bibdata == "":
+                bibfiles = bibdata.split(b",")
+                if bibdata == b"":
                     bibdata_files_present = False
                 elif len(bibfiles) == 0:
                     logger.debug("determine_bib_bbl: no bibfiles found")
@@ -206,9 +206,9 @@ class BaseConverter:
                     if bibfile == f"{stem}Notes" and os.path.exists(f"{in_dir}/{stem}Notes.bib"):
                         # check whether all lines in that file start with @CONTROL
                         # as far as I see nobody else is creating bib files out of the blue ...
-                        with open(f"{in_dir}/{stem}Notes.bib") as f:
+                        with open(f"{in_dir}/{stem}Notes.bib", "rb") as f:
                             bib_lines = [x.rstrip() for x in f]
-                        if all([bib_line.startswith("@CONTROL") for bib_line in bib_lines]):
+                        if all([bib_line.startswith(b"@CONTROL") for bib_line in bib_lines]):
                             # ignore file generated from revtex4-1
                             logger.debug("determine_bib_bbl: ignoring revtex generated bib file")
                             bibdata_files_present = False
