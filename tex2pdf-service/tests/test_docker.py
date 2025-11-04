@@ -561,6 +561,34 @@ def test_biblatex_bibtex8(docker_container):
 
 
 @pytest.mark.integration
+def test_bibtex_not_used(docker_container):
+    """Test a submission with built-in bibliography."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/bibtex-not-used/bibtex-not-used.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/bibtex-not-used.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][0]["step"] == "first_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "second_run:0"
+
+
+@pytest.mark.integration
+def test_bibtex_not_used_revtex(docker_container):
+    """Test a submission with built-in bibliography, but revtex generating .bib files."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/bibtex-not-used-revtex/bibtex-not-used-revtex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/bibtex-not-used-revtex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][0]["step"] == "first_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "second_run:0"
+
+
+@pytest.mark.integration
 def test_no_bib_processor(docker_container):
     """Test that if the bib processor is not set, that we use bibtex as default."""
     url = docker_container + "/convert"
