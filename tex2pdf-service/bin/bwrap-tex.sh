@@ -56,7 +56,7 @@ bwrap \
     $RO_BIND \
     --bind /dev/null /dev/null \
     --setenv PATH /bin \
-    --setenv TEXMFVAR /home/nobody/work/.texmf-var \
+    --setenv TEXMFVAR /home/nobody/work/texmf-var \
     --bind . /home/nobody/work/ \
     --chdir /home/nobody/work/ \
     $*
