@@ -5,6 +5,7 @@ set -eu
 echo "bubblewrapping call $*" >&2
 
 tmpdir=`mktemp -d`
+trap 'rm -rf -- "$tmpdir"' EXIT
 
 # for TeX Live, bin only the libraries and TeX Live (luatex, xetex etc need a lot of libs)
 RO_BIND_TEXLIVE="\
@@ -55,6 +56,7 @@ bwrap \
     $RO_BIND \
     --bind /dev/null /dev/null \
     --setenv PATH /bin \
+    --setenv TEXMFVAR /home/nobody/work/.texmf-var \
     --bind . /home/nobody/work/ \
     --chdir /home/nobody/work/ \
     $*
