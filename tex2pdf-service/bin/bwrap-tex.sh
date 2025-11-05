@@ -22,12 +22,15 @@ RO_BIND_BIN="\
     --ro-bind /usr/share/color/icc/ghostscript/ /usr/share/color/icc/ghostscript/ \
     --ro-bind /usr/share/fonts/ /usr/share/fonts/ \
     --ro-bind /etc/paperspecs /etc/paperspecs \
+    --ro-bind /etc/fonts/ /etc/fonts/ \
 "
 
 CMD="$1"
 FULLPATH_CMD=$(type -p "$CMD")
 case "$FULLPATH_CMD" in
   /usr/bin/*) RO_BIND="$RO_BIND_BIN" ;;
+  ## for xelatex we need gs setup, too
+  */xelatex) RO_BIND="$RO_BIND_BIN $RO_BIND_TEXLIVE" ;;
   /usr/local/texlive/*) RO_BIND="$RO_BIND_TEXLIVE" ;;
   *) echo "Unknown location of binary: $FULLPATH_CMD for call $*, exiting." >&2; exit 1 ;;
 esac

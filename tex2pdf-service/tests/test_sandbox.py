@@ -103,6 +103,27 @@ def test_basic_compilers(docker_container, compiler):
 
 
 @pytest.mark.integration
+def test_xelatex_eps(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/xelatex-eps/xelatex-eps.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/xelatex-eps.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome)
+    if status != 200:
+        print(meta)
+    assert status == 200
+    assert meta is not None
+    assert meta.get("pdf_file") == "xelatex-eps.pdf"
+    assert meta.get("tex_files") == ["main.tex"]
+    assert meta.get("converter").startswith("xelatex")
+    assert len(meta.get("converters", [])) == 1
+    assert len(meta["converters"][0]["runs"]) == 2  # compiler, compiler
+    # fmt: off
+    assert "bubblewrapping call /usr/local/texlive/2025/bin/x86_64-linux/xelatex" \
+           in meta["converters"][0]["runs"][1].get("stderr")
+    # fmt: on
+
+
+@pytest.mark.integration
 def test_mktextfm(docker_container):
     """Test that LaTeX compilation triggers mktextfm for custom font metrics."""
     url = docker_container + "/convert"
