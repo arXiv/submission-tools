@@ -1,0 +1,85 @@
+"""This module implements QA checks for PDF files."""
+
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from .service_logger import get_logger
+
+logger = get_logger()
+
+PDF_CHECKS = {
+    "javascript": lambda res: check_javascript(res),
+}
+
+
+def get_pdf_info(pdf: str) -> dict[str, Any]:
+    """
+    Get PDF information using various pdfinfo commands.
+
+    Args:
+        pdf: Path to the PDF file to check
+
+    Returns:
+        Dictionary containing output from various PDF checking commands.
+        Each key is the command name, with 'stdout', 'stderr', and 'returncode' subkeys.
+    """
+    pdf_path = Path(pdf)
+    if not pdf_path.exists():
+        logger.error(f"PDF file not found: {pdf}")
+        return {"error": f"PDF file not found: {pdf}"}
+
+    # Define commands to run against the PDF
+    # Format: (key_name, command_parts)
+    cmds = [
+        ("pdfinfo", ["pdfinfo", str(pdf_path)]),
+        ("pdfinfo_js", ["pdfinfo", "-js", str(pdf_path)]),
+        ("pdfinfo_meta", ["pdfinfo", "-meta", str(pdf_path)]),
+        ("pdffonts", ["pdffonts", str(pdf_path)]),
+        ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
+    ]
+
+    results = {}
+
+    for key, cmd in cmds:
+        try:
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=30)
+            results[key] = {"stdout": result.stdout, "stderr": result.stderr, "returncode": result.returncode}
+            logger.debug(f"Ran {' '.join(cmd)}: returncode={result.returncode}")
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Command timed out: {' '.join(cmd)}")
+            results[key] = {"error": "timeout", "returncode": -1}
+        except FileNotFoundError:
+            logger.warning(f"Command not found: {cmd[0]}")
+            results[key] = {"error": f"command not found: {cmd[0]}", "returncode": -1}
+        except Exception as e:
+            logger.error(f"Error running {' '.join(cmd)}: {e}")
+            results[key] = {"error": str(e), "returncode": -1}
+
+    return results
+
+
+@dataclass
+class PDFCheckResult:
+    check_passed: bool
+    info: str
+    long_info: str
+
+
+def check_javascript(res: dict) -> PDFCheckResult:
+    """Check for presence of JavaScript in the PDF."""
+    if res["pdfinfo_js"]["stdout"].strip():
+        return PDFCheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
+    return PDFCheckResult(True, "", "")
+
+
+def run_checks(pdf: str, checks: list[str]) -> tuple[bool, list[PDFCheckResult]]:
+    res = get_pdf_info(pdf)
+    check_results: list[PDFCheckResult] = []
+    for check in checks:
+        if check in PDF_CHECKS:
+            check_results.append(PDF_CHECKS[check](res))
+        else:
+            logger.error(f"Unknown check: {check}")
+    return all([checkres.check_passed for checkres in check_results]), check_results
