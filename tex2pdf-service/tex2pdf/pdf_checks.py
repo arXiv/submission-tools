@@ -69,17 +69,35 @@ class PDFCheckResult:
 
 def check_javascript(res: dict) -> PDFCheckResult:
     """Check for presence of JavaScript in the PDF."""
-    if res["pdfinfo_js"]["stdout"].strip():
+    if res["pdfinfo_js"]["returncode"] == 0 and res["pdfinfo_js"]["stdout"].strip():
         return PDFCheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
     return PDFCheckResult(True, "", "")
 
 
-def run_checks(pdf: str, checks: list[str]) -> tuple[bool, list[PDFCheckResult]]:
-    res = get_pdf_info(pdf)
+def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[PDFCheckResult]]:
+    """Run a list of checks or all.
+
+    Args:
+        pdf: Path to the PDF file to check
+        checks: List of checks to run
+
+    Returns: a tuple containing:
+        a boolean indicating whether all checks passed
+        the list of **failed** PDFCheckResults
+    """
+    pdf_info = get_pdf_info(pdf)
     check_results: list[PDFCheckResult] = []
+    if type(checks) is str:
+        if checks == "all":
+            checks = list(PDF_CHECKS.keys())
+        else:
+            checks = [checks]
     for check in checks:
         if check in PDF_CHECKS:
-            check_results.append(PDF_CHECKS[check](res))
+            res = PDF_CHECKS[check](pdf_info)
+            if not res.check_passed:
+                check_results.append(res)
         else:
             logger.error(f"Unknown check: {check}")
-    return all([checkres.check_passed for checkres in check_results]), check_results
+    # if check_results is empty, all tests have passed and we return true, and the check_results
+    return not check_results, check_results

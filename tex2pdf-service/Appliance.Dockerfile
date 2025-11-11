@@ -27,7 +27,7 @@ ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 # and thus needs development tools
 RUN apt-get -q update && \
     DEBIAN_FRONTEND=noninteractive apt-get -qy upgrade && \
-    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y default-libmysqlclient-dev pkgconf build-essential && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-suggests --no-install-recommends -y default-libmysqlclient-dev pkgconf build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/log/dpkg.log
@@ -64,6 +64,14 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=8080 \
     GIT_COMMIT_HASH=${GIT_COMMIT_HASH} \
     TEXLIVE_BASE_RELEASE=${TEXLIVE_BASE_RELEASE}
+
+RUN apt-get -q update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qy upgrade && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-suggests --no-install-recommends -y \
+       poppler-utils gpg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/log/dpkg.log
 
 # install the arXiv specific changes:
 # - special settings in texmf.cnf

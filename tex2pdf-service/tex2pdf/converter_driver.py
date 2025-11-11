@@ -26,6 +26,7 @@ from . import (
     test_file_extent,
 )
 from .doc_converter import combine_documents
+from .pdf_checks import run_checks
 from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
@@ -256,8 +257,22 @@ class ConverterDriver:
         pdf_files = self.outcome.get("pdf_files", [])
         if pdf_files:
             self._finalize_pdf()
-            self.outcome["status"] = "success"
+            pdf_result = self.outcome.get("pdf_file")
+            if pdf_result:
+                pdf_file = f"{self.out_dir}/{pdf_result}"
+                checks_succeed, check_failed_results = run_checks(pdf_file, "all")
+                if not checks_succeed:
+                    os.unlink(pdf_file)
+                    self.outcome["pdf_file"] = None
+                    self.outcome["status"] = "fail"
+                    self.outcome["reason"] = "\n".join([z.info for z in check_failed_results])
+                else:
+                    self.outcome["status"] = "success"
+            else:
+                self.outcome["reason"] = "No final PDF found."
+                self.outcome["status"] = "fail"
         else:
+            self.outcome["reason"] = "No PDF files created."
             self.outcome["status"] = "fail"
         return self.outcome.get("pdf_file")
 
