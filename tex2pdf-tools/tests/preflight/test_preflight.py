@@ -881,6 +881,15 @@ def test_bst_system():
     assert len(pf.tex_files[0].issues) == 0
     assert pf.tex_files[0].used_other_files == []
 
+def test_pdf_with_javascript():
+    """Test detection of PDF file with javascript embedded."""
+    dir_path = os.path.join(FIXTURE_DIR, "pdf-with-javascript")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "error"
+    assert len(pf.detected_toplevel_files) == 0
+    assert len(pf.tex_files) == 0
+    assert pf.status.info == "PDF only submission: PDF failed QA checks:\nJavaScript code found in PDF"
+
 
 
 
