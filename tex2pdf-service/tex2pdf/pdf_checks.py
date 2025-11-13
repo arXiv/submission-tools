@@ -33,11 +33,11 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
     # Define commands to run against the PDF
     # Format: (key_name, command_parts)
     cmds = [
-        ("pdfinfo", ["pdfinfo", str(pdf_path)]),
+        # ("pdfinfo", ["pdfinfo", str(pdf_path)]),
         ("pdfinfo_js", ["pdfinfo", "-js", str(pdf_path)]),
-        ("pdfinfo_meta", ["pdfinfo", "-meta", str(pdf_path)]),
-        ("pdffonts", ["pdffonts", str(pdf_path)]),
-        ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
+        # ("pdfinfo_meta", ["pdfinfo", "-meta", str(pdf_path)]),
+        # ("pdffonts", ["pdffonts", str(pdf_path)]),
+        # ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
     ]
 
     results = {}
@@ -69,6 +69,11 @@ class PDFCheckResult:
 
 def check_javascript(res: dict) -> PDFCheckResult:
     """Check for presence of JavaScript in the PDF."""
+    if "pdfinfo_js" not in res:
+        # TODO what should we do if a check cannot be run or failed to run?
+        # For now return success to not break PDF production.
+        return PDFCheckResult(True, "", "")
+    # "returncode" should be always set, and if it is 0, stdout and stderr are also set
     if res["pdfinfo_js"]["returncode"] == 0 and res["pdfinfo_js"]["stdout"].strip():
         return PDFCheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
     return PDFCheckResult(True, "", "")

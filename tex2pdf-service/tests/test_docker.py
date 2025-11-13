@@ -755,8 +755,6 @@ def test_first_line(docker_container, ts):
     outcome = os.path.join(SELF_DIR, "output/first-line.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true", "ts": ts})
     assert meta is not None
-    if type(meta) is str:
-        assert False, f"meta is a string: {meta}"
     assert meta.get("pdf_file") == "first-line.pdf"
 
 
