@@ -2,7 +2,7 @@
 
 import os
 
-os.environ.setdefault("TEXLIVE_BASE_RELEASE", "2024")
+os.environ.setdefault("TEXLIVE_BASE_RELEASE", "2025")
 
 
 def pytest_addoption(parser):
@@ -11,7 +11,4 @@ def pytest_addoption(parser):
     parser.addoption("--no-docker-setup", action="store_true", help="do not run docker setup, expect a running docker")
     parser.addoption(
         "--docker-port-2023", action="store", default="33031", help="outside docker port to use for TL2023"
-    )
-    parser.addoption(
-        "--docker-port-2025", action="store", default="33032", help="outside docker port to use for TL2025"
     )
