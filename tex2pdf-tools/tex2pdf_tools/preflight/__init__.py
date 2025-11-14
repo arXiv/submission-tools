@@ -20,6 +20,8 @@ from typing import TypeVar
 
 from pydantic import BaseModel, Field
 
+from .pdf_checks import run_checks as run_pdf_checks
+
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
 
@@ -228,6 +230,12 @@ class PostProcessType(str, Enum):
 
 class PreflightException(Exception):
     """General exception when parsing preflight."""
+
+    pass
+
+
+class PDFCheckPreflightException(PreflightException):
+    """Exception raised when PDF checks fail."""
 
     pass
 
@@ -1366,6 +1374,10 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
         # we didn't find any tex file, check for a single PDF file
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
+            # run checks that might reject the PDF
+            checks_succeeded, failed_checks = run_pdf_checks(f"{rundir}/{files[0]}", "all")
+            if not checks_succeeded:
+                raise PDFCheckPreflightException("\n".join([z.info for z in failed_checks]))
             return (
                 ToplevelFile(
                     filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
@@ -2067,12 +2079,25 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     # parse files
     n: dict[str, ParsedTeXFile] | ToplevelFile
     anc_files: list[str]
+    maybe_files: list[str]
     nodes: dict[str, ParsedTeXFile]
     roots: dict[str, ParsedTeXFile]
     toplevel_files: dict[str, ToplevelFile]
 
-    n, anc_files, maybe_files = parse_dir(rundir)
-    if isinstance(n, ToplevelFile):
+    try:
+        n, anc_files, maybe_files = parse_dir(rundir)
+        pdf_tests_succeeded = True
+        error_msg = ""
+    except PDFCheckPreflightException as e:
+        pdf_tests_succeeded = False
+        error_msg = f"PDF only submission: PDF failed QA checks:\n{e!s}"
+    if not pdf_tests_succeeded:
+        nodes = {}
+        toplevel_files = {}
+        anc_files = []
+        maybe_files = []
+        status = PreflightStatus(key=PreflightStatusValues.error, info=error_msg)
+    elif isinstance(n, ToplevelFile):
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
         nodes = {}

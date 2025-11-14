@@ -39,6 +39,8 @@ jobs:
           unicode-math
           fontspec
           tcolorbox
+    - name: Install pdfinfo via poppler-utils
+      run: sudo apt-get update && sudo apt-get install --no-install-recommends -y poppler-utils
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools
