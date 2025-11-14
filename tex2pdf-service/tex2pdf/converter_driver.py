@@ -11,6 +11,7 @@ import typing
 from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
+from tex2pdf_tools.preflight.pdf_checks import run_checks
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
 from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
@@ -26,7 +27,6 @@ from . import (
     test_file_extent,
 )
 from .doc_converter import combine_documents
-from .pdf_checks import run_checks
 from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
