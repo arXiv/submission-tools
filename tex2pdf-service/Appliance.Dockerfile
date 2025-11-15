@@ -27,7 +27,7 @@ ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 # and thus needs development tools
 RUN apt-get -q update && \
     DEBIAN_FRONTEND=noninteractive apt-get -qy upgrade && \
-    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y default-libmysqlclient-dev pkgconf build-essential && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-suggests --no-install-recommends -y default-libmysqlclient-dev pkgconf build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/log/dpkg.log

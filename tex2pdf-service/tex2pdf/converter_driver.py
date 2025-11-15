@@ -11,6 +11,7 @@ import typing
 from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
+from tex2pdf_tools.preflight.pdf_checks import run_checks
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
 from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
@@ -256,8 +257,22 @@ class ConverterDriver:
         pdf_files = self.outcome.get("pdf_files", [])
         if pdf_files:
             self._finalize_pdf()
-            self.outcome["status"] = "success"
+            pdf_result = self.outcome.get("pdf_file")
+            if pdf_result:
+                pdf_file = f"{self.out_dir}/{pdf_result}"
+                checks_succeed, check_failed_results = run_checks(pdf_file, "all")
+                if not checks_succeed:
+                    os.unlink(pdf_file)
+                    self.outcome["pdf_file"] = None
+                    self.outcome["status"] = "fail"
+                    self.outcome["reason"] = "\n".join([z.info for z in check_failed_results])
+                else:
+                    self.outcome["status"] = "success"
+            else:
+                self.outcome["reason"] = "No final PDF found."
+                self.outcome["status"] = "fail"
         else:
+            self.outcome["reason"] = "No PDF files created."
             self.outcome["status"] = "fail"
         return self.outcome.get("pdf_file")
 
