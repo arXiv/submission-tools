@@ -12,9 +12,8 @@ from tex2pdf.tarball import unpack_tarball
 from tex2pdf_tools.zerozeroreadme import ZZRM_CURRENT_VERSION
 
 PORT_2023 = 33031
-PORT_2025 = 33032
-# default proxy is TL2024
-# since we run --network host for tl2024 docker, the app listens on the internal port
+# default proxy is TL2025
+# since we run --network host for tl2025 docker, the app listens on the internal port
 PORT_DEFAULT = 8080
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -30,24 +29,19 @@ def ts(request):
 @pytest.fixture(scope="module")
 def docker_container(request):
     global PORT_2023  # noqa: PLW0603
-    global PORT_2025  # noqa: PLW0603
     PORT_2023 = request.config.getoption("--docker-port-2023")
-    PORT_2025 = request.config.getoption("--docker-port-2025")
 
     image_2023_name = "public-tex2pdf-app-2023-2023-05-21"
-    image_2024_name = "public-tex2pdf-app-2024-2024-12-29"
     image_2025_name = "public-tex2pdf-app-2025-2025-08-03"
     container_2023_name = "test-arxiv-tex2pdf-2023"
-    container_2024_name = "test-arxiv-tex2pdf-2024"
     container_2025_name = "test-arxiv-tex2pdf-2025"
 
     if not request.config.getoption("--no-docker-setup"):
         subprocess.call(["docker", "kill", container_2023_name])
-        subprocess.call(["docker", "kill", container_2024_name])
         subprocess.call(["docker", "kill", container_2025_name])
 
         # Make sure the container is the latest
-        args = ["make", "app.docker"]
+        args = ["make", "app2023.docker", "app2025.docker"]
         make = subprocess.run(args, encoding="utf-8", capture_output=True, check=False)
         if make.returncode != 0:
             print(make.stdout)
@@ -55,18 +49,16 @@ def docker_container(request):
             pass
 
         _start_docker_container(image_2023_name, container_2023_name, PORT_2023)
-        _start_docker_container(image_2025_name, container_2025_name, PORT_2025)
         # fmt: off
         # we cannot run the proxy under gvisor since the --network=host
         # somehow makes the service unavailable
         _start_docker_container(
-            image_2024_name, container_2024_name, PORT_DEFAULT,
+            image_2025_name, container_2025_name, PORT_DEFAULT,
             extra_args=[
                 "--network", "host",
                 "--env",     "TEX2PDF_PROXY_RELEASE=1",
                 "--env",     f"TEX2PDF_SCOPES=tl2023,autotex-tl2023:{TL2023_CUTOFF}",
                 "--env",     f"TEX2PDF_KEYS_TO_URLS_tl2023=http://localhost:{PORT_2023}/convert/",
-                "--env",     f"TEX2PDF_KEYS_TO_URLS_tl2025=http://localhost:{PORT_2025}/convert/",
                 "--env",     "TEX2PDF_KEYS_TO_URLS_autotex-tl2023=http://localhost:9999/no-such-autotex/",
             ],
             gvisor=False
@@ -74,8 +66,7 @@ def docker_container(request):
         # fmt: on
 
     _check_docker_api_ready(container_2023_name, PORT_2023)
-    _check_docker_api_ready(container_2024_name, PORT_DEFAULT)
-    _check_docker_api_ready(container_2025_name, PORT_2025)
+    _check_docker_api_ready(container_2025_name, PORT_DEFAULT)
 
     # we test with 2024 as default entry point, and 2023 as fallback
     yield f"http://localhost:{PORT_DEFAULT}"
@@ -84,12 +75,9 @@ def docker_container(request):
         # Stop the container after tests
         with open(f"{container_2023_name}.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_2023_name], stdout=log, stderr=log)
-        with open(f"{container_2024_name}.log", "w", encoding="utf-8") as log:
-            subprocess.call(["docker", "logs", container_2024_name], stdout=log, stderr=log)
         with open(f"{container_2025_name}.log", "w", encoding="utf-8") as log:
             subprocess.call(["docker", "logs", container_2025_name], stdout=log, stderr=log)
         subprocess.call(["docker", "kill", container_2023_name])
-        subprocess.call(["docker", "kill", container_2024_name])
         subprocess.call(["docker", "kill", container_2025_name])
 
 
@@ -112,8 +100,8 @@ def test_api_texlive_version_info(docker_container):
         print(response.content)
     assert response.status_code == 200
     ret = response.json()
-    assert ret["version"] == "2024"
-    assert sorted(ret["proxy_version"]) == ["autotex-tl2023", "tl2023", "tl2025"]
+    assert ret["version"] == "2025"
+    assert sorted(ret["proxy_version"]) == ["autotex-tl2023", "tl2023"]
 
 
 # this test doesn't work with the remote compilation since the status changes from 500 to 400 ???
@@ -328,7 +316,7 @@ def test_bbl_33(docker_container):
 
 
 @pytest.mark.integration
-def test_bbl_32_2024(docker_container):
+def test_bbl_32_2025(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-bbl-32-2024.outcome.tar.gz")
@@ -394,7 +382,7 @@ def test_latex_as_tex_fails(docker_container, ts):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/latex-as-tex-fails/latex-as-tex-fails.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/test-latex-as-tex-fails.outcome.tar.gz")
-    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": TL2023_TS})
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
     assert meta is not None
     # compilation must succeed
     assert meta.get("status") == "fail"
@@ -410,7 +398,6 @@ def test_api_texlive_version(docker_container):
     outcome = os.path.join(SELF_DIR, "output/test-texlive-version.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
-    # since the default proxy is TL2024, and we explicitely request TL2025 in the ZZRM here,
     # check that a 2025 TeX Live is actually used
     assert "TeX Live 2025" in meta["converters"][0]["runs"][1].get("log")
 
@@ -647,3 +634,16 @@ def test_failing_ps2pdf(docker_container, ts):
     assert meta["status"] == "fail"
     assert meta.get("pdf_file") is None
     assert len(meta["converters"][0]["runs"]) == 4  # latex, latex, dvips, ps2pdf
+
+
+@pytest.mark.integration
+def test_check_js_detection(docker_container, ts):
+    """Test submission with embedded Javascript fails.."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/check-js-detection/check-js-detection.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/check-js-detection.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
+    assert meta is not None
+    assert meta["status"] == "fail"
+    assert meta.get("pdf_file") is None
+    assert len(meta["converters"][0]["runs"]) == 1  # latex
