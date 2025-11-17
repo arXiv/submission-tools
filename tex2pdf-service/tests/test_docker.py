@@ -793,4 +793,4 @@ def test_check_js_detection(docker_container, ts):
     assert meta is not None
     assert meta["status"] == "fail"
     assert meta.get("pdf_file") is None
-    assert len(meta["converters"][0]["runs"]) == 1  # latex
+    assert meta.get("reason", "") == "JavaScript code found in PDF"
