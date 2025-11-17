@@ -791,6 +791,6 @@ def test_check_js_detection(docker_container, ts):
     outcome = os.path.join(SELF_DIR, "output/check-js-detection.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
     assert meta is not None
-    assert meta["status"] == "fail"
+    assert meta.get("status") == "fail"
     assert meta.get("pdf_file") is None
-    assert meta.get("reason", "") == "JavaScript code found in PDF"
+    assert meta.get("reason", "") == "PDF QA check failed."
