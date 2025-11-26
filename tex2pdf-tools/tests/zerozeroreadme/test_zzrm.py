@@ -254,12 +254,12 @@ fontmaps = [
     def test_zzrm_pdftex(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_pdftex")
         zzrm = ZeroZeroReadMe(dir_path)
-        self.assertEqual("pdfetex", zzrm.process.compiler.compiler_string)
+        self.assertEqual("pdftex", zzrm.process.compiler.compiler_string)
 
     def test_zzrm_pdfetex(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_pdfetex")
         zzrm = ZeroZeroReadMe(dir_path)
-        self.assertEqual("pdfetex", zzrm.process.compiler.compiler_string)
+        self.assertEqual("pdftex", zzrm.process.compiler.compiler_string)
 
     def test_yaml_dump(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_yaml_dump")
