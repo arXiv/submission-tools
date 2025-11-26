@@ -342,6 +342,12 @@ class CompilerSpec(BaseModel):
                         # TODO should we check whether output == DVI ?
                         # we might have other non-dvi2pdf related postprocessing later on?
                         ret += f"+{self.postp.value}"
+                    # deal with the special case of pdfetex/pdftex
+                    # we want return "pdftex" as compiler string
+                    # otherwise we get "pdfetex" in 00README.json files showing up in "compiler: pdfetex"
+                    # which is **correct** but the frontend fails to deal with that.
+                    if ret == "pdfetex":
+                        ret = "pdftex"
                     return ret
         # if we are still here, something was wrong ....
         return None
