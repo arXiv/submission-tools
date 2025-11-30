@@ -281,3 +281,8 @@ sources:
   usage: toplevel
 stamp: false
 """
+
+    def test_zzrm_tl_version_current(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_v2_current")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(2025, zzrm.texlive_version)

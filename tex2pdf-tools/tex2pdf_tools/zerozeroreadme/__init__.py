@@ -14,6 +14,7 @@ from ruamel.yaml import YAML, MappingNode, ScalarNode
 from ruamel.yaml.representer import RoundTripRepresenter
 
 from ..preflight import (
+    CURRENT_TEXLIVE_VERSION,
     CompilerSpec,
     EngineType,
     LanguageType,
@@ -462,11 +463,15 @@ class ZeroZeroReadMe:
                     try:
                         self.texlive_version = int(v)
                     except ValueError:
-                        if v.startswith("tl") or v.startswith("TL"):
+                        if v == "current":
+                            self.texlive_version = int(CURRENT_TEXLIVE_VERSION)
+                        elif v.startswith("tl") or v.startswith("TL"):
                             try:
                                 self.texlive_version = int(v[2:])
                             except ValueError:
                                 raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
+                        else:
+                            raise ZZRMParseError(f"Invalid texlive_version: {v}")
                 else:
                     raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
             elif k == "comment":
