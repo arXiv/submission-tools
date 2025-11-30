@@ -8,24 +8,11 @@ import tex2pdf_tools.preflight
 from tex2pdf_tools.preflight import IssueType, UNICODE_TEX_PACKAGES
 from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
 
-tex2pdf_tools.preflight.ENABLE_PDFETEX = True
-tex2pdf_tools.preflight.ENABLE_XELATEX = True
-tex2pdf_tools.preflight.update_list_of_supported_compilers()
-UPDATED_COMPILER_LIST = tex2pdf_tools.preflight.SUPPORTED_COMPILERS.copy()
-UPDATED_COMPILER_STR_LIST = tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR.copy()
-# Reset the compiler list to the original state after tests
-tex2pdf_tools.preflight.ENABLE_PDFETEX = False
-tex2pdf_tools.preflight.ENABLE_XELATEX = False
-tex2pdf_tools.preflight.update_list_of_supported_compilers()
-
 _DIR = os.path.abspath(os.path.dirname(__file__))
 FIXTURE_DIR = os.path.join(_DIR, "fixture")
 
 monkeypatch = pytest.MonkeyPatch()
 
-@pytest.fixture(params=[False, True])
-def bib2bbl_enabled(request):
-    return request.param
 
 def test_preflight_0():
     """Test for empty/missing directory response."""
@@ -133,7 +120,7 @@ def test_preflight_multi_tex_3():
             assert \
                 tf.process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True) \
                 == \
-                """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvips_ps2pdf"}"""
+                """{"engine":"tex","lang":"tex","output":"pdf","postp":"none"}"""
             found = True
             break
     assert found
@@ -178,7 +165,7 @@ def test_preflight_bye_no_newline():
     assert \
         pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True) \
         == \
-        """{"engine":"tex","lang":"tex","output":"dvi","postp":"dvips_ps2pdf"}"""
+        """{"engine":"tex","lang":"tex","output":"pdf","postp":"none"}"""
 
 
 def test_preflight_pdf_only_submission():
@@ -245,7 +232,8 @@ def test_index_biblio_1():
             assert tf.used_tex_files == ["the-rest.tex"]
             assert tf.used_idx_files == ["ms.adx", "ms.bdx"]
             assert tf.used_ind_files == ["ms.and", "ms.bnd"]
-            assert tf.used_other_files == ["ms.bbl"]
+        if tf.filename == "the-rest.tex":
+            assert tf.used_bib_files == ["biblio.bib"]
 
 
 def test_index_biblio_2():
@@ -284,8 +272,6 @@ def test_eps_dvips():
         == \
         """{"engine":"tex","lang":"latex","output":"dvi","postp":"dvips_ps2pdf"}"""
 
-@patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS', UPDATED_COMPILER_LIST)
-@patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR', UPDATED_COMPILER_STR_LIST)
 def test_eps_dvips_enable_pdfetex():
     """Test dvips_ps2pdf selection when eps are included."""
     dir_path = os.path.join(FIXTURE_DIR, "eps-test")
@@ -321,11 +307,10 @@ def test_mixed_images():
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     assert pf.detected_toplevel_files[0].filename == "main.tex"
-    assert pf.detected_toplevel_files[0].process.compiler is None
     assert \
-        pf.detected_toplevel_files[0].issues[0].key \
+        pf.detected_toplevel_files[0].process.compiler.model_dump_json(exclude_none=True, exclude_defaults=True) \
         == \
-        IssueType.unsupported_compiler_type_image_mix
+        """{"engine":"xetex","lang":"latex","output":"pdf","postp":"none"}"""
 
 
 def test_multi_include_cmds():
@@ -356,9 +341,8 @@ def test_no_final_newline():
             assert tf.used_tex_files == ["bla.tex"]
     assert found_foo_tex
 
-def test_biber_good_version_32(bib2bbl_enabled):
+def test_biber_good_version_32():
     """Test bbl version matching arXiv TeX version."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bbl_version_good")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -371,9 +355,8 @@ def test_biber_good_version_32(bib2bbl_enabled):
     assert len(tf.issues) == 1
     assert tf.issues[0].key == IssueType.bbl_version_needs_previous_version
 
-def test_biber_good_version_33(bib2bbl_enabled):
+def test_biber_good_version_33():
     """Test bbl version not matching arXiv TeX version."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bbl_version_good_33")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -385,9 +368,8 @@ def test_biber_good_version_33(bib2bbl_enabled):
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
 
-def test_biber_bad_version_31(bib2bbl_enabled):
+def test_biber_bad_version_31():
     """Test bbl version not matching arXiv TeX version."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bbl_version_mismatch")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -488,9 +470,8 @@ def test_quoted_arguments():
             assert sorted(tf.used_other_files) == ["bla bla.jpg", "foo.png"]
     assert found_main
 
-def test_bbl_bib(bib2bbl_enabled):
+def test_bbl_bib():
     """Test submission with bbl and bib present."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bbl-bib")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -502,15 +483,11 @@ def test_bbl_bib(bib2bbl_enabled):
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
     assert tf.used_bib_files == ["xxx.bib"]
-    # in case of BIB2BBL_ENABLED, bbl files are not returned if all bib files are found
-    if bib2bbl_enabled:
-        assert tf.used_other_files == []
-    else:
-        assert tf.used_other_files == ["main.bbl"]
+    assert tf.used_other_files == []
 
-def test_bbl_no_bib(bib2bbl_enabled):
+
+def test_bbl_no_bib():
     """Test submission with bbl but without bib present."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bbl-no-bib")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -525,9 +502,8 @@ def test_bbl_no_bib(bib2bbl_enabled):
     assert tf.used_other_files == ["main.bbl"]
 
 
-def test_bib_no_bbl(bib2bbl_enabled):
+def test_bib_no_bbl():
     """Test submission with bib but without bbl present."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bib-no-bbl")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -536,11 +512,7 @@ def test_bib_no_bbl(bib2bbl_enabled):
     assert tf.process.bibliography.pre_generated == False
     assert tf.process.bibliography.can_be_generated
     # bbl is missing, but we have bib around
-    if bib2bbl_enabled:
-        assert len(tf.issues) == 0
-    else:
-        assert len(tf.issues) == 1
-        assert tf.issues[0].key == IssueType.bbl_file_missing
+    assert len(tf.issues) == 0
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
@@ -548,9 +520,8 @@ def test_bib_no_bbl(bib2bbl_enabled):
     assert tf.used_other_files == []
 
 
-def test_multi_bib_no_bbl(bib2bbl_enabled):
+def test_multi_bib_no_bbl():
     """Test submission with multiple bib, no bbl, one bib missing."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "multi-bib-no-bbl")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -560,16 +531,10 @@ def test_multi_bib_no_bbl(bib2bbl_enabled):
     assert not tf.process.bibliography.can_be_generated
     # bbl is missing, but we have bib around
     assert len(tf.issues) == 2
-    if bib2bbl_enabled:
-        assert \
-            sorted([issue.key for issue in tf.issues]) \
-            == \
-            [IssueType.bbl_bib_file_missing, IssueType.issue_in_subfile]
-    else:
-        assert \
-            sorted([issue.key for issue in tf.issues]) \
-            == \
-            [IssueType.bbl_file_missing, IssueType.issue_in_subfile]
+    assert \
+        sorted([issue.key for issue in tf.issues]) \
+        == \
+        [IssueType.bbl_bib_file_missing, IssueType.issue_in_subfile]
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 1
@@ -579,10 +544,8 @@ def test_multi_bib_no_bbl(bib2bbl_enabled):
     assert tf.used_other_files == []
 
 
-@patch('tex2pdf_tools.preflight.ENABLE_BIB_BBL', True)
-def test_no_bbl_no_bib(bib2bbl_enabled):
+def test_no_bbl_no_bib():
     """Test submission with no bib nor bbl present."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "no-bbl-no-bib")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -590,16 +553,10 @@ def test_no_bbl_no_bib(bib2bbl_enabled):
     tf = pf.detected_toplevel_files[0]
     assert not tf.process.bibliography.pre_generated
     assert len(tf.issues) == 2
-    if bib2bbl_enabled:
-        assert \
-            sorted([issue.key for issue in tf.issues]) \
-            == \
-            [IssueType.bbl_bib_file_missing, IssueType.issue_in_subfile]
-    else:
-        assert \
-            sorted([issue.key for issue in tf.issues]) \
-            == \
-            [IssueType.bbl_file_missing, IssueType.issue_in_subfile]
+    assert \
+        sorted([issue.key for issue in tf.issues]) \
+        == \
+        [IssueType.bbl_bib_file_missing, IssueType.issue_in_subfile]
     assert len(pf.tex_files) == 1
     tf = pf.tex_files[0]
     assert len(tf.issues) == 1
@@ -609,9 +566,8 @@ def test_no_bbl_no_bib(bib2bbl_enabled):
     assert tf.used_other_files == []
 
 
-def test_biber_bibtex_mix(bib2bbl_enabled):
+def test_biber_bibtex_mix():
     """Test submission with no bib nor bbl present."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "bibtex-and-biber")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -625,9 +581,8 @@ def test_biber_bibtex_mix(bib2bbl_enabled):
     assert tf.used_bib_files == ["xxx.bib", "xxx.bib"]
     assert tf.used_other_files == []
 
-def test_biblatex_with_bibliography(bib2bbl_enabled):
+def test_biblatex_with_bibliography():
     """Test submission with using biblatex and \bibliography."""
-    monkeypatch.setattr(tex2pdf_tools.preflight, "ENABLE_BIB_BBL", bib2bbl_enabled)
     dir_path = os.path.join(FIXTURE_DIR, "biblatex-bibliography")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -638,10 +593,7 @@ def test_biblatex_with_bibliography(bib2bbl_enabled):
     tf = pf.tex_files[0]
     assert len(tf.issues) == 0
     assert tf.used_bib_files == ["xxx.bib"]
-    if bib2bbl_enabled:
-        assert tf.used_other_files == []
-    else:
-        assert tf.used_other_files == ["main.bbl"]
+    assert tf.used_other_files == []
 
 def test_double_slash_normalization():
     """Test double slash normalization present."""
@@ -672,11 +624,9 @@ def test_plain_tex_sub():
     tf = pf.detected_toplevel_files[0]
     assert tf.process.compiler.engine == "tex"
     assert tf.process.compiler.lang == "tex"
-    assert tf.process.compiler.output == "dvi"
-    assert tf.process.compiler.postp == "dvips_ps2pdf"
+    assert tf.process.compiler.output == "pdf"
+    assert tf.process.compiler.postp == "none"
 
-@patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS', UPDATED_COMPILER_LIST)
-@patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR', UPDATED_COMPILER_STR_LIST)
 def test_plain_tex_sub_enable_pdfetex():
     """Test plain tex files with sub files."""
     dir_path = os.path.join(FIXTURE_DIR, "plain-tex-sub")
@@ -701,8 +651,8 @@ def test_plain_no_bye():
     tf = pf.detected_toplevel_files[0]
     assert tf.process.compiler.engine == "tex"
     assert tf.process.compiler.lang == "tex"
-    assert tf.process.compiler.output == "dvi"
-    assert tf.process.compiler.postp == "dvips_ps2pdf"
+    assert tf.process.compiler.output == "pdf"
+    assert tf.process.compiler.postp == "none"
 
 def test_tikz_pgf_library_0():
     """Test tikzlibrary loading system pgfarrow.meta."""
@@ -799,8 +749,8 @@ def test_amstex_documentstyle():
     tf = pf.detected_toplevel_files[0]
     assert tf.process.compiler.engine == "tex"
     assert tf.process.compiler.lang == "tex"
-    assert tf.process.compiler.output == "dvi"
-    assert tf.process.compiler.postp == "dvips_ps2pdf"
+    assert tf.process.compiler.output == "pdf"
+    assert tf.process.compiler.postp == "none"
 
 def test_unicode_tex_packages():
     """Test submission with unicode packages."""
@@ -811,26 +761,11 @@ def test_unicode_tex_packages():
         assert len(pf.detected_toplevel_files) == 1
         assert len(pf.tex_files) == 1
         tf = pf.detected_toplevel_files[0]
-        assert len(tf.issues) == 1
-        issue = tf.issues[0]
-        assert issue.key == IssueType.unsupported_compiler_type_unicode
-
-@patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS', UPDATED_COMPILER_LIST)
-@patch('tex2pdf_tools.preflight.SUPPORTED_COMPILERS_STR', UPDATED_COMPILER_STR_LIST)
-def test_unicode_tex_packages_xelatex_enabled():
-    """Test submission with unicode packages."""
-    for pkg in UNICODE_TEX_PACKAGES:
-        dir_path = os.path.join(FIXTURE_DIR, f"unicode-tex-{pkg}")
-        pf: PreflightResponse = generate_preflight_response(dir_path)
-        print(f"ENABLE_XELATEX: {tex2pdf_tools.preflight.ENABLE_XELATEX}")
-        print(f"preflight response: {pf}")
-        print(f"enabled compilers = {tex2pdf_tools.preflight.SUPPORTED_COMPILERS}")
-        assert pf.status.key.value == "success"
-        assert len(pf.detected_toplevel_files) == 1
-        assert len(pf.tex_files) == 1
-        tf = pf.detected_toplevel_files[0]
-        assert len(tf.issues) == 0
         assert tf.process.compiler.engine == "xetex"
+        assert tf.process.compiler.lang == "latex"
+        assert tf.process.compiler.output == "pdf"
+        assert tf.process.compiler.postp == "none"
+
 
 def test_img_in_cls():
     """Test detection of images loaded in cls files."""
