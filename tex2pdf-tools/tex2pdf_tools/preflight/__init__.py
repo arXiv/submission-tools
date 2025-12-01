@@ -34,9 +34,6 @@ def env_flag(env_var: str, default: bool = False) -> bool:
 
 
 # Feature flag style: enable features via environment variables
-ENABLE_BIB_BBL: bool = env_flag("ENABLE_BIB_BBL")
-ENABLE_PDFETEX: bool = env_flag("ENABLE_PDFETEX")
-ENABLE_XELATEX: bool = env_flag("ENABLE_XELATEX")
 ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 MODULE_PATH = os.path.dirname(__file__)
@@ -1305,29 +1302,27 @@ FONTSPEC_ALLOWED_COMPILERS_STR = [c.compiler_string for c in FONTSPEC_ALLOWED_CO
 # check that we can represent all defined compilers as strings
 for c in ALL_COMPILERS:
     assert c.compiler_string is not None
-# the following order also gives the preference!
-# fmt: off
-SUPPORTED_COMPILERS: list[CompilerSpec] = [
-    COMPILER["pdflatex"], COMPILER["latex"]] + ( # latex without unicode support, we prefer pdflatex
-    [COMPILER["pdftex"]] * ENABLE_PDFETEX +      # plain tex via pdftex if enabled
-    [COMPILER["tex"]] +                          # plain tex via tex/dvips
-    [COMPILER["xelatex"]] * ENABLE_XELATEX +     # xelatex if enabled
-    [COMPILER["lualatex"]] * ENABLE_LUALATEX     # lualatex if enabled
-)
-# fmt: on
-SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
+
+
+SUPPORTED_COMPILERS: list[CompilerSpec]
+SUPPORTED_COMPILERS_STR: list[str | None]
 
 
 def update_list_of_supported_compilers() -> None:
     """Update the list of supported compilers."""
     global SUPPORTED_COMPILERS, SUPPORTED_COMPILERS_STR  # noqa: PLW0603
+    # the following order also gives the preference!
+    # fmt: off
     SUPPORTED_COMPILERS = (
-        [COMPILER["pdflatex"], COMPILER["latex"]]
-        + ([COMPILER["pdftex"]] * ENABLE_PDFETEX)
-        + [COMPILER["tex"]]
-        + ([COMPILER["xelatex"]] * ENABLE_XELATEX + [COMPILER["lualatex"]] * ENABLE_LUALATEX)
+        [COMPILER["pdflatex"], COMPILER["latex"], COMPILER["pdftex"], COMPILER["tex"], COMPILER["xelatex"]]
+        + ([COMPILER["lualatex"]] * ENABLE_LUALATEX)
     )
+    # fmt:on
     SUPPORTED_COMPILERS_STR = [c.compiler_string for c in SUPPORTED_COMPILERS]
+
+
+# actually set the values
+update_list_of_supported_compilers()
 
 
 #
@@ -1962,11 +1957,10 @@ def deal_with_bibliographies(
             # if we don't allow bib->bbl processing,
             # add bbl file to the list of used_other_files
             logging.debug(
-                "bbl other files check: ENABLE_BIB_BBL = %s, bib_file_issue_found = %s",
-                ENABLE_BIB_BBL,
+                "bbl other files check: bib_file_issue_found = %s",
                 bib_file_issue_found,
             )
-            if not ENABLE_BIB_BBL or bib_file_issue_found:
+            if bib_file_issue_found:
                 nodes[tl_f].used_other_files.append(bbl_file)
             continue
         # we are still here, so bbl_file_present is False
@@ -1980,13 +1974,9 @@ def deal_with_bibliographies(
         # we have activated bib->bbl generation, so no issue needs to be reported
         # we also already added issues to the single files if bib is missing and bbl not available
         # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
-        if ENABLE_BIB_BBL:
-            logging.debug("bib_file_issue_found = %s, bbl_file_present = %s", bib_file_issue_found, bbl_file_present)
-            if bib_file_issue_found and not bbl_file_present:
-                tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
-        else:
-            # if we do not allow bib->bbl generation, we need to report the missing bbl file
-            tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
+        logging.debug("bib_file_issue_found = %s, bbl_file_present = %s", bib_file_issue_found, bbl_file_present)
+        if bib_file_issue_found and not bbl_file_present:
+            tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
 
 
 def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:
