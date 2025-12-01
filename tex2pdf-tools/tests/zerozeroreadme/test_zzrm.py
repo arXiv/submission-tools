@@ -8,6 +8,9 @@ from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError,
 
 unittest.TestCase.maxDiff = None
 
+monkeypatch = pytest.MonkeyPatch()
+monkeypatch.setenv("PYTEST_RUNNING_ALLOW_CURRENT_TL", "1")
+
 class Test00README(unittest.TestCase):
     fixture_dir: str
 
@@ -281,3 +284,8 @@ sources:
   usage: toplevel
 stamp: false
 """
+
+    def test_zzrm_tl_version_current(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_v2_current")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(2025, zzrm.texlive_version)
