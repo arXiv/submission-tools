@@ -26,7 +26,7 @@ TEX2PDF_DOCKER_PLATFORM := $(shell echo $${TEX2PDF_DOCKER_PLATFORM:-linux/amd64}
 
 EXTRA_DOCKER_ARGS ?= 
 
-APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --name ${app_name} --security-opt="no-new-privileges=true" ${EXTRA_DOCKER_ARGS}
+APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --security-opt="no-new-privileges=true" ${EXTRA_DOCKER_ARGS}
 
 .PHONY: HELLO app.docker app.run app.stop
 
@@ -133,6 +133,11 @@ app2025.proxy.run:
 	${APP_DOCKER_RUN} -it --name ${app_2025_name} -p ${app_2025_port}:${dockerport} \
         --env-file tests/local-proxy-test-2025.env \
         --network host \
+		${app_tag}-${base_2025_tag_version}:latest
+
+app2025.run-sandbox:
+	${APP_DOCKER_RUN} --runtime=runsc -d -it --name ${app_2025_name} -p ${app_2025_port}:${dockerport} \
+		-e ENABLE_SANDBOX=1 \
 		${app_tag}-${base_2025_tag_version}:latest
 
 #-#
