@@ -8,6 +8,9 @@ from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError,
 
 unittest.TestCase.maxDiff = None
 
+monkeypatch = pytest.MonkeyPatch()
+monkeypatch.setenv("PYTEST_RUNNING_ALLOW_CURRENT_TL", "1")
+
 class Test00README(unittest.TestCase):
     fixture_dir: str
 

@@ -464,7 +464,10 @@ class ZeroZeroReadMe:
                         self.texlive_version = int(v)
                     except ValueError:
                         if v == "current":
-                            self.texlive_version = int(CURRENT_TEXLIVE_VERSION)
+                            if os.environ.get("PYTEST_RUNNING_ALLOW_CURRENT_TL", "") != "":
+                                self.texlive_version = int(CURRENT_TEXLIVE_VERSION)
+                            else:
+                                raise ZZRMParseError(f"Invalid version: {v}")
                         elif v.startswith("tl") or v.startswith("TL"):
                             try:
                                 self.texlive_version = int(v[2:])
