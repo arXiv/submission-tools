@@ -646,6 +646,7 @@ class BaseConverter:
 
 def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
     """Select converter based on ZZRM."""
+    logger = get_logger()
     if zzrm is None:
         raise CompilerNotSpecified("Compiler is not defined.")
     if zzrm.process.compiler is None:
@@ -662,6 +663,9 @@ def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
     elif process_spec == "lualatex":
         return LuaLatexConverter
     elif process_spec == "pdfetex":
+        logger.warning("process_spec (compiler string) = pdfetex should not happen, using pdftex")
+        return PdfTexConverter
+    elif process_spec == "pdftex":
         return PdfTexConverter
     else:
         raise CompilerNotSpecified("Unknown compiler, cannot select converter: %s", process_spec)

@@ -244,6 +244,7 @@ class ConverterDriver:
             # in case some exception happens in the TeX processing
             self._run_tex_commands()
         except CompilerNotSpecified as e:
+            logger.debug("No compiler specified/understood, failing this submission.")
             self.outcome["status"] = "fail"
             self.outcome["reason"] = str(e)
             self.outcome["in_files"] = file_props_in_dir(self.in_dir)
@@ -292,6 +293,7 @@ class ConverterDriver:
 
     def _run_tex_commands(self) -> None:
         logger = get_logger()
+        logger.debug("Entering _run_tex_commands")
         t0_files = catalog_files(self.in_dir)
         start_process_time = time.process_time()
 

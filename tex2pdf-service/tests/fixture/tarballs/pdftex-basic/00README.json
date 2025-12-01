@@ -6,6 +6,6 @@
       }
    ],
    "process" : {
-      "compiler" : "pdfetex"
+      "compiler" : "pdftex"
    }
 }
