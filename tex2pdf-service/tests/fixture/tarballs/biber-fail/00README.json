@@ -1,0 +1,12 @@
+{
+   "sources" : [
+      {
+         "usage" : "toplevel",
+         "filename" : "main.tex"
+      }
+   ],
+   "texlive_version" : 2025,
+   "process" : {
+      "compiler" : "pdflatex"
+   }
+}

@@ -245,6 +245,8 @@ class BaseConverter:
         step = "first_run"
         logger.debug("Starting first compile run")
         run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
+        output_name = run[base_format]["name"]
+        artifact_file = os.path.join(in_dir, output_name)
         logger.debug("First run finished with %s", run)
         output_size = run[base_format]["size"]
         if output_size is None:
@@ -264,9 +266,20 @@ class BaseConverter:
             logger.debug(f"Starting {bibprog} run")
             bib_args = [f"/usr/bin/{bibprog}", *bibopts, *bibargs]
             bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            # bibtex and biber only outputs to stdout, even errors
+            # since the frontend only shows the `log` entry, move the stdout part to log
+            bib_run["log"] = bib_out
             self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
             if bib_run["return_code"] != 0:
                 logger.debug(f"{bibprog} run failed")
+                # remove generated pdf to be sure it will not be shown
+                # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                # believes all is fine and continues with success!
+                if os.path.exists(artifact_file):
+                    logger.debug("Output %s deleted due to failed run", output_name)
+                    os.unlink(artifact_file)
+                    # the pdf/dvi file was generated in the first run
+                    self.runs[0][base_format] = file_props(artifact_file)
                 outcome.update(
                     {
                         "status": "fail",
@@ -295,7 +308,6 @@ class BaseConverter:
             if run["return_code"] != 0:
                 logger.debug("Second or later run has error exit code, failing")
                 name = run[base_format]["name"]
-                artifact_file = os.path.join(in_dir, name)
                 # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
                 # believes all is fine and continues with success!
                 if os.path.exists(artifact_file):
@@ -323,12 +335,10 @@ class BaseConverter:
             for line in run["log"].splitlines():
                 for error_needle, error_msg in error_needles:
                     if error_needle.search(line):
-                        name = run[base_format]["name"]
-                        artifact_file = os.path.join(in_dir, name)
                         # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
                         # believes all is fine and continues with success!
                         if os.path.exists(artifact_file):
-                            logger.debug("Output %s deleted due to failed run", name)
+                            logger.debug("Output %s deleted due to failed run", output_name)
                             os.unlink(artifact_file)
                             run[base_format] = file_props(artifact_file)
                         outcome.update(
