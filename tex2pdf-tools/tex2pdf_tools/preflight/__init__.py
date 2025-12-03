@@ -20,21 +20,11 @@ from typing import TypeVar
 
 from pydantic import BaseModel, Field
 
+from .feature_flags import ENABLE_LUALATEX
 from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
-
-
-def env_flag(env_var: str, default: bool = False) -> bool:
-    environ_string = os.environ.get(env_var, "").strip().lower()
-    if not environ_string:
-        return default
-    return environ_string in ["1", "true", "yes", "on", "y"]
-
-
-# Feature flag style: enable features via environment variables
-ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 MODULE_PATH = os.path.dirname(__file__)
 
