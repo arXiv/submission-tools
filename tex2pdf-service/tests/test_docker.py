@@ -145,6 +145,7 @@ def _start_docker_container(
         "--rm", "-d",
         "-p", f"{external_port}:{internal_port}",
         "-e", f"PORT={internal_port}",
+        "-e", "ENABLE_JS_CHECKS=1",
         *extra_args,
         "--name", container_name,
         image_name,

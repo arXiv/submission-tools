@@ -11,7 +11,7 @@ import typing
 from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
-from tex2pdf_tools.preflight.pdf_checks import run_checks
+from tex2pdf_tools.preflight.pdf_checks import run_checks as run_pdf_checks
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
 from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
@@ -261,7 +261,7 @@ class ConverterDriver:
             pdf_result = self.outcome.get("pdf_file")
             if pdf_result:
                 pdf_file = f"{self.out_dir}/{pdf_result}"
-                checks_succeed, check_failed_results = run_checks(pdf_file, "all")
+                checks_succeed, check_failed_results = run_pdf_checks(pdf_file, "all")
                 if not checks_succeed:
                     os.unlink(pdf_file)
                     logger.warning(f"self.outcome = {self.outcome}")
@@ -273,6 +273,7 @@ class ConverterDriver:
                             "stdout": "",
                             "stderr": "",
                             "step": "qa-check",
+                            "reason": "PDF QA check failed.",
                             "log": "\n\n".join([f"{z.info}\n---\n{z.long_info}" for z in check_failed_results]),
                         }
                     )
