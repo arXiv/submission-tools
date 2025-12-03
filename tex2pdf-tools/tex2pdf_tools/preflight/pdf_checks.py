@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .feature_flags import ENABLE_JS_CHECKS
+
 logger = logging.getLogger("[preflight/pdf_checks]")
 
 PDF_CHECKS = {
@@ -98,6 +100,9 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[PDFCheckRe
             checks = [checks]
     for check in checks:
         if check in PDF_CHECKS:
+            if check == "javascript" and not ENABLE_JS_CHECKS:
+                logger.debug("Skipping JavaScript check, not enabled in ENABLE_JS_CHECKS env")
+                continue
             res = PDF_CHECKS[check](pdf_info)
             if not res.check_passed:
                 check_results.append(res)
