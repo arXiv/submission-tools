@@ -186,7 +186,12 @@ for _path, subv in pairs(fileexts) do
                     -- Note that graphicspath entries need a final /
                     -- For ttf/otf font files, pass the extension type to kpse
                     if ext_in_path == "ttf" or ext_in_path == "otf" then
-                        result = kpse.find_file(gp .. path, ext_in_path)
+                        if ext_in_path == "ttf" then
+                            format_string = "truetype fonts"
+                        else
+                            format_string = "opentype fonts"
+                        end
+                        result = kpse.find_file(gp .. path, format_string)
                     else
                         result = kpse.find_file(gp .. path)
                     end

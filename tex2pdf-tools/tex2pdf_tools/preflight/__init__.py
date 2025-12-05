@@ -54,7 +54,7 @@ _RE_MACRO_ARG = re.compile(r"#[1-9]")
 _RE_COMMENT_STR = re.compile(r"%.*$", re.MULTILINE)
 _RE_LINE_ENDING = re.compile(rb"\r\n|\r|\n")
 _RE_FONTSPEC_SET_CMDS = re.compile(
-    rb"\\((?:new|set|renew|provide)fontfamily)\s*(?:%.*\n)?\\[^{]*({[^}]*})", re.MULTILINE
+    rb"\\((?:new|set|renew|provide)font(?:family|face))\s*(?:%.*\n)?\\[^{]*({[^}]*})", re.MULTILINE
 )
 
 # Version of the bbl file that is created by biber in the
@@ -1181,6 +1181,10 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="setfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
     IncludeSpec(cmd="renewfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
     IncludeSpec(cmd="providefontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="newfontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setfontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="renewfontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="providefontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
     IncludeSpec(cmd="fontspec", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
 ]
 # make a dict with key is include command

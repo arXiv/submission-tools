@@ -827,6 +827,17 @@ def test_pdf_with_javascript():
     assert len(pf.tex_files) == 0
     assert pf.status.info == "PDF only submission: PDF failed QA checks:\nJavaScript code found in PDF"
 
-
-
-
+def test_fontspec_font_detection():
+    """Test detection of font files used by fontspec commands."""
+    dir_path = os.path.join(FIXTURE_DIR, "fontspec-font-detection")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    assert len(pf.tex_files) == 1
+    tf = pf.tex_files[0]
+    assert tf.used_other_files == [ "texgyrepagella-bold-as-batman.otf" ]
+    assert sorted([x.info for x in tf.issues]) == \
+        sorted([
+            "texgyrepagella-reverseitalic.ttf", "texgyrepagella-italic2.otf", "texgyrepagella-italic3.otf",
+            "CharisSIL-notfound.ttf", "texgyrepagella-superregular.otf", "missing1.otf",
+        ])
