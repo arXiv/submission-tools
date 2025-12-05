@@ -39,6 +39,9 @@ jobs:
           unicode-math
           fontspec
           tcolorbox
+          alkalami
+          chivo
+          tex-gyre
     - name: Install pdfinfo via poppler-utils
       run: sudo apt-get update && sudo apt-get install --no-install-recommends -y poppler-utils
     - name: Install dependencies for tools

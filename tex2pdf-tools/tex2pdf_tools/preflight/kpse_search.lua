@@ -180,10 +180,21 @@ for _path, subv in pairs(fileexts) do
             for gp in string.gmatch(graphicspath, "[^:]*") do
                 _ddebug("Entering gp search for " .. gp .. path)
                 -- if we have an extension, search for the file as is first
-                if path:match("^.+(%..+)$") then
+                local ext_in_path = path:match("^.+%.(.+)$")  -- extract extension without dot
+                if ext_in_path then
                     _debug("Found an extension")
                     -- Note that graphicspath entries need a final /
-                    result = kpse.find_file(gp .. path)
+                    -- For ttf/otf font files, pass the extension type to kpse
+                    if ext_in_path == "ttf" or ext_in_path == "otf" then
+                        if ext_in_path == "ttf" then
+                            format_string = "truetype fonts"
+                        else
+                            format_string = "opentype fonts"
+                        end
+                        result = kpse.find_file(gp .. path, format_string)
+                    else
+                        result = kpse.find_file(gp .. path)
+                    end
                     if result then
                         _ddebug("Found it! A")
                         goto end_of_loops
