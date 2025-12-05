@@ -183,6 +183,7 @@ for _path, subv in pairs(fileexts) do
                 if path:match("^.+(%..+)$") then
                     _debug("Found an extension")
                     -- Note that graphicspath entries need a final /
+                    -- TODO add the extension to the search for ttf/otf!
                     result = kpse.find_file(gp .. path)
                     if result then
                         _ddebug("Found it! A")

@@ -53,6 +53,9 @@ _RE_OVERPIC = re.compile(r"begin\s*{\s*overpic\s*}")
 _RE_MACRO_ARG = re.compile(r"#[1-9]")
 _RE_COMMENT_STR = re.compile(r"%.*$", re.MULTILINE)
 _RE_LINE_ENDING = re.compile(rb"\r\n|\r|\n")
+_RE_FONTSPEC_SET_CMDS = re.compile(
+    rb"\\((?:new|set|renew|provide)fontfamily)\s*(?:%.*\n)?\\[^{]*({[^}]*})", re.MULTILINE
+)
 
 # Version of the bbl file that is created by biber in the
 # current version of arxiv tex
@@ -623,6 +626,21 @@ class ParsedTeXFile(BaseModel):
         else:
             todore = ARGS_INCLUDE_REGEX.encode("utf-8")
 
+        # deal with fontspec commands that have a leading command name
+        if not only_images:
+            logging.debug("searching for fontspec commands expecting a command")
+            for i in _RE_FONTSPEC_SET_CMDS.findall(data):
+                logging.debug("%s regex found %s", self.filename, i)
+                try:
+                    # decode and insert empty options so that collect_included_files is happy
+                    ii = [x.decode("utf-8") for x in i]
+                    ii.insert(1, "[]")
+                    self.collect_included_files(ii)
+                    pass
+                except UnicodeDecodeError:
+                    # TODO can we do more here?
+                    logging.warning("Cannot decode argument: %s", i)
+
         # check for the rest of include commands
         logging.debug(f"searching for {'only images' if only_images else 'all'} in {self.filename}")
         for i in re.findall(todore, data, re.MULTILINE | re.VERBOSE):
@@ -637,6 +655,7 @@ class ParsedTeXFile(BaseModel):
 
     def collect_included_files(self, inc: list[str]) -> None:
         """Determine actually included files from the list of regex group captures."""
+        logging.debug(f"collect_included_files: {inc}")
         inclen = len(inc)
         # every inc has four matching groups
         # inc[0] ... command
@@ -998,6 +1017,7 @@ class PreflightResponse(BaseModel):
 
 TEX_EXTENSIONS = "tex"
 EPS_EXTENSIONS = "eps ps eps.gz ps.gz mps"
+FONT_EXTENSIONS = "ttf otf"
 
 # upper/lower case uses case folding!!!!
 # TODO: check whether luatex actually support mps without shell-escape
@@ -1154,6 +1174,14 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="printindex", source="index", type=FileType.ind),
     IncludeSpec(cmd="overpic", source="overpic", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="addplot", source="pgfplots", type=FileType.other),
+    IncludeSpec(cmd="setmainfont", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setsansfont", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setmonofont", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="newfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="renewfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="providefontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="fontspec", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
@@ -1216,7 +1244,9 @@ ARGS_INCLUDE_REGEX = r"""
         newindex|                        # index
         makeindex|
         printindex|
-        begin\s*{\s*overpic\s*}          # overpic
+        begin\s*{\s*overpic\s*}|         # overpic
+        set(?:main|sans|mono)font|         # fontspec
+        fontspec                         # extra fontspec via special treatment
     )\s*(?:%.*\n)?
     \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
     \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
