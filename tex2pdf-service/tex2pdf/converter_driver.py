@@ -11,7 +11,7 @@ import typing
 from glob import glob
 
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
-from tex2pdf_tools.preflight.pdf_checks import run_checks
+from tex2pdf_tools.preflight.pdf_checks import run_checks as run_pdf_checks
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
 from tex2pdf_tools.zerozeroreadme import FileUsageType, ZeroZeroReadMe
 
@@ -244,6 +244,7 @@ class ConverterDriver:
             # in case some exception happens in the TeX processing
             self._run_tex_commands()
         except CompilerNotSpecified as e:
+            logger.debug("No compiler specified/understood, failing this submission.")
             self.outcome["status"] = "fail"
             self.outcome["reason"] = str(e)
             self.outcome["in_files"] = file_props_in_dir(self.in_dir)
@@ -260,12 +261,27 @@ class ConverterDriver:
             pdf_result = self.outcome.get("pdf_file")
             if pdf_result:
                 pdf_file = f"{self.out_dir}/{pdf_result}"
-                checks_succeed, check_failed_results = run_checks(pdf_file, "all")
+                checks_succeed, check_failed_results = run_pdf_checks(pdf_file, "all")
                 if not checks_succeed:
                     os.unlink(pdf_file)
+                    logger.warning(f"self.outcome = {self.outcome}")
+                    self.outcome["converters"][-1]["runs"].append(
+                        {
+                            "args": ["pdfinfo QA check"],
+                            "return_code": 1,
+                            "pdf": {"size": 0},
+                            "stdout": "",
+                            "stderr": "",
+                            "step": "qa-check",
+                            "reason": "PDF QA check failed.",
+                            "log": "\n\n".join([f"{z.info}\n---\n{z.long_info}" for z in check_failed_results]),
+                        }
+                    )
+                    self.outcome["converters"][-1]["status"] = "fail"
+                    self.outcome["converters"][-1]["step"] = "qa-check"
                     self.outcome["pdf_file"] = None
                     self.outcome["status"] = "fail"
-                    self.outcome["reason"] = "\n".join([z.info for z in check_failed_results])
+                    self.outcome["reason"] = "PDF QA check failed."
                 else:
                     self.outcome["status"] = "success"
             else:
@@ -278,6 +294,7 @@ class ConverterDriver:
 
     def _run_tex_commands(self) -> None:
         logger = get_logger()
+        logger.debug("Entering _run_tex_commands")
         t0_files = catalog_files(self.in_dir)
         start_process_time = time.process_time()
 

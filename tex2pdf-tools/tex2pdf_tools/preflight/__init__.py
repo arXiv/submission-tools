@@ -20,24 +20,11 @@ from typing import TypeVar
 
 from pydantic import BaseModel, Field
 
+from .feature_flags import ENABLE_LUALATEX
 from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
-
-
-def env_flag(env_var: str, default: bool = False) -> bool:
-    environ_string = os.environ.get(env_var, "").strip().lower()
-    if not environ_string:
-        return default
-    return environ_string in ["1", "true", "yes", "on", "y"]
-
-
-# Feature flag style: enable features via environment variables
-ENABLE_BIB_BBL: bool = env_flag("ENABLE_BIB_BBL")
-ENABLE_PDFETEX: bool = env_flag("ENABLE_PDFETEX")
-ENABLE_XELATEX: bool = env_flag("ENABLE_XELATEX")
-ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -66,6 +53,9 @@ _RE_OVERPIC = re.compile(r"begin\s*{\s*overpic\s*}")
 _RE_MACRO_ARG = re.compile(r"#[1-9]")
 _RE_COMMENT_STR = re.compile(r"%.*$", re.MULTILINE)
 _RE_LINE_ENDING = re.compile(rb"\r\n|\r|\n")
+_RE_FONTSPEC_SET_CMDS = re.compile(
+    rb"\\((?:new|set|renew|provide)font(?:family|face))\s*(?:%.*\n)?\\[^{]*({[^}]*})", re.MULTILINE
+)
 
 # Version of the bbl file that is created by biber in the
 # current version of arxiv tex
@@ -342,6 +332,12 @@ class CompilerSpec(BaseModel):
                         # TODO should we check whether output == DVI ?
                         # we might have other non-dvi2pdf related postprocessing later on?
                         ret += f"+{self.postp.value}"
+                    # deal with the special case of pdfetex/pdftex
+                    # we want return "pdftex" as compiler string
+                    # otherwise we get "pdfetex" in 00README.json files showing up in "compiler: pdfetex"
+                    # which is **correct** but the frontend fails to deal with that.
+                    if ret == "pdfetex":
+                        ret = "pdftex"
                     return ret
         # if we are still here, something was wrong ....
         return None
@@ -630,6 +626,21 @@ class ParsedTeXFile(BaseModel):
         else:
             todore = ARGS_INCLUDE_REGEX.encode("utf-8")
 
+        # deal with fontspec commands that have a leading command name
+        if not only_images:
+            logging.debug("searching for fontspec commands expecting a command")
+            for i in _RE_FONTSPEC_SET_CMDS.findall(data):
+                logging.debug("%s regex found %s", self.filename, i)
+                try:
+                    # decode and insert empty options so that collect_included_files is happy
+                    ii = [x.decode("utf-8") for x in i]
+                    ii.insert(1, "[]")
+                    self.collect_included_files(ii)
+                    pass
+                except UnicodeDecodeError:
+                    # TODO can we do more here?
+                    logging.warning("Cannot decode argument: %s", i)
+
         # check for the rest of include commands
         logging.debug(f"searching for {'only images' if only_images else 'all'} in {self.filename}")
         for i in re.findall(todore, data, re.MULTILINE | re.VERBOSE):
@@ -644,6 +655,7 @@ class ParsedTeXFile(BaseModel):
 
     def collect_included_files(self, inc: list[str]) -> None:
         """Determine actually included files from the list of regex group captures."""
+        logging.debug(f"collect_included_files: {inc}")
         inclen = len(inc)
         # every inc has four matching groups
         # inc[0] ... command
@@ -1005,6 +1017,7 @@ class PreflightResponse(BaseModel):
 
 TEX_EXTENSIONS = "tex"
 EPS_EXTENSIONS = "eps ps eps.gz ps.gz mps"
+FONT_EXTENSIONS = "ttf otf"
 
 # upper/lower case uses case folding!!!!
 # TODO: check whether luatex actually support mps without shell-escape
@@ -1161,6 +1174,18 @@ INCLUDE_COMMANDS = [
     IncludeSpec(cmd="printindex", source="index", type=FileType.ind),
     IncludeSpec(cmd="overpic", source="overpic", type=FileType.other, extensions=IMAGE_EXTENSIONS),
     IncludeSpec(cmd="addplot", source="pgfplots", type=FileType.other),
+    IncludeSpec(cmd="setmainfont", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setsansfont", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setmonofont", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="newfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="renewfontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="providefontfamily", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="newfontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="setfontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="renewfontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="providefontface", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
+    IncludeSpec(cmd="fontspec", source="fontspec", type=FileType.other, extensions=FONT_EXTENSIONS),
 ]
 # make a dict with key is include command
 INCLUDE_COMMANDS_DICT = {f.cmd: f for f in INCLUDE_COMMANDS}
@@ -1223,7 +1248,9 @@ ARGS_INCLUDE_REGEX = r"""
         newindex|                        # index
         makeindex|
         printindex|
-        begin\s*{\s*overpic\s*}          # overpic
+        begin\s*{\s*overpic\s*}|         # overpic
+        set(?:main|sans|mono)font|         # fontspec
+        fontspec                         # extra fontspec via special treatment
     )\s*(?:%.*\n)?
     \s*(\[[^]]*\])?\s*(?:%.*\n)?      # optional arguments
     \s*({[^}]*})?\s*(?:%.*\n)?        # actual argument with braces
@@ -1299,29 +1326,27 @@ FONTSPEC_ALLOWED_COMPILERS_STR = [c.compiler_string for c in FONTSPEC_ALLOWED_CO
 # check that we can represent all defined compilers as strings
 for c in ALL_COMPILERS:
     assert c.compiler_string is not None
-# the following order also gives the preference!
-# fmt: off
-SUPPORTED_COMPILERS: list[CompilerSpec] = [
-    COMPILER["pdflatex"], COMPILER["latex"]] + ( # latex without unicode support, we prefer pdflatex
-    [COMPILER["pdftex"]] * ENABLE_PDFETEX +      # plain tex via pdftex if enabled
-    [COMPILER["tex"]] +                          # plain tex via tex/dvips
-    [COMPILER["xelatex"]] * ENABLE_XELATEX +     # xelatex if enabled
-    [COMPILER["lualatex"]] * ENABLE_LUALATEX     # lualatex if enabled
-)
-# fmt: on
-SUPPORTED_COMPILERS_STR: list[str | None] = [c.compiler_string for c in SUPPORTED_COMPILERS]
+
+
+SUPPORTED_COMPILERS: list[CompilerSpec]
+SUPPORTED_COMPILERS_STR: list[str | None]
 
 
 def update_list_of_supported_compilers() -> None:
     """Update the list of supported compilers."""
     global SUPPORTED_COMPILERS, SUPPORTED_COMPILERS_STR  # noqa: PLW0603
+    # the following order also gives the preference!
+    # fmt: off
     SUPPORTED_COMPILERS = (
-        [COMPILER["pdflatex"], COMPILER["latex"]]
-        + ([COMPILER["pdftex"]] * ENABLE_PDFETEX)
-        + [COMPILER["tex"]]
-        + ([COMPILER["xelatex"]] * ENABLE_XELATEX + [COMPILER["lualatex"]] * ENABLE_LUALATEX)
+        [COMPILER["pdflatex"], COMPILER["latex"], COMPILER["pdftex"], COMPILER["tex"], COMPILER["xelatex"]]
+        + ([COMPILER["lualatex"]] * ENABLE_LUALATEX)
     )
+    # fmt:on
     SUPPORTED_COMPILERS_STR = [c.compiler_string for c in SUPPORTED_COMPILERS]
+
+
+# actually set the values
+update_list_of_supported_compilers()
 
 
 #
@@ -1956,11 +1981,10 @@ def deal_with_bibliographies(
             # if we don't allow bib->bbl processing,
             # add bbl file to the list of used_other_files
             logging.debug(
-                "bbl other files check: ENABLE_BIB_BBL = %s, bib_file_issue_found = %s",
-                ENABLE_BIB_BBL,
+                "bbl other files check: bib_file_issue_found = %s",
                 bib_file_issue_found,
             )
-            if not ENABLE_BIB_BBL or bib_file_issue_found:
+            if bib_file_issue_found:
                 nodes[tl_f].used_other_files.append(bbl_file)
             continue
         # we are still here, so bbl_file_present is False
@@ -1974,13 +1998,9 @@ def deal_with_bibliographies(
         # we have activated bib->bbl generation, so no issue needs to be reported
         # we also already added issues to the single files if bib is missing and bbl not available
         # tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
-        if ENABLE_BIB_BBL:
-            logging.debug("bib_file_issue_found = %s, bbl_file_present = %s", bib_file_issue_found, bbl_file_present)
-            if bib_file_issue_found and not bbl_file_present:
-                tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
-        else:
-            # if we do not allow bib->bbl generation, we need to report the missing bbl file
-            tl_n.issues.append(TeXFileIssue(IssueType.bbl_file_missing, "bbl file missing", bbl_file))
+        logging.debug("bib_file_issue_found = %s, bbl_file_present = %s", bib_file_issue_found, bbl_file_present)
+        if bib_file_issue_found and not bbl_file_present:
+            tl_n.issues.append(TeXFileIssue(IssueType.bbl_bib_file_missing, "Both bbl and bib files are missing"))
 
 
 def deal_with_indices(rundir: str, toplevel_files: dict[str, ToplevelFile], nodes: dict[str, ParsedTeXFile]) -> None:

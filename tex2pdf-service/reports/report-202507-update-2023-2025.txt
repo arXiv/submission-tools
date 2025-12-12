@@ -1,0 +1,439 @@
+Total: 5359
+without ZZRM: 71
+with --auto-detect on all but 8 convert (maybe with failures), 8 have timeouts!
+
+Timeout:
+2507.00336.tar.gz  2507.00917.tar.gz  2507.03562.tar.gz  2507.05179.tar.gz
+2507.00517.tar.gz  2507.03238.tar.gz  2507.03963.tar.gz  2507.05643.tar.gz
+
+Total: 5359, skipped: 8, updated: 5351, good: 5180, bad: 171
+171 bad = ~3.2%
+
+repstopdf -> 49 cases
+	ZZRM lists pdflatex but eps are used, conversion does not work
+
+revtex -> 41 cases
+	Ulrike: yes, that is known. revtex patches tabular commands but is not compatible with a current array.sty.
+
+minted -> 15 cases
+	minted problem
+		! Package minted Error: Missing definition for highlighting style "default" (mi
+		nted executable is unavailable or disabled); attempting to substitute fallback 
+		style.
+
+theHalgorithm -> 11 cases
+	\newcommand{\theHalgorithm}{\arabic{algorithm}}
+	double defined, provided now by hyperref
+		this is a recommendation from 20 years ago ...
+
+hyperxmp -> 9 cases
+	! Package hyperxmp Error: hyperref must be loaded before hyperxmp.
+		those need reordering and moving argument to hyperref loading into \hypersetup{..}
+
+biblatex33 -> 8 cases (plus 1 that also has repstopdf!)
+	biblatex 3.2 - needs update to bbl file
+
+spacing -> 4 cases
+	incorrect usage of \onehalfspace - or similar like \spacing{}
+	this is an environment, so open group, so error
+
+orcidlink -> 3 cases
+	uses class file that defines orcidid and main paper loads orcidlink which also provides that
+
+textquotedbl -> 3 cases
+	LaTeX Error: Command \textquotedbl unavailable in encoding OT1.
+
+autart -> 3 cases
+	class from 2001 (autart.cls) based on old elsart, does break in many ways
+	./Automatica_bf_final.out:2: Missing \endcsname inserted.
+	<to be read again> 
+		           \theHpart 
+
+cite:init -> 3 cases
+	! Package biblatex Error: Bibliography macro 'cite:init' undefined.
+	no idea where that comes from, uses new biblatex 33 format
+
+tikzexternal -> 2 cases
+	\usetikzlibrary{external}
+	\usepgfplotslibrary{external}
+	\tikzexternalize[prefix=tikz/,mode=list and make]
+	\usepgfplotslibrary{groupplots}
+	seems to be broken?
+
+wileynjdv5 -> 2 cases
+	old WileyNJDv5.cls using etex.sty (should not be used) and undefined \reserveinserts
+	WileyNJDv5.cls - etex.sty - reserveinserts
+
+cref -> 2 cases
+	Use of \cref@override@label@type doesn't match its definition.
+	./Tran02.tex:248: Use of \cref@override@label@type doesn't match its definition.
+	\refstepcounter@optarg ...tepcounter {#2}\@ifundefined {cref@#1@alias}{\def \@tempa {#1}}{\def \@tempa {\csname cref@#1@alias\endcsname }}\protected@edef \cref@currentlabel {\expandafter \cref@override@label@type \cref@currentlabel \@nil 
+	                                                                                                                                                                                                                                              {\@tempa }}
+	l.248 \begin{definition}
+	                        [Construction of the Test Function Set $\Kcalbf$]
+
+
+
+
+
+Bad:
+====
+
+2507.00020.tar.gz
+	auto preflight detected wrong toplevel
+2507.00119.tar.gz
+ revtex
+2507.00212.tar.gz
+	uses \usepackage{utf8x} baeehhh
+2507.00267.tar.gz
+	siamart190516.cls fails
+2507.00310.tar.gz
+ minted
+2507.00413.tar.gz
+ hyperxmp
+2507.00441.tar.gz
+ revtex
+2507.00466.tar.gz
+	complicated ...???
+2507.00467.tar.gz
+ orcidlink
+2507.00504.tar.gz
+ revtex
+2507.00513.tar.gz
+ hyperxmp
+2507.00549.tar.gz
+ revtex
+2507.00576.tar.gz
+ repstopdf
+2507.00646.tar.gz
+ revtex
+2507.00683.tar.gz
+ revtex
+2507.00697.tar.gz
+ repstopdf
+2507.00744.tar.gz
+ revtex
+2507.00753.tar.gz
+ revtex
+2507.00836.tar.gz
+ revtex
+2507.00851.tar.gz
+ theHalgorithm
+2507.00997.tar.gz
+ repstopdf
+2507.01003.tar.gz
+ spacing
+2507.01030.tar.gz
+ revtex
+2507.01102.tar.gz
+ biblatex33
+2507.01162.tar.gz
+ revtex
+2507.01177.tar.gz
+ wileynjdv5
+2507.01210.tar.gz
+ revtex
+2507.01238.tar.gz
+ biblatex33
+2507.01259.tar.gz
+ repstopdf
+2507.01272.tar.gz
+ minted
+2507.01297.tar.gz
+ minted
+2507.01350.tar.gz
+ repstopdf
+2507.01361.tar.gz
+ repstopdf
+2507.01389.tar.gz
+ revtex
+2507.01452.tar.gz
+ revtex
+2507.01454.tar.gz
+ biblatex33
+2507.01530.tar.gz
+ revtex
+2507.01531.tar.gz
+ repstopdf
+2507.01545.tar.gz
+ repstopdf
+2507.01578.tar.gz
+ revtex
+2507.01629.tar.gz
+ hyperxmp
+2507.01638.tar.gz
+ hyperxmp
+2507.01690.tar.gz
+ hyperxmp
+2507.01692.tar.gz
+ biblatex33
+2507.01723.tar.gz
+ theHalgorithm
+2507.01729.tar.gz
+	\english undefined in \selectlanguage{\english}
+2507.01849.tar.gz
+ revtex
+2507.01905.tar.gz
+ revtex
+2507.01911.tar.gz
+ revtex
+2507.01913.tar.gz
+ revtex
+2507.01969.tar.gz
+ repstopdf
+2507.01992.tar.gz
+ repstopdf
+2507.01996.tar.gz
+ repstopdf
+ biblatex33
+2507.01998.tar.gz
+ repstopdf
+2507.02012.tar.gz
+ repstopdf
+2507.02014.tar.gz
+ theHalgorithm
+2507.02095.tar.gz
+ revtex
+2507.02096.tar.gz
+ biblatex33
+2507.02098.tar.gz
+ autart
+2507.02131.tar.gz
+ autart
+2507.02142.tar.gz
+ hyperxmp
+2507.02149.tar.gz
+ hyperxmp
+2507.02172.tar.gz
+ biblatex33
+2507.02197.tar.gz
+ textquotedbl
+2507.02256.tar.gz
+ minted
+2507.02405.tar.gz
+ repstopdf
+2507.02437.tar.gz
+ repstopdf
+2507.02457.tar.gz
+ revtex
+2507.02488.tar.gz
+ repstopdf
+2507.02514.tar.gz
+ repstopdf
+2507.02516.tar.gz
+ revtex
+2507.02615.tar.gz
+ revtex
+2507.02621.tar.gz
+ repstopdf
+2507.02631.tar.gz
+ revtex
+2507.02642.tar.gz
+ repstopdf
+2507.02653.tar.gz
+ revtex
+2507.02664.tar.gz
+ theHalgorithm
+2507.02713.tar.gz
+ theHalgorithm
+2507.02916.tar.gz
+ repstopdf
+2507.02935.tar.gz
+ tikzexternal
+2507.03064.tar.gz
+ minted
+2507.03093.tar.gz
+ orcidlink
+2507.03117.tar.gz
+	Package tabularray Error: Unknown inner key name 'booktabs'.
+2507.03206.tar.gz
+ cref
+2507.03217.tar.gz
+ revtex
+2507.03254.tar.gz
+ minted
+2507.03277.tar.gz
+ revtex
+2507.03279.tar.gz
+ minted
+2507.03302.tar.gz
+ theHalgorithm
+2507.03307.tar.gz
+ hyperxmp
+2507.03324.tar.gz
+ revtex
+2507.03328.tar.gz
+ minted
+2507.03344.tar.gz
+ minted
+2507.03356.tar.gz
+ repstopdf
+2507.03431.tar.gz
+	LaTeX Error: Unknown option 'T1' for package xcolor.
+	stuff like \usepackage[T1]{fontenc,xcolor} now fails
+2507.03487.tar.gz
+ minted
+2507.03493.tar.gz
+	arabtex with something else?
+	package loaded in open group - (\end occurred inside a group at level 1)
+2507.03494.tar.gz
+ repstopdf
+2507.03509.tar.gz
+ cite:init
+2507.03520.tar.gz
+ repstopdf
+2507.03529.tar.gz
+ cite:init
+2507.03546.tar.gz
+ revtex
+2507.03567.tar.gz
+ revtex
+2507.03604.tar.gz
+ cite:init
+2507.03645.tar.gz
+ revtex
+2507.03664.tar.gz
+ revtex
+2507.03684.tar.gz
+ cref
+2507.03742.tar.gz
+ revtex
+2507.03773.tar.gz
+ minted
+2507.03776.tar.gz
+ revtex
+2507.03795.tar.gz
+ revtex
+2507.03809.tar.gz
+	works with current TL2025, fails with the image we have
+	eg fontenc package is old
+2507.03834.tar.gz
+ textquotedbl
+2507.03849.tar.gz
+ repstopdf
+2507.03852.tar.gz
+ autart
+2507.03854.tar.gz
+ repstopdf
+2507.03866.tar.gz
+ repstopdf
+2507.03987.tar.gz
+ repstopdf
+2507.04119.tar.gz
+ theHalgorithm
+2507.04148.tar.gz
+ spacing
+2507.04158.tar.gz
+	LaTeX Error: Command \@dotsep already defined.
+	main.tex overwrite \@dotsep
+2507.04159.tar.gz
+ repstopdf
+2507.04184.tar.gz
+ repstopdf
+2507.04201.tar.gz
+ repstopdf
+2507.04219.tar.gz
+ tikzexternal
+2507.04250.tar.gz
+ theHalgorithm
+2507.04284.tar.gz
+ repstopdf
+2507.04326.tar.gz
+ repstopdf
+2507.04362.tar.gz
+ repstopdf
+2507.04393.tar.gz
+ revtex
+2507.04398.tar.gz
+ wileynjdv5
+2507.04401.tar.gz
+ repstopdf
+2507.04442.tar.gz
+ revtex
+2507.04569.tar.gz
+	acl.cls plus arabtex.sty fails - both are hacking the begin-document-hook
+	probably no arabtex necessary
+2507.04584.tar.gz
+ theHalgorithm
+2507.04611.tar.gz
+ repstopdf
+2507.04663.tar.gz
+ spacing
+2507.04679.tar.gz
+ revtex
+2507.04684.tar.gz
+ repstopdf
+2507.04712.tar.gz
+ repstopdf
+2507.04746.tar.gz
+	acl.cls plus arabtex.sty fails - both are hacking the begin-document-hook
+	probably no arabtex necessary
+2507.04789.tar.gz
+ theHalgorithm
+2507.04862.tar.gz
+ repstopdf
+2507.04902.tar.gz
+ repstopdf
+2507.05005.tar.gz
+ repstopdf
+2507.05007.tar.gz
+ repstopdf
+2507.05020.tar.gz
+ repstopdf
+2507.05065.tar.gz
+ minted
+2507.05156.tar.gz
+	LaTeX Error: Unknown option 'svgcolors' for package xcolor.
+2507.05158.tar.gz
+	compilation died in the middle, no idea why???
+2507.05174.tar.gz
+ spacing
+2507.05218.tar.gz
+	siamart220329.cls seems to be broken
+2507.05224.tar.gz
+ orcidlink
+2507.05239.tar.gz
+ repstopdf
+2507.05272.tar.gz
+ minted
+2507.05281.tar.gz
+ textquotedbl
+2507.05328.tar.gz
+ minted
+2507.05341.tar.gz
+ revtex
+2507.05411.tar.gz
+ minted
+2507.05457.tar.gz
+ repstopdf
+2507.05516.tar.gz
+ repstopdf
+2507.05534.tar.gz
+ hyperxmp
+2507.05636.tar.gz
+ biblatex33
+2507.05652.tar.gz
+ revtex
+2507.05666.tar.gz
+ theHalgorithm
+2507.05698.tar.gz
+	./main.tex:587: Undefined control sequence.
+	<argument> \g__nicematrix_dp_row_zero_dim 
+                                          
+	l.587  &
+	         RGB-only & Event-only & Event-only w. Alg~\ref{alg:objectdetectionextension}  \\
+2507.05704.tar.gz
+ repstopdf
+2507.05717.tar.gz
+ repstopdf
+2507.05802.tar.gz
+ repstopdf
+2507.05813.tar.gz
+ repstopdf
+2507.05826.tar.gz
+ biblatex33
+
+
+
+-------
+

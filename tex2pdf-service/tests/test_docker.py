@@ -319,10 +319,14 @@ def test_bbl_33(docker_container):
 def test_bbl_32_2025(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-bbl-32/test-bbl-32.tar.gz")
-    outcome = os.path.join(SELF_DIR, "output/test-bbl-32-2024.outcome.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-bbl-32-2025.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
     assert meta is not None
     # generation should fail because a bbl file vers 3.2 is uploaded, which should trigger an error
+    if type(meta) is str:
+        print(f"submit_tarball returned string {meta}")
+        assert meta == ""
+    assert type(meta) is dict
     assert meta.get("pdf_file") is None
     assert len(meta.get("converters", [])) == 1
     assert len(meta["converters"][0]["runs"]) == 2  # we fail in the second run
@@ -644,6 +648,36 @@ def test_check_js_detection(docker_container, ts):
     outcome = os.path.join(SELF_DIR, "output/check-js-detection.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
     assert meta is not None
-    assert meta["status"] == "fail"
+    assert meta.get("status") == "fail"
     assert meta.get("pdf_file") is None
-    assert len(meta["converters"][0]["runs"]) == 1  # latex
+    assert meta.get("reason", "") == "PDF QA check failed."
+
+
+@pytest.mark.integration
+def test_bibtex_fail(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/bibtex-fail/bibtex-fail.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/bibtex-fail.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, bibtex
+    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+    assert meta["converters"][0]["runs"][0]["pdf"]["size"] is None
+    assert meta["converters"][0]["runs"][1]["log"].startswith("This is BibTeX, Version")
+    assert "I couldn't open style file" in meta["converters"][0]["runs"][1]["log"]
+
+
+@pytest.mark.integration
+def test_biber_fail(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/biber-fail/biber-fail.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/biber-fail.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, bibtex
+    assert meta["converters"][0]["runs"][1]["step"] == "biber_run"
+    assert meta["converters"][0]["runs"][0]["pdf"]["size"] is None
+    assert meta["converters"][0]["runs"][1]["log"].startswith("INFO - This is Biber")
+    assert "ERROR - Cannot find" in meta["converters"][0]["runs"][1]["log"]

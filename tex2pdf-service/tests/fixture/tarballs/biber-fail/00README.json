@@ -5,7 +5,8 @@
          "filename" : "main.tex"
       }
    ],
+   "texlive_version" : 2025,
    "process" : {
-      "compiler" : "pdftex"
+      "compiler" : "pdflatex"
    }
 }

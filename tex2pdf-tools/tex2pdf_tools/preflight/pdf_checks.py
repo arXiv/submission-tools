@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .feature_flags import ENABLE_JS_CHECKS
+
 logger = logging.getLogger("[preflight/pdf_checks]")
 
 PDF_CHECKS = {
@@ -68,12 +70,15 @@ class PDFCheckResult:
 
 def check_javascript(res: dict) -> PDFCheckResult:
     """Check for presence of JavaScript in the PDF."""
+    logger.debug("Checking for presence of JavaScript in PDF")
     if "pdfinfo_js" not in res:
         # TODO what should we do if a check cannot be run or failed to run?
         # For now return success to not break PDF production.
+        logger.debug("Cannot find pdfinfo_js entry in the result dictionary, skipping check.")
         return PDFCheckResult(True, "", "")
     # "returncode" should be always set, and if it is 0, stdout and stderr are also set
     if res["pdfinfo_js"]["returncode"] == 0 and res["pdfinfo_js"]["stdout"].strip():
+        logger.debug("Detected JavaScript in PDF")
         return PDFCheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
     return PDFCheckResult(True, "", "")
 
@@ -98,6 +103,9 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[PDFCheckRe
             checks = [checks]
     for check in checks:
         if check in PDF_CHECKS:
+            if check == "javascript" and not ENABLE_JS_CHECKS:
+                logger.debug("Skipping JavaScript check, not enabled in ENABLE_JS_CHECKS env")
+                continue
             res = PDF_CHECKS[check](pdf_info)
             if not res.check_passed:
                 check_results.append(res)

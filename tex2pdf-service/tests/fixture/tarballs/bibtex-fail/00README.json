@@ -6,6 +6,6 @@
       }
    ],
    "process" : {
-      "compiler" : "pdftex"
+      "compiler" : "pdflatex"
    }
 }
