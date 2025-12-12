@@ -32,6 +32,8 @@ from . import (
     TEX2PDF_PROXY_RELEASE,
     TEX2PDF_SCOPES,
     TEXLIVE_BASE_RELEASE,
+    TEXLIVE_BIN_DIR,
+    TEXLIVE_ROOT,
     USE_ADDON_TREE,
 )
 from .converter_driver import AutoTeXConverterDriver, ConversionOutcomeMaker, ConverterDriver
@@ -463,7 +465,7 @@ def _convert_pdf_current(
         hide_anc_dir=hide_anc_dir,
     )
     logger = get_logger()
-    logger.debug("XXXX work_dir: %s; source: %s", in_dir, source, extra=log_extra)
+    logger.debug("work_dir: %s; source: %s", in_dir, source, extra=log_extra)
     try:
         _pdf_file = driver.generate_pdf()
     except RemovedSubmission as exc:
@@ -695,7 +697,7 @@ def _texlive_info(request: Request) -> Response:
             status_code=STATCODE.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "TEXLIVE_BASE_RELEASE is not set."},
         )
-    tlmgr_info = Path(f"/usr/local/texlive/{TEXLIVE_BASE_RELEASE}/local-info/tlmgr-info.json")
+    tlmgr_info = Path(f"{TEXLIVE_ROOT}/local-info/tlmgr-info.json")
     if not tlmgr_info.exists():
         logger.warning("tlmgr-info.json not found in %s", tlmgr_info)
         return JSONResponse(
@@ -729,7 +731,7 @@ async def texlive_version() -> JSONResponse:
     tlmgr_version = "tlmgr-version.txt"
     if not os.path.exists(tlmgr_version):
         with subprocess.Popen(
-            ["/usr/bin/tlmgr", "version"], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            [f"{TEXLIVE_BIN_DIR}/tlmgr", "version"], encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE
         ) as tlmgr:
             (out, _err) = tlmgr.communicate()
         vers_info = out if out else ""

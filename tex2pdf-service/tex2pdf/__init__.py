@@ -8,8 +8,16 @@ from pythonjsonlogger.jsonlogger import JsonFormatter
 
 from .service_logger import get_logger
 
+
+def env_flag(env_var: str, default: bool = False) -> bool:
+    environ_string = os.environ.get(env_var, "").strip().lower()
+    if not environ_string:
+        return default
+    return environ_string in ["1", "true", "yes", "on", "y"]
+
+
 # local_exec is True for running this with IDE, and using the local docker image as command.
-local_exec = os.environ.get("LOCAL_EXEC") == "y"
+local_exec: bool = env_flag("LOCAL_EXEC")
 
 ID_TAG = "arxiv_id"
 
@@ -24,7 +32,7 @@ MAX_LATEX_RUNS: int = int(os.environ.get("MAX_LATEX_RUNS", "5"))
 # Log level name may be different depending on the service provider
 LOG_LEVEL_NAME = os.environ.get("LOG_LEVEL_NAME", "severity")
 
-USE_ADDON_TREE: bool = os.environ.get("USE_ADDON_TREE") in ["y", "true"]
+USE_ADDON_TREE: bool = env_flag("USE_ADDON_TREE")
 
 MAX_TOPLEVEL_TEX_FILES: int = int(os.environ.get("MAX_TOPLEVEL_TEX_FILES", "1"))
 MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
@@ -32,6 +40,12 @@ MAX_APPENDING_FILES: int = int(os.environ.get("MAX_APPENDING_FILES", "0"))
 GIT_COMMIT_HASH: str = os.environ.get("GIT_COMMIT_HASH", "(unknown)")
 TEXLIVE_BASE_RELEASE: str = os.environ.get("TEXLIVE_BASE_RELEASE", "")
 AUTOTEX_BRANCH: str = os.environ.get("AUTOTEX_BRANCH", "")
+
+# if TEXLIVE_BASE_RELEASE is empty, we run an autotex container and then the path is irrelevant
+TEXLIVE_ROOT: str = f"/usr/local/texlive/{TEXLIVE_BASE_RELEASE}"
+TEXLIVE_BIN_DIR: str = f"{TEXLIVE_ROOT}/bin/x86_64-linux"
+
+ENABLE_SANDBOX: bool = env_flag("ENABLE_SANDBOX")
 
 PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
 PROJECT_NR: int = int(os.environ.get("PROJECT_NR", "0"))

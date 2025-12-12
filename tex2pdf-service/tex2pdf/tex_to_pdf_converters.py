@@ -13,7 +13,17 @@ import xmltodict
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
-from . import ID_TAG, MAX_LATEX_RUNS, MAX_TIME_BUDGET, TEXLIVE_BASE_RELEASE, file_props, file_props_in_dir, local_exec
+from . import (
+    ENABLE_SANDBOX,
+    ID_TAG,
+    MAX_LATEX_RUNS,
+    MAX_TIME_BUDGET,
+    TEXLIVE_BASE_RELEASE,
+    TEXLIVE_BIN_DIR,
+    file_props,
+    file_props_in_dir,
+    local_exec,
+)
 from .service_logger import get_logger
 
 WITH_SHELL_ESCAPE = False
@@ -264,7 +274,7 @@ class BaseConverter:
             bibopts = [y for ys in bibopts for y in str.split(ys)]
             bib_step = f"{bibprog}_run"
             logger.debug(f"Starting {bibprog} run")
-            bib_args = [f"/usr/bin/{bibprog}", *bibopts, *bibargs]
+            bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts, *bibargs]
             bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
             # bibtex and biber only outputs to stdout, even errors
             # since the frontend only shows the `log` entry, move the stdout part to log
@@ -389,7 +399,7 @@ class BaseConverter:
         t0 = time.perf_counter()
         # noinspection PyPep8Naming
         # pylint: disable=PyPep8Naming
-        PATH = f"{homedir}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin"
+        PATH = f"{homedir}/venv/bin:{TEXLIVE_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin"
         # SECRETS or GOOGLE_APPLICATION_CREDENTIALS is not defined at all at this point but
         # be defensive and squish it anyway.
         #
@@ -458,7 +468,7 @@ class BaseConverter:
 
         # get location of addon trees
         if self.use_addon_tree:
-            kpsewhich = self.decorate_args(["/usr/bin/kpsewhich", "-var-value", "SELFAUTOPARENT"])
+            kpsewhich = self.decorate_args([f"{TEXLIVE_BIN_DIR}/kpsewhich", "-var-value", "SELFAUTOPARENT"])
             sap = subprocess.run(kpsewhich, capture_output=True, text=True, check=False).stdout.rstrip()
             addon_tree = os.path.join(sap, "texmf-arxiv")
             if "TEXMFAUXTREES" in cmdenv:
@@ -467,6 +477,7 @@ class BaseConverter:
             else:
                 # if TEXMFAUXTREES is not set, create it
                 cmdenv["TEXMFAUXTREES"] = f"{addon_tree},"  # we need a final comma!
+        logger.debug(f"Calling {worker_args} with env {cmdenv}")
         with subprocess.Popen(
             worker_args,
             stderr=subprocess.PIPE,
@@ -567,10 +578,19 @@ class BaseConverter:
 
         When running TexLive command in PyCharm, prepend the command that runs TL command
         in docker.
+
+        When ENABLE_SANDBOX is True, wrap it with bwrap-tex.sh
         """
+        ret = args
+        logger = get_logger()
+        if ENABLE_SANDBOX:
+            logger.debug("Enable SANDBOX")
+            ret = ["/usr/local/bin/bwrap-tex.sh", *ret]
+        else:
+            logger.debug("Disable SANDBOX")
         if local_exec:
-            return ["/usr/local/bin/docker_pdflatex.sh", *args]
-        return args
+            ret = ["/usr/local/bin/docker_pdflatex.sh", *ret]
+        return ret
 
     @abstractmethod
     def converter_name(self) -> str:
@@ -749,7 +769,7 @@ class BaseDviConverter(BaseConverter):
         if hyperdvi:
             dvi_options.append("-z")
             pass
-        args = ["/usr/bin/dvips", *dvi_options, "-o", f"{stem}.ps", dvi_file]
+        args = [f"{TEXLIVE_BIN_DIR}/dvips", *dvi_options, "-o", f"{stem}.ps", dvi_file]
 
         run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": tag})
         ps_filename = os.path.join(in_dir, f"{stem}.ps")
@@ -823,7 +843,7 @@ class LatexConverter(BaseDviConverter):
 
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         # breaks many packages... f"-output-directory=../{bod}"
-        args = ["/usr/bin/latex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
+        args = [f"{TEXLIVE_BIN_DIR}/latex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -871,7 +891,7 @@ class PdfLatexConverter(BaseConverter):
 
     def _get_pdflatex_args(self, tex_file: str) -> list[str]:
         """Return the pdflatex command line arguments."""
-        args = [f"/usr/bin/{self.tex_compiler_name()}", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
+        args = [f"{TEXLIVE_BIN_DIR}/{self.tex_compiler_name()}", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         # You need this sometimes, and harmful sometimes.
         # NP 20250715 - commented the code, I don't think this is needed.
         # if not self.pdfoutput_1_seen:
@@ -956,7 +976,7 @@ class PdfTexConverter(BaseConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
 
-        args = ["/usr/bin/pdfetex", *COMMON_TEX_CMD_LINE_ARGS]
+        args = [f"{TEXLIVE_BIN_DIR}/pdfetex", *COMMON_TEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -1022,7 +1042,7 @@ class VanillaTexConverter(BaseDviConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
 
-        args = ["/usr/bin/etex", *COMMON_TEX_CMD_LINE_ARGS]
+        args = [f"{TEXLIVE_BIN_DIR}/etex", *COMMON_TEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
