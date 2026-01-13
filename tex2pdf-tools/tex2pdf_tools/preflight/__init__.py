@@ -21,6 +21,7 @@ from typing import TypeVar
 from pydantic import BaseModel, Field
 
 from .feature_flags import ENABLE_LUALATEX
+from .file_checks import run_checks as run_file_checks
 from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
@@ -224,7 +225,7 @@ class PreflightException(Exception):
     pass
 
 
-class PDFCheckPreflightException(PreflightException):
+class CheckPreflightException(PreflightException):
     """Exception raised when PDF checks fail."""
 
     pass
@@ -1384,6 +1385,10 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     # strip rundir/ prefix
     n = len(rundir) + 1
     all_files = [f[n:] for f in glob_files if os.path.isfile(f)]
+    # run checks on all files
+    checks_succeeded, failed_checks = run_file_checks(all_files, "all")
+    if not checks_succeeded:
+        raise CheckPreflightException("\n".join([z.info for z in failed_checks]))
     # we will not analyze ancillary files
     files = [f for f in all_files if not f.startswith("anc/")]
     # ancillary files
@@ -1402,7 +1407,7 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
             # run checks that might reject the PDF
             checks_succeeded, failed_checks = run_pdf_checks(f"{rundir}/{files[0]}", "all")
             if not checks_succeeded:
-                raise PDFCheckPreflightException("\n".join([z.info for z in failed_checks]))
+                raise CheckPreflightException("\n".join([z.info for z in failed_checks]))
             return (
                 ToplevelFile(
                     filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))
@@ -2106,12 +2111,12 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
 
     try:
         n, anc_files, maybe_files = parse_dir(rundir)
-        pdf_tests_succeeded = True
+        tests_succeeded = True
         error_msg = ""
-    except PDFCheckPreflightException as e:
-        pdf_tests_succeeded = False
-        error_msg = f"PDF only submission: PDF failed QA checks:\n{e!s}"
-    if not pdf_tests_succeeded:
+    except CheckPreflightException as e:
+        tests_succeeded = False
+        error_msg = f"QA check failed: {e!s}"
+    if not tests_succeeded:
         nodes = {}
         toplevel_files = {}
         anc_files = []

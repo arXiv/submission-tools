@@ -1,14 +1,11 @@
 """This module implements QA checks for PDF files."""
 
-import logging
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .checks import CheckResult, logger
 from .feature_flags import ENABLE_JS_CHECKS
-
-logger = logging.getLogger("[preflight/pdf_checks]")
 
 PDF_CHECKS = {
     "javascript": lambda res: check_javascript(res),
@@ -61,29 +58,22 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
     return results
 
 
-@dataclass
-class PDFCheckResult:
-    check_passed: bool
-    info: str
-    long_info: str
-
-
-def check_javascript(res: dict) -> PDFCheckResult:
+def check_javascript(res: dict) -> CheckResult:
     """Check for presence of JavaScript in the PDF."""
     logger.debug("Checking for presence of JavaScript in PDF")
     if "pdfinfo_js" not in res:
         # TODO what should we do if a check cannot be run or failed to run?
         # For now return success to not break PDF production.
         logger.debug("Cannot find pdfinfo_js entry in the result dictionary, skipping check.")
-        return PDFCheckResult(True, "", "")
+        return CheckResult(True, "", "")
     # "returncode" should be always set, and if it is 0, stdout and stderr are also set
     if res["pdfinfo_js"]["returncode"] == 0 and res["pdfinfo_js"]["stdout"].strip():
         logger.debug("Detected JavaScript in PDF")
-        return PDFCheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
-    return PDFCheckResult(True, "", "")
+        return CheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
+    return CheckResult(True, "", "")
 
 
-def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[PDFCheckResult]]:
+def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResult]]:
     """Run a list of checks or all.
 
     Args:
@@ -92,10 +82,10 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[PDFCheckRe
 
     Returns: a tuple containing:
         a boolean indicating whether all checks passed
-        the list of **failed** PDFCheckResults
+        the list of **failed** CheckResults
     """
     pdf_info = get_pdf_info(pdf)
-    check_results: list[PDFCheckResult] = []
+    check_results: list[CheckResult] = []
     if type(checks) is str:
         if checks == "all":
             checks = list(PDF_CHECKS.keys())
