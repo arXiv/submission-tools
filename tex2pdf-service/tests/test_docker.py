@@ -20,6 +20,9 @@ SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 TL2023_CUTOFF = 1748736000
 TL2023_TS = TL2023_CUTOFF - 100
 
+container_2023_name = "test-arxiv-tex2pdf-2023"
+container_2025_name = "test-arxiv-tex2pdf-2025"
+
 
 @pytest.fixture(params=[None, TL2023_TS])
 def ts(request):
@@ -33,8 +36,6 @@ def docker_container(request):
 
     image_2023_name = "public-tex2pdf-app-2023-2023-05-21"
     image_2025_name = "public-tex2pdf-app-2025-2025-08-03"
-    container_2023_name = "test-arxiv-tex2pdf-2023"
-    container_2025_name = "test-arxiv-tex2pdf-2025"
 
     if not request.config.getoption("--no-docker-setup"):
         subprocess.call(["docker", "kill", container_2023_name])
@@ -681,3 +682,17 @@ def test_biber_fail(docker_container):
     assert meta["converters"][0]["runs"][0]["pdf"]["size"] is None
     assert meta["converters"][0]["runs"][1]["log"].startswith("INFO - This is Biber")
     assert "ERROR - Cannot find" in meta["converters"][0]["runs"][1]["log"]
+
+
+@pytest.mark.integration
+def test_empty_toplevel_fn(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/empty-toplevel-fn/empty-toplevel-fn.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/empty-toplevel-fn.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, pdflatex
+    cmd = f"""docker logs {container_2025_name} 2>&1 | grep -e '"severity": "ERROR", "message": "Empty filename in toplevel entry, ignoring it!"'"""  # noqa: E501
+    proc = subprocess.run(cmd, check=False, shell=True)
+    assert proc.returncode == 0

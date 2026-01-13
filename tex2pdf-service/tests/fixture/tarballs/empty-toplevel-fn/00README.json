@@ -1,0 +1,18 @@
+{
+   "stamp" : true,
+   "sources" : [
+      {
+         "usage" : "toplevel",
+         "filename" : "main1.tex"
+      },
+      {
+         "usage" : "toplevel",
+         "filename" : ""
+      }
+   ],
+   "process" : {
+      "compiler" : "pdflatex"
+   },
+   "texlive_version": 2025,
+   "version": 2
+}
