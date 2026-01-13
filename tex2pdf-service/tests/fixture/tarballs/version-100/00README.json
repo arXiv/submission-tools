@@ -1,0 +1,13 @@
+{
+   "stamp" : true,
+   "sources" : [
+      {
+         "usage" : "toplevel",
+         "filename" : "main1.tex"
+      }
+   ],
+   "process" : {
+      "compiler" : "pdflatex"
+   },
+   "spec_version": 100
+}

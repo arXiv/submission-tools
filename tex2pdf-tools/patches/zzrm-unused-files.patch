@@ -1,0 +1,73 @@
+commit 0b2f71db6bcf6877bfbcc052d89adafb8ce7020b
+Author: Norbert Preining <norbert@arxiv.org>
+Date:   Mon Jul 21 20:12:41 2025 +0200
+
+    Implement auto-delete option to API
+    
+    * ZZRM: add a function to detect list of unused files depending
+      on preflight response
+    * API: add parameter: auto_detect_delete which only kicks in if
+      we have `auto_detect` enabled.
+
+diff --git a/tex2pdf-tools/tex2pdf_tools/zerozeroreadme/__init__.py b/tex2pdf-tools/tex2pdf_tools/zerozeroreadme/__init__.py
+index 9f1dfe7..37e0f56 100644
+--- a/tex2pdf-tools/tex2pdf_tools/zerozeroreadme/__init__.py
++++ b/tex2pdf-tools/tex2pdf_tools/zerozeroreadme/__init__.py
+@@ -1,6 +1,8 @@
+ """00README file parsing and handling."""
+ 
++import glob
+ import json
++import logging
+ import os
+ import typing
+ from collections import OrderedDict
+@@ -17,11 +19,13 @@ from ..preflight import (
+     BibCompiler,
+     CompilerSpec,
+     EngineType,
++    FileType,
+     LanguageType,
+     MainProcessSpec,
+     OutputType,
+     PostProcessType,
+     PreflightResponse,
++    PreflightStatusValues,
+     ToplevelFile,
+     string_to_bool,
+ )
+@@ -616,3 +620,34 @@ class ZeroZeroReadMe:
+     def to_toml(self) -> str:
+         """Provide TOML representation of ZZRM."""
+         return tomli_w.dumps(self.to_dict())
++
++    def unused_files(self, directory: str, pf: PreflightResponse) -> list[str]:
++        """Return all files that are not listed as being in used but present in directory."""
++        if pf.status.key != PreflightStatusValues.success:
++            raise ZZRMException(f"Preflight failed with status {pf.status.key} ({pf.status.value})")
++        # we assume that the ZZRM self is already updated with the preflight results
++        all_used_file = set()
++        for f in pf.tex_files:
++            if f.filename in self.toplevels:
++                # found a toplevel file
++                all_used_file.add(f.filename)
++                all_used_file.update(f.recursive_collect_files(FileType.tex))
++                all_used_file.update(f.recursive_collect_files(FileType.other))
++                all_used_file.update(f.recursive_collect_files(FileType.bib))
++                all_used_file.update(f.recursive_collect_files(FileType.bbl))
++                all_used_file.update(f.recursive_collect_files(FileType.idx))
++                all_used_file.update(f.recursive_collect_files(FileType.ind))
++        logging.debug(f"ZZRM/PF unused_files: all used files: {all_used_file}")
++        # remove all files that are not detected as being used by preflight
++        # faster options than glob are available, see:
++        # https://stackoverflow.com/questions/18394147/how-to-do-a-recursive-sub-folder-search-and-return-files-in-a-list
++        len_path = len(directory) + 1
++        ret = []
++        for in_file in glob.glob(f"{directory}/**/*", recursive=True):
++            if os.path.isfile(in_file):
++                bn = in_file[len_path:]
++                if bn not in all_used_file and not bn.lower().startswith("00readme"):
++                    # TODO what to do with `ignore` etc files tagged in self.sources?
++                    logging.debug(f"ZZRM/PF unused_files: removing {in_file}")
++                    ret.append(bn)
++        return ret

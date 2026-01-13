@@ -9,21 +9,34 @@ from json import JSONDecodeError
 
 import toml
 import tomli_w
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 from ruamel.yaml import YAML, MappingNode, ScalarNode
 from ruamel.yaml.representer import RoundTripRepresenter
 
 from ..preflight import (
+    CURRENT_TEXLIVE_VERSION,
     CompilerSpec,
     EngineType,
     LanguageType,
-    MainProcessSpec,
     OutputType,
     PostProcessType,
     PreflightResponse,
     ToplevelFile,
     string_to_bool,
 )
+
+# the 00README specification version
+# Version history:
+# - Version 1: everything before introducing the version parameter, but json/yaml/... format
+# - Version 2: added `version` and `texlive_version`
+# The above versions are for the old `version` which we ignore now
+# We start with a clean slate and use `spec_version = 1` for the first
+# documented version.
+
+ZZRM_CURRENT_VERSION: int = 1
+
+DEFAULT_ZZRM_COMMENT = """This is the specification file for processing source files for individual arXiv submissions.
+Details on the specification are at https://info.arxiv.org/help/00README.html"""
 
 # 00README extensions
 ZZRM_V1_EXTS: list[str] = [".xxx"]
@@ -76,8 +89,8 @@ class ZZRMUnsupportedFileError(ZZRMException):
     pass
 
 
-class ZZRMUnsupportedVersion(ZZRMException):
-    """Error when an unsupported ZZRM version is detected."""
+class ZZRMUnsupportedFiletypeVersion(ZZRMException):
+    """Error when an unsupported ZZRM filetype_version is detected."""
 
     pass
 
@@ -125,6 +138,8 @@ class OrientationType(str, Enum):
 class UserFile(BaseModel):
     """Representation of a file related information provided by users."""
 
+    model_config = ConfigDict(extra="forbid")
+
     filename: str | None = None
     usage: FileUsageType | None = None
     orientation: OrientationType | None = None
@@ -132,17 +147,39 @@ class UserFile(BaseModel):
     fontmaps: list[str] | None = None
 
 
+class ZZRMProcessSpec(BaseModel):
+    """Specification of the process to compile a document."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    compiler: CompilerSpec | None = None
+    fontmaps: list[str] | None = None
+
+    def __init__(self, **kwargs: typing.Any) -> None:
+        """Adjust __init__ function to allow for CompilerSpec(compiler="...")."""
+        if "compiler" in kwargs and isinstance(kwargs["compiler"], str):
+            compiler = kwargs["compiler"]
+            del kwargs["compiler"]
+            super().__init__(compiler=CompilerSpec(compiler=compiler), **kwargs)
+        else:
+            super().__init__(**kwargs)
+
+
 class ZeroZeroReadMe:
     """Representation of 00README.json file."""
 
-    def __init__(self, dir_or_file: str | None = None, version: int = 1):
-        self.version: int = version  # classic 00README.XXX is v1, dict i/o is v2.
+    def __init__(self, dir_or_file: str | None = None, filetype_version: int = 1):
+        self.filetype_version: int = filetype_version  # classic 00README.XXX is v1, dict i/o is v2.
+        self.spec_version: int = 1  # default version of the ZZRM specification
+        self._version: int | None = None  # old name of spec_version, kept for consistency check
         self.readme_filename: str | None = None
         self.readme: list[str] | None = None
-        self.process: MainProcessSpec = MainProcessSpec()
+        self.process: ZZRMProcessSpec = ZZRMProcessSpec()
         self.sources: OrderedDict[str, UserFile] = OrderedDict()
         self.stamp: bool | None = True
         self.nohyperref: bool | None = None
+        self.texlive_version: int | None = None
+        self.comment: str | None = None
         if dir_or_file is None:
             return
         elif os.path.isdir(dir_or_file):
@@ -152,9 +189,14 @@ class ZeroZeroReadMe:
         else:
             raise ZZRMFileNotFoundError(f"File {dir_or_file} not found")
 
-    def to_dict(self) -> OrderedDict:
+    def to_dict(self, add_default_comment: bool = True) -> OrderedDict:
         """Representation of ZZRM as dictionary."""
         result: OrderedDict[str, typing.Any] = OrderedDict()
+        if self.comment is None and add_default_comment:
+            self.comment = DEFAULT_ZZRM_COMMENT
+        # The comment should be at the top of the file
+        if self.comment:
+            result["comment"] = self.comment
         result["process"] = self.process.model_dump(exclude_none=True, exclude_defaults=True)
         # the zzrm.process.compiler should be the compiler_string, not the actual object
         if self.process.compiler is not None:
@@ -167,6 +209,9 @@ class ZeroZeroReadMe:
             result["stamp"] = self.stamp
         if self.nohyperref is not None:
             result["nohyperref"] = self.nohyperref
+        if self.texlive_version is not None:
+            result["texlive_version"] = self.texlive_version
+        result["spec_version"] = self.spec_version
         return result
 
     def init_from_file(self, file: str) -> None:
@@ -236,7 +281,7 @@ class ZeroZeroReadMe:
             self._fetch_00readme_data(os.path.join(in_dir, zzrms_v1[0]), 1)
             return
 
-    def _fetch_00readme_data(self, filename: str, version: int) -> None:
+    def _fetch_00readme_data(self, filename: str, filetype_version: int) -> None:
         read_data: str | None = None
         for enc in ["utf-8", "iso-8859-1"]:
             try:
@@ -249,19 +294,19 @@ class ZeroZeroReadMe:
             return
 
         self.readme_filename = filename
-        if version == 1:
+        if filetype_version == 1:
             self._fetch_00readme_v1(read_data)
-        elif version == 2:
+        elif filetype_version == 2:
             _, ext = os.path.splitext(filename)
             self._fetch_00readme_v2(read_data, ext)
         else:
-            raise ZZRMUnsupportedVersion(f"Unknown version {version}")
+            raise ZZRMUnsupportedFiletypeVersion(f"Unknown filetype_version {filetype_version}")
 
     def _fetch_00readme_v1(self, data: str) -> None:
         """Read and parse 00README.XXX file."""
         self.readme = data.split("\n")
 
-        self.version = 1
+        self.filetype_version = 1
         for line in self.readme:
             idioms = [idiom for idiom in line.strip().split(" ") if idiom]
             if len(idioms) == 2:
@@ -341,8 +386,10 @@ class ZeroZeroReadMe:
                     raise ZZRMInvalidFormatError("Invalid file format") from e
 
         if zzrm:
-            self.version = 2
+            self.filetype_version = 2
             self.from_dict(zzrm)
+            # Spec checks
+            # for now there are none since we start with spec_version = 1 as the fist public version
 
     def from_dict(self, zzrm: dict) -> None:
         """Initialize a ZZRM from a dictionary."""
@@ -351,7 +398,7 @@ class ZeroZeroReadMe:
             if k == "process":
                 if isinstance(v, dict):
                     try:
-                        self.process = MainProcessSpec(**v)
+                        self.process = ZZRMProcessSpec(**v)
                     except ValidationError as e:
                         raise ZZRMParseError(f"Validation error on parsing: {e}")
                 else:
@@ -381,6 +428,59 @@ class ZeroZeroReadMe:
                     self.stamp = v
                 else:
                     self.stamp = string_to_bool(v)
+            elif k == "nohyperref":
+                if isinstance(v, bool):
+                    self.nohyperref = v
+                else:
+                    self.nohyperref = string_to_bool(v)
+            elif k == "version":
+                # ignore version but keep it for consistency check
+                if isinstance(v, int):
+                    self._version = v
+                elif isinstance(v, str):
+                    try:
+                        self._version = int(v)
+                    except ValueError:
+                        # we ignore incorrectly set version
+                        pass
+            elif k == "spec_version" or k == "spec-version":
+                if isinstance(v, int):
+                    self.spec_version = v
+                elif isinstance(v, str):
+                    try:
+                        self.spec_version = int(v)
+                    except ValueError:
+                        raise ZZRMParseError(f"Invalid version: {v}")
+                # check for proper range of ZZRM version
+                if self.spec_version:
+                    # check version range
+                    if self.spec_version < 1 or self.spec_version > ZZRM_CURRENT_VERSION:
+                        raise ZZRMParseError(f"Version number out of range (1-{ZZRM_CURRENT_VERSION}): {v}")
+            elif k == "texlive_version" or k == "texlive-version":
+                if isinstance(v, int):
+                    self.texlive_version = v
+                elif isinstance(v, str):
+                    try:
+                        self.texlive_version = int(v)
+                    except ValueError:
+                        if v == "current":
+                            if os.environ.get("PYTEST_RUNNING_ALLOW_CURRENT_TL", "") != "":
+                                self.texlive_version = int(CURRENT_TEXLIVE_VERSION)
+                            else:
+                                raise ZZRMParseError(f"Invalid version: {v}")
+                        elif v.startswith("tl") or v.startswith("TL"):
+                            try:
+                                self.texlive_version = int(v[2:])
+                            except ValueError:
+                                raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
+                        else:
+                            raise ZZRMParseError(f"Invalid texlive_version: {v}")
+                else:
+                    raise ZZRMParseError(f"Invalid value for texlive_version: {v} ({type(v)})")
+            elif k == "comment":
+                # we allow comments in the ZZRM for the sake of links to the info pages with the ZZRM spec
+                # we always convert to string
+                self.comment = str(v)
             else:
                 raise ZZRMParseError(f"Invalid key for 00README: {k}")
 
@@ -550,7 +650,7 @@ class ZeroZeroReadMe:
                 assembly.append(strip_to_basename(fn, ".pdf"))
         return assembly
 
-    def to_yaml(self, output: typing.TextIO) -> typing.TextIO:
+    def to_yaml(self, output: typing.TextIO, add_default_comment: bool = True) -> typing.TextIO:
         """Provide YAML representation of ZZRM."""
         yaml = YAML()
         yaml.representer.add_representer(str, yaml_repr_str)
@@ -561,13 +661,13 @@ class ZeroZeroReadMe:
         yaml.representer.add_representer(PostProcessType, yaml_repr_str)
         yaml.representer.add_representer(FileUsageType, yaml_repr_str)
         yaml.representer.add_representer(OrientationType, yaml_repr_str)
-        yaml.dump(self.to_dict(), output)
+        yaml.dump(self.to_dict(add_default_comment), output)
         return output
 
-    def to_json(self, indent: int | None = 4) -> str:
+    def to_json(self, indent: int | None = 4, add_default_comment: bool = True) -> str:
         """Provide JSON representation of ZZRM."""
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(self.to_dict(add_default_comment), indent=indent)
 
-    def to_toml(self) -> str:
+    def to_toml(self, add_default_comment: bool = True) -> str:
         """Provide TOML representation of ZZRM."""
-        return tomli_w.dumps(self.to_dict())
+        return tomli_w.dumps(self.to_dict(add_default_comment))

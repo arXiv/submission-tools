@@ -10,19 +10,21 @@ include = ["LICENSE", "README.md"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pydantic = "^2.8.2"
-ruamel-yaml = "^0.18.5"
-toml = "^0.10.2"
-tomli_w = "^1.0"
+pydantic = "*"
+ruamel-yaml = "*"
+toml = "*"
+tomli_w = "*"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "*"
-pytest = "^8.3.3"
+ruff = "0.12.*"
+pytest = "*"
+pytest-cov = "*"
+mock = "*"
 mypy = "*"
 mypy-extensions = "*"
-types-toml = "^0.10.8.20240310"
-click = "^8.1.7"
-tqdm = "^4.66.2"
+types-toml = "*"
+click = "*"
+tqdm = "*"
 pre-commit = "*"
 
 [tool.ruff]
@@ -36,7 +38,11 @@ line-length = 120
 [tool.pylint]
 max-line-length = 120
 
+[tool.pytest.ini_options]
+addopts = "--cov=tex2pdf_tools --cov-fail-under=69"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
 

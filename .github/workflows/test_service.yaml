@@ -1,0 +1,75 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Tex2PDF Python application
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'tex2pdf-service/**'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'tex2pdf-service/**'
+
+env:
+  PROJECT_ID: 'arxiv-development'
+  AR_URL: 'gcr.io'
+  SERVICE_ACCOUNT: 'gha-worker@arxiv-development.iam.gserviceaccount.com'
+  WORKLOAD_IDENTITY_PROVIDER: 'projects/874717964009/locations/global/workloadIdentityPools/github/providers/github-actions-provider'
+
+jobs:
+  build:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup gvisor
+      run: |
+        set -e
+        ARCH=$(uname -m)
+        URL=https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}
+        wget ${URL}/runsc ${URL}/runsc.sha512 \
+          ${URL}/containerd-shim-runsc-v1 ${URL}/containerd-shim-runsc-v1.sha512
+        sha512sum -c runsc.sha512 -c containerd-shim-runsc-v1.sha512
+        rm -f *.sha512
+        chmod a+rx runsc containerd-shim-runsc-v1
+        sudo cp runsc containerd-shim-runsc-v1 /usr/local/bin
+        rm runsc containerd-shim-runsc-v1
+        sudo /usr/local/bin/runsc install
+        sudo systemctl reload docker
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        token_format: 'access_token'
+        project_id: ${{ env.PROJECT_ID }}
+        service_account: ${{ env.SERVICE_ACCOUNT }}
+        workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+    - name: Docker Auth
+      id: docker-auth
+      uses: 'docker/login-action@v1'
+      with:
+        username: 'oauth2accesstoken'
+        password: '${{ steps.auth.outputs.access_token }}'
+        registry: ${{ env.AR_URL }}
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    - name: Install dependencies for tex2pdf
+      run: |
+        cd tex2pdf-service
+        python -m pip install --upgrade pip
+        pip install pytest poetry
+        poetry install
+    - name: pytest for tex2pdf
+      run: |
+        cd tex2pdf-service
+        export PYTHONPATH=$PWD
+        poetry run pytest tests

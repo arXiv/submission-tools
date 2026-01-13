@@ -2,8 +2,9 @@ import sys
 import typing
 from collections import OrderedDict
 
-from .props_io import from_dict_to_yaml, from_yaml_to_dict
 import dictdiffer
+
+from .props_io import from_dict_to_yaml, from_yaml_to_dict
 
 
 def _print_value(val, indent):
@@ -19,7 +20,7 @@ def path_string(path_obj: typing.Any) -> str:
     return str(path_obj)
 
 
-class DiffProfiles(object):
+class DiffProfiles:
     _profile_files: list[str]
     _profiles: list[OrderedDict]
 
@@ -41,12 +42,12 @@ class DiffProfiles(object):
             removes = [(path, value) for action, path, value in self.diffs if action == "remove"]
             changes = [(path, value) for action, path, value in self.diffs if action == "change"]
 
-            if len(removes):
-                print(f"\nOnly in LEFT", file=file)
+            if removes:
+                print("\nOnly in LEFT", file=file)
                 for path, value in removes:
                     for toplevel, rest in value:
                         if isinstance(rest, str):
-                            print(f'{path}.{toplevel}: {rest}', file=file)
+                            print(f"{path}.{toplevel}: {rest}", file=file)
                         else:
                             if path:
                                 from_dict_to_yaml({path_string(path): {toplevel: rest}}, file)
@@ -57,8 +58,8 @@ class DiffProfiles(object):
                         pass
                     pass
 
-            if len(adds):
-                print(f"\nOnly in RIGHT", file=file)
+            if adds:
+                print("\nOnly in RIGHT", file=file)
                 for path, value in adds:
                     for toplevel, rest in value:
                         # print(toplevel, file=file)
@@ -67,8 +68,8 @@ class DiffProfiles(object):
                     pass
                 pass
 
-            if len(changes):
-                print(f"\nChanged between LEFT and RIGHT", file=file)
+            if changes:
+                print("\nChanged between LEFT and RIGHT", file=file)
                 for path, value in changes:
                     print(f"{path}: {value[0]} --> {value[1]}", file=file)
                     pass
@@ -78,4 +79,5 @@ class DiffProfiles(object):
             print("Identical", file=file)
             pass
         pass
+
     pass

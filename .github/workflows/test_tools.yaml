@@ -6,8 +6,12 @@ name: Submission Tools Test
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - 'tex2pdf-tools/**'
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'tex2pdf-tools/**'
 
 jobs:
   build:
@@ -20,23 +24,40 @@ jobs:
       with:
         python-version: "3.11"
     - name: Setup TeX Live
-      uses: teatimeguest/setup-texlive-action@v3
+      uses: zauguin/install-texlive@v4
       with: # install extra packages we use in the test files
         packages: |
           scheme-basic
+          amstex
           index
           lipsum
           amsmath
           csquotes
           biblatex
+          pgf
+          polyglossia
+          unicode-math
+          fontspec
+          tcolorbox
+          alkalami
+          chivo
+          tex-gyre
+    - name: Install pdfinfo via poppler-utils
+      run: sudo apt-get update && sudo apt-get install --no-install-recommends -y poppler-utils
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools
         python -m pip install --upgrade pip
         pip install pytest poetry
-        poetry install
+        poetry install --with=dev
     - name: pytest for tools
       run: |
         cd tex2pdf-tools
         export PYTHONPATH=$PWD
         poetry run pytest tests
+    - uses: astral-sh/ruff-action@v3
+      with:
+        version: "0.12.x"
+    - run: ruff check
+    - run: ruff format --check --diff
+

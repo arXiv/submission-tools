@@ -1,0 +1,41 @@
+\documentclass{article}
+\usepackage{fontspec}
+
+%%% set(main|sans|mono)font
+% found file
+\setmainfont{texgyrepagella-regular.otf}[something]
+\setsansfont{Alkalami-Regular.ttf}[something]
+% missing file
+\setmonofont{texgyrepagella-superregular.otf}[something]
+\setmainfont[something]{missing1.otf}
+
+%%% (new|set|renew|provide)fontfamily
+% found file
+\newfontfamily\foofont{texgyrepagella-italic.otf}|[something]
+% missing file
+\setfontfamily\barfont{texgyrepagella-reverseitalic.ttf}[something]
+\providefontfamily\fooofont{texgyrepagella-italic2.otf}[something]
+\renewfontfamily\foooofont{texgyrepagella-italic3.otf}[something]
+
+% with braces NOT WORKING (!)
+\newfontfamily{\barfont}{texgyrepagella-shouldbemissing.otf}[something]
+
+%% support for mixtures .. not supported by now, only main font is checked
+\setmainfont{Chivo-Regular.otf}[
+  BoldFont = Chivo-Bold.otf ,
+  ItalicFont = Chivo-Italic.otf ,
+  BoldItalicFont = Chivo-BoldItalic.otf ]
+
+
+% single font faces
+\newfontface\emilfont{CharisSIL-notfound.ttf}[something]
+
+\begin{document}
+
+\fontspec{texgyrepagella-bold.otf}[something] ...
+
+\fontspec{texgyrepagella-bold-as-batman.otf}[something] ...
+
+
+Hello World
+\end{document}

@@ -1,0 +1,11 @@
+{
+  "process": {
+    "compiler": "pdftex"
+  },
+  "sources": [
+    {
+      "filename": "fake-file-1.tex",
+      "usage": "toplevel"
+    }
+  ]
+}

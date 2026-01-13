@@ -31,6 +31,7 @@ TEX_LOG_ERRORS: list[Pattern] = [
 
 def inspect_log(log: str, patterns: list[Pattern] | None = None, break_on_found: bool = True) -> list[str]:
     """Run the list of regex against a blob string and count the matches.
+
     log: The log blob
     patterns: a list of regex patterns. default is TEX_LOG_ERRORS if not given.
     break_on_found: stop the search at first found

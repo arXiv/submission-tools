@@ -1,0 +1,1 @@
+python bin/compile_submissions.py compile --service http://localhost:6303/convert --tex2pdf-timeout=600 --post-timeout=600 --threads=6 /mnt/disk/arXiv/papers/2510

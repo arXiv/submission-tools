@@ -1,10 +1,10 @@
 import os.path
-from collections import OrderedDict
+import subprocess
 
 import pytest
-import subprocess
-from src.pdf_profile import PdfProfile, PdfTextSimilarity
 from ruamel.yaml import YAML
+from src.pdf_profile import PdfProfile, PdfTextSimilarity
+
 
 @pytest.fixture
 def arxiv_2401_00001():
@@ -12,7 +12,16 @@ def arxiv_2401_00001():
     tests_dir = os.path.dirname(this_file)
     pdf_dir = os.path.join(tests_dir, "fixture", "pdf")
     test_pdf = os.path.join(pdf_dir, "2401.00001.pdf")
-    subprocess.run(["curl", "-L", "https://arxiv.org/pdf/2401.00001", "-o", test_pdf, ])
+    subprocess.run(
+        [
+            "curl",
+            "-L",
+            "https://arxiv.org/pdf/2401.00001",
+            "-o",
+            test_pdf,
+        ],
+        check=False,
+    )
     return test_pdf
 
 

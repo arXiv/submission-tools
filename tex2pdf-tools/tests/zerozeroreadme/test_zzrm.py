@@ -4,8 +4,12 @@ import unittest
 
 import pytest
 
-from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError, ZZRMParseError
+from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe, ZZRMMultipleFilesError, ZZRMParseError, ZZRMInvalidFormatError
 
+unittest.TestCase.maxDiff = None
+
+monkeypatch = pytest.MonkeyPatch()
+monkeypatch.setenv("PYTEST_RUNNING_ALLOW_CURRENT_TL", "1")
 
 class Test00README(unittest.TestCase):
     fixture_dir: str
@@ -22,6 +26,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
+        self.assertEqual(zzrm.spec_version, 1)
 
     def test_zzrm_v1_01_from_file(self) -> None:
         file_path = os.path.join(self.fixture_dir, "zzrm_v1_01", "00README.XXX")
@@ -32,6 +37,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(["myfonts1.map", "myfonts2.map"], zzrm.fontmaps)
         self.assertEqual(set(["fake-file-2.dvi"]), zzrm.landscapes)
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
+        self.assertEqual(zzrm.spec_version, 1)
 
     def test_zzrm_v2_01(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_01")
@@ -44,6 +50,8 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(False, zzrm.nohyperref)
+        self.assertEqual(zzrm.spec_version, 1)
 
     def test_zzrm_v2_syntax_error(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_syntax_error")
@@ -62,6 +70,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("latex+dvips_ps2pdf", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(zzrm.spec_version, 1)
 
     def test_zzrm_v2_03(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_03")
@@ -74,6 +83,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(zzrm.spec_version, 1)
 
     def test_zzrm_v2_04(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_04")
@@ -86,6 +96,7 @@ class Test00README(unittest.TestCase):
         self.assertEqual(set(["fake-file-4.dvi"]), zzrm.keepcomments)
         self.assertEqual("pdflatex", zzrm.process.compiler.compiler_string)
         self.assertEqual(False, zzrm.stamp)
+        self.assertEqual(zzrm.spec_version, 1)
 
     def test_zzrm_v2_05(self) -> None:
         dir_path = os.path.join(self.fixture_dir, "zzrm_v2_05")
@@ -97,6 +108,39 @@ class Test00README(unittest.TestCase):
         zzrm = ZeroZeroReadMe(dir_path)
         sio = io.StringIO()
         zzrm.to_yaml(sio)
+        sio.flush()
+        sio.seek(0)
+        data = sio.read()
+        expected = """comment: |-
+  This is the specification file for processing source files for individual arXiv submissions.
+  Details on the specification are at https://info.arxiv.org/help/00README.html
+process:
+  fontmaps:
+  - myfonts1.map
+  - myfonts2.map
+sources:
+- filename: fake-file-1.tex
+  usage: include
+- filename: fake-file-2.tex
+  usage: toplevel
+- filename: fake-file-3.TEX
+  usage: ignore
+- filename: fake-file-2.dvi
+  orientation: landscape
+- filename: fake-file-4.dvi
+  keep_comments: true
+- filename: fake-file-5.tex
+  usage: toplevel
+stamp: false
+spec_version: 1
+"""
+        self.assertEqual(expected, data)
+
+    def test_zzrm_out_yaml_no_default_comment(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_v1_01")
+        zzrm = ZeroZeroReadMe(dir_path)
+        sio = io.StringIO()
+        zzrm.to_yaml(sio, add_default_comment=False)
         sio.flush()
         sio.seek(0)
         data = sio.read()
@@ -118,6 +162,7 @@ sources:
 - filename: fake-file-5.tex
   usage: toplevel
 stamp: false
+spec_version: 1
 """
         self.assertEqual(expected, data)
 
@@ -125,7 +170,8 @@ stamp: false
         dir_path = os.path.join(self.fixture_dir, "zzrm_v1_01")
         zzrm = ZeroZeroReadMe(dir_path)
         data = zzrm.to_toml()
-        expected = """sources = [
+        expected = """comment = "This is the specification file for processing source files for individual arXiv submissions.\\nDetails on the specification are at https://info.arxiv.org/help/00README.html"
+sources = [
     { filename = "fake-file-1.tex", usage = "include" },
     { filename = "fake-file-2.tex", usage = "toplevel" },
     { filename = "fake-file-3.TEX", usage = "ignore" },
@@ -134,6 +180,7 @@ stamp: false
     { filename = "fake-file-5.tex", usage = "toplevel" },
 ]
 stamp = false
+spec_version = 1
 
 [process]
 fontmaps = [
@@ -148,6 +195,7 @@ fontmaps = [
         zzrm = ZeroZeroReadMe(dir_path)
         data = zzrm.to_json()
         expected = """{
+    "comment": "This is the specification file for processing source files for individual arXiv submissions.\\nDetails on the specification are at https://info.arxiv.org/help/00README.html",
     "process": {
         "fontmaps": [
             "myfonts1.map",
@@ -180,6 +228,64 @@ fontmaps = [
             "usage": "toplevel"
         }
     ],
-    "stamp": false
+    "stamp": false,
+    "spec_version": 1
 }"""
         self.assertEqual(expected, data)
+
+    def test_zzrm_texlive_version(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_texlive_version")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(2024, zzrm.texlive_version)
+        self.assertEqual(zzrm.spec_version, 1)
+
+    def test_zzrm_comment(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_comment")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(zzrm.comment, "This is a genious comment")
+
+    def test_zzrm_comment_number(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_comment_number")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(zzrm.comment, "42")
+
+    def test_zzrm_v2_version_out_of_range(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_version_out_of_range")
+        with pytest.raises(ZZRMParseError):
+            _ = ZeroZeroReadMe(dir_path)
+
+    def test_zzrm_pdftex(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_pdftex")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual("pdftex", zzrm.process.compiler.compiler_string)
+
+    def test_zzrm_pdfetex(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_pdfetex")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual("pdftex", zzrm.process.compiler.compiler_string)
+
+    def test_yaml_dump(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_yaml_dump")
+        zzrm = ZeroZeroReadMe(dir_path)
+        sio = io.StringIO()
+        zzrm.to_yaml(sio)
+        sio.flush()
+        sio.seek(0)
+        data = sio.read()
+        expected = """process:
+  bibliography:
+    - pre_generated: false
+    - process: bibtex
+  index:
+    - pre_generated: false
+    - process: makeindex
+sources:
+- filename: fake-file-1.tex
+  usage: toplevel
+stamp: false
+"""
+
+    def test_zzrm_tl_version_current(self) -> None:
+        dir_path = os.path.join(self.fixture_dir, "zzrm_v2_current")
+        zzrm = ZeroZeroReadMe(dir_path)
+        self.assertEqual(2025, zzrm.texlive_version)

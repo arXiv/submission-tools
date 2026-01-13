@@ -1,0 +1,11 @@
+{
+   "sources" : [
+      {
+         "usage" : "toplevel",
+         "filename" : "bla.tex"
+      }
+   ],
+   "process" : {
+      "compiler" : "latex"
+   }
+}

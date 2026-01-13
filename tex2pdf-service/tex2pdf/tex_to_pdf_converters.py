@@ -1,19 +1,29 @@
-"""
-This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF.
-"""
+"""This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF."""
 
+import hashlib
 import os
+import re
 import shlex
 import subprocess
 import time
 import typing
 from abc import abstractmethod
 
+import xmltodict
 from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
-from . import ID_TAG, MAX_LATEX_RUNS, MAX_TIME_BUDGET, file_props, file_props_in_dir, local_exec
-from .log_inspection import inspect_log
+from . import (
+    ENABLE_SANDBOX,
+    ID_TAG,
+    MAX_LATEX_RUNS,
+    MAX_TIME_BUDGET,
+    TEXLIVE_BASE_RELEASE,
+    TEXLIVE_BIN_DIR,
+    file_props,
+    file_props_in_dir,
+    local_exec,
+)
 from .service_logger import get_logger
 
 WITH_SHELL_ESCAPE = False
@@ -24,29 +34,32 @@ WITH_SHELL_ESCAPE = False
 # -halt-on-error ensures that if an included file is missing, then La(TeX) does not
 #  continue to process the file and produce a PDF, but returns an error.
 # -file-line-error changes the formatting of the error messages
-COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-halt-on-error"]
+# -no-parse-first-line disables the parsing of lines %&latex to specify a format
+COMMON_TEX_CMD_LINE_ARGS = ["-interaction=batchmode", "-recorder", "-no-parse-first-line"]
 # extra latex command line arguments
 EXTRA_LATEX_CMD_LINE_ARGS = ["-file-line-error"]
 
 
 class NoTexFile(Exception):
-    """No tex file found in the tarball"""
+    """No tex file found in the tarball."""
 
     pass
 
 
 class RunFail(Exception):
-    """pdflatex/bibtex run failed"""
+    """pdflatex/bibtex run failed."""
 
     pass
+
 
 class CompilerNotSpecified(Exception):
-    """cannot detect compiler"""
+    """cannot detect compiler."""
 
     pass
 
+
 class ImplementationError(Exception):
-    """Bug!?"""
+    """General implementation error (or bug)."""
 
     pass
 
@@ -58,6 +71,7 @@ class BaseConverter:
     runs: list[dict]  # Each run generates an output
     log: str
     log_extra: dict
+    supp_file_hashes: dict[str, list[str]]
     use_addon_tree: bool
     zzrm: ZeroZeroReadMe | None
     init_time: float
@@ -78,22 +92,23 @@ class BaseConverter:
         self.runs = []
         self.log = ""
         self.log_extra = {ID_TAG: self.conversion_tag}
+        self.supp_file_hashes = {"aux": [], "out": []}
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
-        except:
+        except Exception:
             default_max = 595
             pass
         self.max_time_budget = default_max if max_time_budget is None else max_time_budget
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
         return "Unknown"
 
     def time_left(self) -> float:
-        """Returns the time left before the timeout"""
+        """Return the time left before the timeout."""
         return self.max_time_budget - (time.perf_counter() - self.init_time)
 
     def is_internal_converter(self) -> bool:
@@ -110,9 +125,124 @@ class BaseConverter:
         """Run the base engine of the converter."""
         pass
 
+    def _determine_bib_bbl_processor(self, in_dir: str) -> tuple[str, list[str], list[str]]:
+        logger = get_logger()
+        stem = self.stem
+        # if bib processer is requested, run it
+        bbl_file = f"{in_dir}/{stem}.bbl"
+        if os.path.exists(bbl_file):
+            logger.debug("bbl file present, do not run any bib-to-bbl processor")
+            return "", [], []
+        else:
+            # try to determine the correct bib-to-bbl processor
+            bibprog = ""
+            bibopts = []
+            bibargs = []
+            xmlrun_file = f"{in_dir}/{stem}.run.xml"
+            if os.path.exists(xmlrun_file):
+                logger.debug("determine_bib_bbl: checking run.xml file")
+                try:
+                    xmlrun = open(xmlrun_file).read()
+                    xrd = xmltodict.parse(xmlrun)
+                except Exception:
+                    # we cannot open the xml file, fall back to bibtex
+                    xrd = {}
+                # extract bibprogram if all components are defined and set, otherwise give ""
+                bibprog = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("binary", "")
+                if bibprog == "":
+                    # we cannot parse the .xml.run file or cannot get the correct value,
+                    # Maybe the .run.xml file was create not from biblatex?
+                    logger.debug("determine_bib_bbl_processor: parsing .run.xml did not find bib program")
+                    # do not return so that we can continue parsing the .aux file
+                else:
+                    xrd_option = (
+                        xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("option", [])
+                    )  # options could be missing
+                    xrd_infile = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("infile", "stem")
+                    if type(xrd_option) is str:
+                        bibopts = [xrd_option]
+                    elif type(xrd_option) is list:
+                        bibopts = xrd_option
+                    else:
+                        # what should that be?
+                        bibopts = []
+                    if type(xrd_infile) is str:
+                        bibargs = [xrd_infile]
+                    elif type(xrd_infile) is list:
+                        bibargs = xrd_infile
+                    else:
+                        # what should that be?
+                        bibargs = [stem]
+                    return bibprog, bibopts, bibargs
+
+            # we are still here, check .aux file for traces of \bibstyle
+            # We are still here, check the .aux file
+            # - search for \bibdata{foobar} which comes from a \bibliography{foobar} entry
+            # - if there are entries, and bbl is missing, run bibtex/biber
+            # - BUT ignore <MAIN_FILE>Notes.bib if all lines start with @CONTROL
+            aux_file = f"{in_dir}/{stem}.aux"
+            if os.path.exists(aux_file):
+                logger.debug("determine_bib_bbl: checking aux file")
+                aux_lines: list[bytes] = []
+                with open(aux_file, "rb") as f:
+                    aux_lines = [x.rstrip() for x in f]
+                bibstyle_re = re.compile(rb"^\\bibstyle{(.*)}$")
+                bibdata_re = re.compile(rb"^\\bibdata{(.*)}$")
+                bibstyle = b""
+                bibdata = b""
+                for line in aux_lines:
+                    if ma := bibstyle_re.match(line):
+                        bibstyle = ma.group(1)
+                    if ma := bibdata_re.match(line):
+                        bibdata = ma.group(1)
+                logger.debug(f"determine_bib_bbl: bibstyle = {bibstyle!r}, bibdata = {bibdata!r}")
+                # parsing done, check the actual content
+                bibdata_files_present = False
+                bibdata = bibdata.strip()
+                bibfiles = bibdata.split(b",")
+                if bibdata == b"":
+                    bibdata_files_present = False
+                elif len(bibfiles) == 0:
+                    logger.debug("determine_bib_bbl: no bibfiles found")
+                    # no bibfiles used
+                    bibdata_files_present = False
+                elif len(bibfiles) > 1:
+                    logger.debug("determine_bib_bbl: more than one bibfiles found")
+                    bibdata_files_present = True
+                else:
+                    # only one, but that could be a XXXNotes.bib generated by revtex4-1
+                    logger.debug("determine_bib_bbl: only one bibfile found - checking for revtex")
+                    bibfile = bibfiles[0]
+                    # bibfile are bytes, so make sure we compare bytes with bytes
+                    if bibfile == f"{stem}Notes".encode() and os.path.exists(f"{in_dir}/{stem}Notes.bib"):
+                        # check whether all lines in that file start with @CONTROL
+                        # as far as I see nobody else is creating bib files out of the blue ...
+                        with open(f"{in_dir}/{stem}Notes.bib", "rb") as f:
+                            bib_lines = [x.rstrip() for x in f]
+                        if all([bib_line.startswith(b"@CONTROL") for bib_line in bib_lines]):
+                            # ignore file generated from revtex4-1
+                            logger.debug("determine_bib_bbl: ignoring revtex generated bib file")
+                            bibdata_files_present = False
+                        else:
+                            logger.debug("determine_bib_bbl: not ignoring XXXNotes.bib file")
+                            bibdata_files_present = True
+                    else:
+                        bibdata_files_present = True
+
+                if bibstyle and bibdata_files_present:
+                    logger.debug("determine_bib_bbl_processor: found some bibstyle, assuming bibtex")
+                    return "bibtex", [], [stem]
+                else:
+                    logger.debug("determine_bib_bbl_processor: no \\bibstyle found in .aux file.")
+                    return "", [], []
+            else:
+                logger.warning("determine_bib_bbl_processor: no aux file found, strange.")
+                return "", [], []
+
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
     ) -> dict:
+        logger = get_logger()
         # Stem: the filename of the tex file without the extension
         # we need to ensure that if the tex_file is called subdir/foobar.tex
         # then the stem is only "foobar" since compilation runs in the root
@@ -123,35 +253,124 @@ class BaseConverter:
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
         # first run
         step = "first_run"
+        logger.debug("Starting first compile run")
         run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
+        output_name = run[base_format]["name"]
+        artifact_file = os.path.join(in_dir, output_name)
+        logger.debug("First run finished with %s", run)
         output_size = run[base_format]["size"]
         if output_size is None:
+            logger.debug("output size is None, failing")
             outcome.update(
                 {"status": "fail", "step": step, "reason": f"failed to create {base_format}", "runs": self.runs}
             )
             return outcome
 
+        bibprog, bibopts, bibargs = self._determine_bib_bbl_processor(in_dir)
+
+        if bibprog:
+            # make sure that options with spaces are split and everything flattened
+            # for bibtex8, the option contains '--min_crossrefs 2'
+            bibopts = [y for ys in bibopts for y in str.split(ys)]
+            bib_step = f"{bibprog}_run"
+            logger.debug(f"Starting {bibprog} run")
+            bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts, *bibargs]
+            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            # bibtex and biber only outputs to stdout, even errors
+            # since the frontend only shows the `log` entry, move the stdout part to log
+            bib_run["log"] = bib_out
+            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+            if bib_run["return_code"] != 0:
+                logger.debug(f"{bibprog} run failed")
+                # remove generated pdf to be sure it will not be shown
+                # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                # believes all is fine and continues with success!
+                if os.path.exists(artifact_file):
+                    logger.debug("Output %s deleted due to failed run", output_name)
+                    os.unlink(artifact_file)
+                    # the pdf/dvi file was generated in the first run
+                    self.runs[0][base_format] = file_props(artifact_file)
+                outcome.update(
+                    {
+                        "status": "fail",
+                        "step": bib_step,
+                        "reason": f"{bibprog} run returned error code",
+                        "runs": self.runs,
+                    }
+                )
+                return outcome
+
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
-        for iteration in range(MAX_LATEX_RUNS - 1):
+        iteration_list = range(MAX_LATEX_RUNS - 1)
+        for iteration in iteration_list:
+            logger.debug("Starting %s run", iteration + 1)
             step = f"second_run:{iteration}"
             run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
             # maybe PDF/DVI creating fails on second run, so check output size again
             output_size = run[base_format]["size"]
             if output_size is None:
+                logger.debug("second run output size is None, failing")
                 outcome.update(
                     {"status": "fail", "step": step, "reason": f"failed to create {base_format}", "runs": self.runs}
                 )
                 return outcome
-            # return code is not a good indication, unfortunately.
-            # status = "success" if run["return_code"] == 0 else "fail"
+            if run["return_code"] != 0:
+                logger.debug("Second or later run has error exit code, failing")
+                name = run[base_format]["name"]
+                # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                # believes all is fine and continues with success!
+                if os.path.exists(artifact_file):
+                    logger.debug("Output %s deleted due to failed run", name)
+                    os.unlink(artifact_file)
+                    run[base_format] = file_props(artifact_file)
+                outcome.update(
+                    {"status": "fail", "step": step, "reason": "compiler run returned error code", "runs": self.runs}
+                )
+                return outcome
+            status = "success"
+            # check for hash differences of supp files (currently aux and out)
+            for k in self.supp_file_hashes.keys():
+                if len(self.supp_file_hashes[k]) > 1:
+                    # the last aux/out/.. hash added is from the current run
+                    # if the checksum hasn't changed, this is promising
+                    if self.supp_file_hashes[k][-1] != self.supp_file_hashes[k][-2]:
+                        logger.debug(f"{k} file size changed, need to rerun")
+                        if iteration == iteration_list[-1]:
+                            # we are in the last iteration, and labels are still changing
+                            # In line with autotex, let us accept this as a success.
+                            logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        else:
+                            status = "fail"
             for line in run["log"].splitlines():
-                if line.find(rerun_needle) >= 0:
-                    # Need retry
-                    status = "fail"
-                    break
-            else:
-                status = "success"
+                for error_needle, error_msg in error_needles:
+                    if error_needle.search(line):
+                        # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                        # believes all is fine and continues with success!
+                        if os.path.exists(artifact_file):
+                            logger.debug("Output %s deleted due to failed run", output_name)
+                            os.unlink(artifact_file)
+                            run[base_format] = file_props(artifact_file)
+                        outcome.update(
+                            {
+                                "status": "fail",
+                                "step": step,
+                                "reason": error_msg,
+                                "runs": self.runs,
+                            }
+                        )
+                        return outcome
+                for rerun_needle in rerun_needles:
+                    if line.find(rerun_needle) >= 0:
+                        # Need retry
+                        logger.debug(f"Found rerun needle {rerun_needle}")
+                        if iteration == iteration_list[-1]:
+                            # we are in the last iteration, and labels are still changing
+                            # In line with autotex, let us accept this as a success.
+                            logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
+                        else:
+                            status = "fail"
+                        break
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
@@ -160,9 +379,9 @@ class BaseConverter:
         return outcome
 
     def _exec_cmd(
-        self, args: list[str], child_dir: str, work_dir: str, extra: dict | None = None
+        self, args: list[str], stem: str, child_dir: str, work_dir: str, extra: dict | None = None
     ) -> tuple[dict[str, typing.Any], str, str]:
-        """Run the command and return the result"""
+        """Run the command and return the result."""
         logger = get_logger()
         worker_args = self.decorate_args(args)
         extra = self.log_extra if extra is None else self.log_extra | extra
@@ -180,7 +399,7 @@ class BaseConverter:
         t0 = time.perf_counter()
         # noinspection PyPep8Naming
         # pylint: disable=PyPep8Naming
-        PATH = f"{homedir}/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin"
+        PATH = f"{homedir}/venv/bin:{TEXLIVE_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin"
         # SECRETS or GOOGLE_APPLICATION_CREDENTIALS is not defined at all at this point but
         # be defensive and squish it anyway.
         #
@@ -199,15 +418,66 @@ class BaseConverter:
             "half_error_line": "238",
         }
         # support SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE set in the environment
-        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE"]:
+        # also make sure we forward TEXMFVAR settings which are set to a session
+        # specific directory
+        for senv in ["SOURCE_DATE_EPOCH", "FORCE_SOURCE_DATE", "TEXMFVAR", "DOCKER_PDFLATEX_IMAGE_NAME"]:
             if os.getenv(senv):
                 cmdenv[senv] = os.getenv(senv, "")  # the "" is only here to placate mypy :-(
+        # try detecting incompatible bbl version and adjust TEXMFAUXTREES to make it compile
+        bbl_file_full_path = os.path.join(child_dir, f"{stem}.bbl")
+        if os.path.exists(bbl_file_full_path):
+            with open(bbl_file_full_path, "rb") as bblfn:
+                # try to read up to three lines from the .bbl file
+                # This may fail for empty .bbl files or files containing less than three lines
+                # in this case the next throws the StopIteration exception
+                try:
+                    head = [next(bblfn).strip() for _ in range(3)]
+                except StopIteration:
+                    head = [b""]
+            if head[0] == b"% $ biblatex auxiliary file $":
+                if head[1].startswith(b"% $ biblatex bbl format version "):
+                    bbl_version = head[1].removeprefix(b"% $ biblatex bbl format version ").removesuffix(b" $")
+                    if TEXLIVE_BASE_RELEASE:
+                        # we only do path adjustments when we know which TL release we are running
+                        if TEXLIVE_BASE_RELEASE == "2023":
+                            if bbl_version == b"3.2":
+                                logger.debug("bbl version 3.2 found in TL2023, no adjustments necessary", extra=extra)
+                            elif bbl_version == b"3.3":
+                                logger.debug("bbl version 3.3 found, activating biblatex extra tree", extra=extra)
+                                cmdenv["TEXMFAUXTREES"] = (
+                                    "/usr/local/texlive/texmf-biblatex-33,"  # we need a final comma!
+                                )
+                            else:
+                                logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
+                        else:
+                            # currently the case for TL2024/TL2025
+                            # we cannot support 3.2 on TL2025, so give a warning.
+                            if bbl_version == b"3.3":
+                                logger.debug(
+                                    f"bbl version 3.3 found in {TEXLIVE_BASE_RELEASE}, no adjustments necessary",
+                                    extra=extra,
+                                )
+                            elif bbl_version == b"3.2":
+                                logger.warning("bbl version 3.2 found, this does not work!!!", extra=extra)
+                            else:
+                                logger.debug("Unknown bbl version {bbl_version} - no adjustments done", extra=extra)
+                    else:
+                        logger.warning(
+                            "Cannot determine TEXLIVE_BASE_RELEASE, not doing any biblatex adjustments", extra=extra
+                        )
+
         # get location of addon trees
         if self.use_addon_tree:
-            kpsewhich = self.decorate_args(["/usr/bin/kpsewhich", "-var-value", "SELFAUTOPARENT"])
+            kpsewhich = self.decorate_args([f"{TEXLIVE_BIN_DIR}/kpsewhich", "-var-value", "SELFAUTOPARENT"])
             sap = subprocess.run(kpsewhich, capture_output=True, text=True, check=False).stdout.rstrip()
             addon_tree = os.path.join(sap, "texmf-arxiv")
-            cmdenv["TEXMFAUXTREES"] = addon_tree + ","  # we need a final comma!
+            if "TEXMFAUXTREES" in cmdenv:
+                # if TEXMFAUXTREES is already set, append the addon tree to it
+                cmdenv["TEXMFAUXTREES"] += f"{addon_tree},"  # we need a final comma!
+            else:
+                # if TEXMFAUXTREES is not set, create it
+                cmdenv["TEXMFAUXTREES"] = f"{addon_tree},"  # we need a final comma!
+        logger.debug(f"Calling {worker_args} with env {cmdenv}")
         with subprocess.Popen(
             worker_args,
             stderr=subprocess.PIPE,
@@ -248,7 +518,7 @@ class BaseConverter:
     def _report_run(
         self, run: dict, out: str, err: str, step: str, in_dir: str, out_dir: str, output_tag: str, output_file: str
     ) -> None:
-        """Standard command run reporting to the run-dict, and append it to the runs."""
+        """Report a standard command run to the run-dict, and append it to the runs."""
         logger = get_logger()
         out_stat = file_props(output_file)
         out_size = out_stat["size"]
@@ -266,10 +536,22 @@ class BaseConverter:
             f"{step} result: return code: {run['return_code']}",
             extra={ID_TAG: self.conversion_tag, "step": step, "run": run},
         )
-
-        if err or out_size is None:
+        err_lines = err.splitlines()
+        err_lines_not_ignored = []
+        for el in err_lines:
+            if el.startswith("libxpdf: Syntax Warning: Bad annotation destination"):
+                # ignore this warning, it is not important
+                continue
+            if not el.strip():
+                # ignore empty lines
+                continue
+            if el.startswith("kpathsea: Running mktex"):
+                # ignore tfm or pk builds
+                continue
+            err_lines_not_ignored.append(el)
+        if err_lines_not_ignored or out_size is None:
             logger.warning(
-                f"{step}: {output_tag} size = {out_size!s} - {err!s}",
+                f"{step}: {output_tag} size = {out_size!s} - {err_lines_not_ignored!s}",
                 extra={ID_TAG: self.conversion_tag, "step": step, "stdout": out, "stderr": err},
             )
             pass
@@ -284,45 +566,68 @@ class BaseConverter:
             pass
         pass
 
+    def fetch_supp_hashes(self, stem_file: str) -> None:
+        for k in self.supp_file_hashes:
+            supp_file = f"{stem_file}.{k}"
+            if os.path.exists(supp_file):
+                with open(supp_file, "rb") as fd:
+                    self.supp_file_hashes[k].append(hashlib.sha256(fd.read()).hexdigest())
+
     def decorate_args(self, args: list[str]) -> list[str]:
         """Adjust the command args for TexLive commands.
 
         When running TexLive command in PyCharm, prepend the command that runs TL command
         in docker.
+
+        When ENABLE_SANDBOX is True, wrap it with bwrap-tex.sh
         """
+        ret = args
+        logger = get_logger()
+        if ENABLE_SANDBOX:
+            logger.debug("Enable SANDBOX")
+            ret = ["/usr/local/bin/bwrap-tex.sh", *ret]
+        else:
+            logger.debug("Disable SANDBOX")
         if local_exec:
-            return ["/usr/local/bin/docker_pdflatex.sh"] + args
-        return args
+            ret = ["/usr/local/bin/docker_pdflatex.sh", *ret]
+        return ret
 
     @abstractmethod
     def converter_name(self) -> str:
-        """Brief descripton of the converter"""
+        """Brief descripton of the converter."""
         pass
 
     def is_fallback(self) -> bool:
-        """Is the converter used for fallback? (obsolete, but you can dig out the fallbach
-        converter from the repo if you need.)
+        """Check whether the converter is used for fallback.
+
+        (obsolete, but you can dig out the fallback converter from the repo if you need.)
         """
         return False
 
     @classmethod
     def order_tex_files(cls, tex_files: list[str]) -> list[str]:
-        """Order the tex files so that the main tex file comes first"""
+        """Order the tex files so that the main tex file comes first."""
         return tex_files
 
     @classmethod
     def yes_pix(cls) -> bool:
         """Append the extra pics in included submission. Default is False.
+
         This corresponds to "Separate figures with LaTeX submissions"
         https://info.arxiv.org/help/submit_tex.html#separate-figures-with-latex-submissions
         """
         return False
 
-    def _check_cmd_run(self, run: dict, artifact: str) -> None:
-        """Check the tex command run and kill the artifact when the tex command failed"""
+    def _check_cmd_run(self, run: dict, artifact: str, remove_on_failure: bool = False) -> None:
+        """Check the tex command run and kill the artifact when the tex command failed."""
         return_code = run.get("return_code")
         logger = get_logger()
-        if return_code is None or return_code == -9:
+        logger.debug(f"_check_cmd_run return_code = {return_code!s}")
+        # For now we cannot check for return_code != 0, since this would
+        # remove the artifact, and then the compilation rounds would stop
+        # after the first try and not do any retry at all.
+        # TODO: considerably rework the far to deeply nested calling path
+        if return_code is None or return_code == -9 or (remove_on_failure and return_code != 0):
             if artifact:
                 if os.path.exists(artifact):
                     os.unlink(artifact)
@@ -333,29 +638,27 @@ class BaseConverter:
                 logger.debug(f"Return code: {return_code!s}")
 
     def _to_pdf_run(
-        self, args: list[str], stem: str, step: str, work_dir: str, in_dir: str, out_dir: str, log_file: str
+        self,
+        args: list[str],
+        stem: str,
+        step: str,
+        work_dir: str,
+        in_dir: str,
+        out_dir: str,
+        log_file: str,
+        remove_on_failure: bool = False,
     ) -> dict:
-        """Run a command to generate a pdf"""
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
+        """Run a command to generate a pdf."""
+        run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         pdf_filename = os.path.join(in_dir, f"{stem}.pdf")
-        self._check_cmd_run(run, pdf_filename)
+        stem_filename = os.path.join(in_dir, stem)
+        self._check_cmd_run(run, pdf_filename, remove_on_failure=remove_on_failure)
         self._report_run(run, out, err, step, in_dir, out_dir, "pdf", pdf_filename)
+        self.fetch_supp_hashes(stem_filename)
         if log_file:
             self.fetch_log(log_file)
             if self.log:
                 run["log"] = self.log
-        return run
-
-    def check_missing(self, in_dir: str, run: dict, artifact: str) -> dict:
-        """Scoop up the missing files from the tex command log"""
-        name = run[artifact]["name"]
-        artifact_file = os.path.join(in_dir, name)
-        if os.path.exists(artifact_file) and (missings := inspect_log(run["log"], break_on_found=False)):
-            run["missings"] = missings
-            get_logger().debug(f"Output {name} deleted due to incomplete run.")
-            os.unlink(artifact_file)
-            run[artifact] = file_props(artifact_file)
-            pass
         return run
 
     pass
@@ -363,6 +666,7 @@ class BaseConverter:
 
 def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
     """Select converter based on ZZRM."""
+    logger = get_logger()
     if zzrm is None:
         raise CompilerNotSpecified("Compiler is not defined.")
     if zzrm.process.compiler is None:
@@ -374,6 +678,15 @@ def select_converter_class(zzrm: ZeroZeroReadMe | None) -> type[BaseConverter]:
         return LatexConverter
     elif process_spec == "pdflatex":
         return PdfLatexConverter
+    elif process_spec == "xelatex":
+        return XeLatexConverter
+    elif process_spec == "lualatex":
+        return LuaLatexConverter
+    elif process_spec == "pdfetex":
+        logger.warning("process_spec (compiler string) = pdfetex should not happen, using pdftex")
+        return PdfTexConverter
+    elif process_spec == "pdftex":
+        return PdfTexConverter
     else:
         raise CompilerNotSpecified("Unknown compiler, cannot select converter: %s", process_spec)
 
@@ -400,7 +713,15 @@ bad_for_pdftex_file_exts = [".ps", ".eps"]
 bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
 bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
-rerun_needle = "Rerun to get cross-references right."
+rerun_needles = [
+    "Rerun to get cross-references right\.",
+]
+error_needles = [
+    (
+        re.compile("Package biblatex Warning: File '.*' is wrong format version - expected"),
+        "BibLaTeX version and bbl file version conflict",
+    ),
+]
 
 
 class BaseDviConverter(BaseConverter):
@@ -409,9 +730,7 @@ class BaseDviConverter(BaseConverter):
     def _two_try_dvi_to_ps_run(
         self, outcome: dict[str, typing.Any], stem: str, work_dir: str, in_dir: str, out_dir: str
     ) -> tuple[dict[str, typing.Any], dict[str, typing.Any]]:
-        """Run dvips twice. The first run with hyperdvi. If success, it stops. If not, the
-        2nd run without hyperdvi.
-        """
+        """Run dvips twice. The first run with hyperdvi. If success, it stops. If not, the 2nd run without hyperdvi."""
         run = {}
         for hyperdvi in [True, False]:
             run = self._base_dvi_to_ps_run(stem, work_dir, in_dir, out_dir, hyperdvi=hyperdvi)
@@ -450,49 +769,50 @@ class BaseDviConverter(BaseConverter):
         if hyperdvi:
             dvi_options.append("-z")
             pass
-        args = ["/usr/bin/dvips"] + dvi_options + ["-o", f"{stem}.ps", dvi_file]
+        args = [f"{TEXLIVE_BIN_DIR}/dvips", *dvi_options, "-o", f"{stem}.ps", dvi_file]
 
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": tag})
+        run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": tag})
         ps_filename = os.path.join(in_dir, f"{stem}.ps")
-        self._check_cmd_run(run, ps_filename)
+        self._check_cmd_run(run, ps_filename, remove_on_failure=True)
         self._report_run(run, out, err, tag, in_dir, work_dir, "ps", ps_filename)
         return run
 
     def _base_to_dvi_run(self, step: str, stem: str, args: list[str], work_dir: str, in_dir: str) -> dict:
-        """Runs the given command to generate dvi file and returns the run result."""
-        run, out, err = self._exec_cmd(args, in_dir, work_dir, extra={"step": step})
+        """Run the given command to generate dvi file and returns the run result."""
+        run, out, err = self._exec_cmd(args, stem, in_dir, work_dir, extra={"step": step})
         dvi_filename = os.path.join(in_dir, f"{stem}.dvi")
+        stem_filename = os.path.join(in_dir, stem)
         self._check_cmd_run(run, dvi_filename)
         latex_log_file = os.path.join(in_dir, f"{stem}.log")
+        self.fetch_supp_hashes(stem_filename)
         self.fetch_log(latex_log_file)
         if self.log:
             run["log"] = self.log
         artifact = "dvi"
         self._report_run(run, out, err, step, in_dir, work_dir, artifact, dvi_filename)
-        run = self.check_missing(in_dir, run, artifact)
         return run
 
     def _base_ps_to_pdf_run(self, stem: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Runs ps2pdf command"""
+        """Run ps2pdf command."""
         step = "ps_to_pdf"
         args = ["/usr/bin/ps2pdf", f"{stem}.ps", f"./{stem}.pdf"]
-        return self._to_pdf_run(args, stem, step, work_dir, in_dir, out_dir, "")
+        return self._to_pdf_run(args, stem, step, work_dir, in_dir, out_dir, "", remove_on_failure=True)
 
 
 class LatexConverter(BaseDviConverter):
-    """Runs latex (not pdflatex) command"""
+    """Runs latex (not pdflatex) command."""
 
     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
         super().__init__(conversion_tag, **kwargs)
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
         return "latex"
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
+        """Produce PDF.
 
         NOTE: It is important to return the outcome so that you can troubleshoot.
         Do not exception out.
@@ -501,6 +821,10 @@ class LatexConverter(BaseDviConverter):
 
         outcome = self._run_base_engine_necessary_times(tex_file, work_dir, in_dir, out_dir, "dvi")
         if outcome["status"] == "fail":
+            pdf_file = os.path.join(in_dir, f"{self.stem}.pdf")
+            # delete also pdf file if someone sneaked in \pdfoutput=1
+            if os.path.exists(pdf_file):
+                os.unlink(pdf_file)
             return outcome
 
         # Third - run dvips
@@ -519,7 +843,7 @@ class LatexConverter(BaseDviConverter):
 
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         # breaks many packages... f"-output-directory=../{bod}"
-        args = ["/usr/bin/latex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
+        args = [f"{TEXLIVE_BIN_DIR}/latex", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
@@ -533,7 +857,7 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def order_tex_files(cls, tex_files: list[str]) -> list[str]:
-        """Order the tex files so that the main tex file comes first"""
+        """Order the tex files so that the main tex file comes first."""
         if "ms.tex" in tex_files:
             tex_files.remove("ms.tex")
             tex_files.insert(0, "ms.tex")
@@ -542,14 +866,14 @@ class LatexConverter(BaseDviConverter):
 
     @classmethod
     def yes_pix(cls) -> bool:
-        """Append the extra pics in included submission"""
+        """Append the extra pics in included submission."""
         return True
 
     pass
 
 
 class PdfLatexConverter(BaseConverter):
-    """Runs pdflatex command"""
+    """Runs pdflatex command."""
 
     to_pdf_args: list[str]
     pdfoutput_1_seen: bool
@@ -561,23 +885,24 @@ class PdfLatexConverter(BaseConverter):
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
         return "pdflatex"
 
     def _get_pdflatex_args(self, tex_file: str) -> list[str]:
-        """Return the pdflatex command line arguments"""
-        args = ["/usr/bin/pdflatex",  *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
+        """Return the pdflatex command line arguments."""
+        args = [f"{TEXLIVE_BIN_DIR}/{self.tex_compiler_name()}", *COMMON_TEX_CMD_LINE_ARGS, *EXTRA_LATEX_CMD_LINE_ARGS]
         # You need this sometimes, and harmful sometimes.
-        if not self.pdfoutput_1_seen:
-            args.append("-output-format=pdf")
+        # NP 20250715 - commented the code, I don't think this is needed.
+        # if not self.pdfoutput_1_seen:
+        #     args.append("-output-format=pdf")
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
         return args
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
+        """Produce PDF.
 
         NOTE: It is important to return the outcome so that you can troubleshoot.
         Do not exception out.
@@ -597,87 +922,95 @@ class PdfLatexConverter(BaseConverter):
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         cmd_log = os.path.join(in_dir, f"{self.stem}.log")
         run = self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, cmd_log)
-        run = self.check_missing(in_dir, run, "pdf")
         return run
 
     def converter_name(self) -> str:
-        return "%s: %s" % (self.tex_compiler_name(), shlex.join(self.to_pdf_args))
+        return f"{self.tex_compiler_name()}: {shlex.join(self.to_pdf_args)}"
 
     pass
 
 
-# class PdfTexConverter(BaseConverter):
-#     """Runs pdftex command"""
-#     to_pdf_args: typing.List[str]
-#
-#     def __init__(self, conversion_tag: str, **kwargs: typing.Any):
-#         super().__init__(conversion_tag, **kwargs)
-#         self.to_pdf_args = []
-#         pass
-#
-#    @classmethod
-#    def tex_compiler_name(cls) -> str:
-#        """TeX Compiler name"""
-#        return "pdftex"
-#
-#     @classmethod
-#     def decline_file(cls, any_file: str, parent_dir: str) -> typing.Tuple[bool, str]:
-#         if test_file_extent(any_file, bad_for_pdftex_file_exts):
-#             return True, f"PdfTexConverter cannot handle {any_file}." + \
-#                 "See the list of excluded extensions."
-#         return False, ""
-#
-#     @classmethod
-#     def decline_tex(cls, tex_line: str, line_number: int) -> typing.Tuple[bool, str]:
-#         if is_pdflatex_line(tex_line) or is_vanilla_tex_line(tex_line) or is_usepackage_line(tex_line):
-#             return True, f"PdfTexConverter cannot handle line {line_number}"
-#         for package_name in pick_package_names(tex_line):
-#             if package_name in bad_for_pdftex_packages:
-#                 return True, f"PdfTexConverter cannot handle {package_name} at line {line_number}"
-#         return False, ""
-#
-#     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-#         """Produce PDF
-#
-#         NOTE: It is important to return the outcome so that you can troubleshoot.
-#         Do not exception out.
-#         """
-#
-#         # Stem: the filename of the tex file without the extension
-#         stem = os.path.splitext(tex_file)[0]
-#         self.stem = stem
-#         stem_pdf = f"{stem}.pdf"
-#         # pdf_filename = os.path.join(in_dir, stem_pdf)
-#         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
-#
-#         args = ["/usr/bin/pdftex",  *COMMON_TEX_CMD_LINE_ARGS]
-#         if WITH_SHELL_ESCAPE:
-#             args.append("-shell-escape")
-#         args.append(tex_file)
-#         self.to_pdf_args = args
-#
-#         #  pdftex run
-#         step = "only_run"
-#         run = self._pdftex_run(step, work_dir, in_dir, out_dir)
-#         pdf_size = run["pdf"]["size"]
-#         if not pdf_size:
-#             outcome.update({"status": "fail", "step": step,
-#                             "reason": "failed to create pdf", "runs": self.runs})
-#             return outcome
-#         return outcome
-#
-#     def _pdftex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-#         log = os.path.join(in_dir, f"{self.stem}.log")
-#         return self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, log)
-#
-#     def converter_name(self) -> str:
-#         return "pdftex: %s" % (shlex.join(self.to_pdf_args))
-#
-#     pass
+class XeLatexConverter(PdfLatexConverter):
+    """Runs xelatex command."""
+
+    @classmethod
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
+        return "xelatex"
+
+
+class LuaLatexConverter(PdfLatexConverter):
+    """Runs lualatex command."""
+
+    @classmethod
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
+        return "lualatex"
+
+
+class PdfTexConverter(BaseConverter):
+    """Runs pdfetex command."""
+
+    to_pdf_args: list[str]
+
+    def __init__(self, conversion_tag: str, **kwargs: typing.Any):
+        super().__init__(conversion_tag, **kwargs)
+        self.to_pdf_args = []
+        pass
+
+    @classmethod
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler name."""
+        return "pdfetex"
+
+    def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        """Produce PDF.
+
+        NOTE: It is important to return the outcome so that you can troubleshoot.
+        Do not exception out.
+        """
+        # Stem: the filename of the tex file without the extension
+        stem = os.path.splitext(tex_file)[0]
+        self.stem = stem
+        stem_pdf = f"{stem}.pdf"
+        # pdf_filename = os.path.join(in_dir, stem_pdf)
+        outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}"}
+
+        args = [f"{TEXLIVE_BIN_DIR}/pdfetex", *COMMON_TEX_CMD_LINE_ARGS]
+        if WITH_SHELL_ESCAPE:
+            args.append("-shell-escape")
+        args.append(tex_file)
+        self.to_pdf_args = args
+
+        # run two times
+        for i in range(1, 3):
+            step = f"pdftex_run_{i}"
+            run = self._pdftex_run(step, work_dir, in_dir, out_dir)
+            pdf_size = run["pdf"]["size"]
+            if not pdf_size or run["return_code"] != 0:
+                msg = "failed to create pdf" if not pdf_size else "compiler run returned error code"
+                outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
+                pdf_file = os.path.join(in_dir, f"{self.stem}.pdf")
+                if os.path.exists(pdf_file):
+                    os.unlink(pdf_file)
+                run["pdf"] = file_props(pdf_file)
+                return outcome
+
+        outcome.update({"runs": self.runs, "status": "success"})
+        return outcome
+
+    def _pdftex_run(self, step: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
+        log = os.path.join(in_dir, f"{self.stem}.log")
+        return self._to_pdf_run(self.to_pdf_args, self.stem, step, work_dir, in_dir, out_dir, log)
+
+    def converter_name(self) -> str:
+        return f"{self.tex_compiler_name()}: {shlex.join(self.to_pdf_args)}"
+
+    pass
 
 
 class VanillaTexConverter(BaseDviConverter):
-    """Runs tex command"""
+    """Runs tex command."""
 
     _args: list[str]
 
@@ -687,12 +1020,12 @@ class VanillaTexConverter(BaseDviConverter):
         pass
 
     @classmethod
-    def tex_compiler_name(cls) -> str:
-        """TeX Compiler"""
+    def tex_compiler_name(self) -> str:
+        """TeX Compiler."""
         return "tex"
 
     def produce_pdf(self, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Produce PDF
+        """Produce PDF.
 
         NOTE: It is important to return the outcome so that you can troubleshoot.
         Do not exception out.
@@ -709,19 +1042,29 @@ class VanillaTexConverter(BaseDviConverter):
         # pdf_filename = os.path.join(in_dir, stem_pdf)
         outcome: dict[str, typing.Any] = {"pdf_file": f"{stem_pdf}", "tex_file": tex_file}
 
-        args = ["/usr/bin/etex", *COMMON_TEX_CMD_LINE_ARGS]
+        args = [f"{TEXLIVE_BIN_DIR}/etex", *COMMON_TEX_CMD_LINE_ARGS]
         if WITH_SHELL_ESCAPE:
             args.append("-shell-escape")
         args.append(tex_file)
         self._args = args
 
-        # tex run
-        step = "tex_to_dvi_run"
-        run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
-        dvi_size = run["dvi"]["size"]
-        if not dvi_size:
-            outcome.update({"status": "fail", "step": step, "reason": "failed to create pdf", "runs": self.runs})
-            return outcome
+        # run two times
+        for i in range(1, 3):
+            step = f"tex_to_dvi_run_{i}"
+            run = self._base_to_dvi_run(step, self.stem, args, work_dir, in_dir)
+            dvi_size = run["dvi"]["size"]
+            if not dvi_size or run["return_code"] != 0:
+                msg = "failed to create dvi" if not dvi_size else "compiler run returned error code"
+                outcome.update({"status": "fail", "step": step, "reason": msg, "runs": self.runs})
+                dvi_file = os.path.join(in_dir, f"{self.stem}.dvi")
+                pdf_file = os.path.join(in_dir, f"{self.stem}.pdf")
+                if os.path.exists(dvi_file):
+                    os.unlink(dvi_file)
+                # delete also pdf file if someone sneaked in \pdfoutput=1
+                if os.path.exists(pdf_file):
+                    os.unlink(pdf_file)
+                run["dvi"] = file_props(dvi_file)
+                return outcome
 
         # dvi run
         step = "dvi_to_ps_run"
@@ -746,11 +1089,11 @@ class VanillaTexConverter(BaseDviConverter):
         return self._base_dvi_to_ps_run(self.stem, work_dir, in_dir, _out_dir, hyperdvi=hyperdvi)
 
     def _ps_to_pdf_run(self, work_dir: str, in_dir: str, out_dir: str) -> dict:
-        """Runs ps2pdf command"""
+        """Run ps2pdf command."""
         return super()._base_ps_to_pdf_run(self.stem, work_dir, in_dir, out_dir)
 
     def converter_name(self) -> str:
-        return "tex: %s" % (shlex.join(self._args))
+        return f"tex: {shlex.join(self._args)}"
 
     def _latexen_run(self, step: str, tex_file: str, work_dir: str, in_dir: str, out_dir: str) -> dict:
         """Plain tex is not latex."""

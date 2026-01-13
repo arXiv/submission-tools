@@ -1,5 +1,5 @@
 """
-tex2pdf logger
+tex2pdf logger.
 
 The primary reason is to have the CustomJsonFormatter to tailor the log output.
 

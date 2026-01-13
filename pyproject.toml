@@ -18,13 +18,18 @@ lint.select = [
     "RUF", # ruff internal check
 ]
 lint.ignore = [
+    "D100", # missing docstring in public module
+    "D101", # missing docstring in public class
+    "D102", # missing docstring in public method
+    "D103", # missing docstring in public function
+    "D104", # missing docstring in public package
     "D105", # no docstring in magic method like __str__
     "D107", # no docstring in __init__
 ]
 
-output-format = "grouped"
+extend-exclude = ["*.ipynb"]
 
-extend-exclude = ["tex2pdf-service", "pdf_profile"]
+output-format = "grouped"
 
 # Assume Python 3.11
 # Note: helps prevent breaking autofixes from, e.g., pyupgrade
