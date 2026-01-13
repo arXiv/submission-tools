@@ -825,7 +825,7 @@ def test_pdf_with_javascript():
     assert pf.status.key.value == "error"
     assert len(pf.detected_toplevel_files) == 0
     assert len(pf.tex_files) == 0
-    assert pf.status.info == "PDF only submission: PDF failed QA checks:\nJavaScript code found in PDF"
+    assert pf.status.info == "QA check failed: JavaScript code found in PDF"
 
 def test_fontspec_font_detection():
     """Test detection of font files used by fontspec commands."""
@@ -841,3 +841,13 @@ def test_fontspec_font_detection():
             "texgyrepagella-reverseitalic.ttf", "texgyrepagella-italic2.otf", "texgyrepagella-italic3.otf",
             "CharisSIL-notfound.ttf", "texgyrepagella-superregular.otf", "missing1.otf",
         ])
+
+def test_exe_detection():
+    """Test detection of exe files."""
+    dir_path = os.path.join(FIXTURE_DIR, "detect-exe")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "error"
+    assert pf.status.info == "QA check failed: EXE file found"
+    assert len(pf.detected_toplevel_files) == 0
+    assert len(pf.tex_files) == 0
+
