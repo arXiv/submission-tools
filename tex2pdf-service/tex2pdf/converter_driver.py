@@ -193,7 +193,13 @@ class ConverterDriver:
         if not self.zzrm.is_supported_compiler:
             raise ZZRMUnsupportedCompiler
 
-        tex_files = self.zzrm.toplevels
+        # protect against toplevel entries that do not have a filename
+        tex_files: list[str] = []
+        for f in self.zzrm.toplevels:
+            if f:
+                tex_files.append(f)
+            else:
+                logger.error("Empty filename in toplevel entry, ignoring it!")
         if self.zzrm.readme_filename is not None:
             # zzrm was provided
             max_tex_files = len(tex_files)
