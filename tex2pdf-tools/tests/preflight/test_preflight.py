@@ -851,3 +851,17 @@ def test_exe_detection():
     assert len(pf.detected_toplevel_files) == 0
     assert len(pf.tex_files) == 0
 
+
+def test_bye_after_endinput():
+    """Test for \\bye after \\endinput."""
+    dir_path = os.path.join(FIXTURE_DIR, "bye-after-endinput")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    assert len(pf.tex_files) == 2
+    tf = pf.detected_toplevel_files[0]
+    assert tf.process.compiler.engine == "tex"
+    assert tf.process.compiler.lang == "latex"
+    assert tf.process.compiler.output == "pdf"
+    assert tf.process.compiler.postp == "none"
+    assert tf.issues == []

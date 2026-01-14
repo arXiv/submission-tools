@@ -45,6 +45,7 @@ _RE_DOCUMENTCLASS = re.compile(rb"^[^%\n]*\\documentclass[^a-zA-Z]", re.MULTILIN
 _RE_DOCUMENTSTYLE = re.compile(rb"^[^%\n]*\\documentstyle[^a-zA-Z]", re.MULTILINE)
 _RE_PDFOUTPUT_1 = re.compile(rb"^[^%\n]*\\pdfoutput\s*=\s*1", re.MULTILINE)
 _RE_PDFOUTPUT_0 = re.compile(rb"^[^%\n]*\\pdfoutput\s*=\s*0", re.MULTILINE)
+_RE_ENDINPUT = re.compile(rb"^[^%\n]*\\endinput[^a-zA-Z].*$", re.MULTILINE | re.DOTALL)
 _RE_COMMENT = re.compile(rb"(?<!\\)%.*\n")
 _RE_INPUT = re.compile(rb"\\input\s+([-a-zA-Z0-9._]+)")
 _RE_GRAPHICSPATH = re.compile(rb"\\graphicspath\s*{((\s*{([^}]*)}\s*)+)}", re.MULTILINE)
@@ -1368,6 +1369,10 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
         data = f.read()
     # standardize line endings
     data = _RE_LINE_ENDING.sub(b"\n", data)
+    # remove all data after \endinput
+    # NOTE that the _RE_ENDINPUT has RE_DOTALL set so it matches also newlines, and we thus delete
+    # everything from \endinput to the end of the document
+    data = _RE_ENDINPUT.sub(rb"\\endinput\\n", data)
     n = ParsedTeXFile(filename=filename)
     n._data = data
     logging.debug("parse_file: starting detect_included_files %s", n.filename)
