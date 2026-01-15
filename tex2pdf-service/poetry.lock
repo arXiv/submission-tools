@@ -52,7 +52,7 @@ google-auth = "^2.23.4"
 google-cloud-logging = "^3.8.0"
 google-cloud-monitoring = "^2.16.0"
 google-cloud-pubsub = "^2.18.4"
-google-cloud-storage = "^2.5.0"
+google-cloud-storage = "^3.4.1"
 jwcrypto = "^1.5.6"
 markupsafe = "*"
 mysqlclient = ">=2.1"
@@ -78,8 +78,8 @@ sphinx = ["sphinx", "sphinx-autodoc-typehints", "sphinxcontrib-websupport"]
 [package.source]
 type = "git"
 url = "https://github.com/arXiv/arxiv-base.git"
-reference = "update-pydantic"
-resolved_reference = "717a07c03103bb75eba3f19f8a3e6b2d7e5005c8"
+reference = "master"
+resolved_reference = "e32d0d39017a79bee095d7cfc87c6c3fb964651a"
 
 [[package]]
 name = "arxiv-tex2pdf-tools"
@@ -797,27 +797,27 @@ libcst = ["libcst (>=0.3.10)"]
 
 [[package]]
 name = "google-cloud-storage"
-version = "2.19.0"
+version = "3.4.1"
 description = "Google Cloud Storage API client library"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "google_cloud_storage-2.19.0-py2.py3-none-any.whl", hash = "sha256:aeb971b5c29cf8ab98445082cbfe7b161a1f48ed275822f59ed3f1524ea54fba"},
-    {file = "google_cloud_storage-2.19.0.tar.gz", hash = "sha256:cd05e9e7191ba6cb68934d8eb76054d9be4562aa89dbc4236feee4d7d51342b2"},
+    {file = "google_cloud_storage-3.4.1-py3-none-any.whl", hash = "sha256:972764cc0392aa097be8f49a5354e22eb47c3f62370067fb1571ffff4a1c1189"},
+    {file = "google_cloud_storage-3.4.1.tar.gz", hash = "sha256:6f041a297e23a4b485fad8c305a7a6e6831855c208bcbe74d00332a909f82268"},
 ]
 
 [package.dependencies]
-google-api-core = ">=2.15.0,<3.0.0dev"
-google-auth = ">=2.26.1,<3.0dev"
-google-cloud-core = ">=2.3.0,<3.0dev"
-google-crc32c = ">=1.0,<2.0dev"
-google-resumable-media = ">=2.7.2"
-requests = ">=2.18.0,<3.0.0dev"
+google-api-core = ">=2.15.0,<3.0.0"
+google-auth = ">=2.26.1,<3.0.0"
+google-cloud-core = ">=2.4.2,<3.0.0"
+google-crc32c = ">=1.1.3,<2.0.0"
+google-resumable-media = ">=2.7.2,<3.0.0"
+requests = ">=2.22.0,<3.0.0"
 
 [package.extras]
-protobuf = ["protobuf (<6.0.0dev)"]
-tracing = ["opentelemetry-api (>=1.1.0)"]
+protobuf = ["protobuf (>=3.20.2,<7.0.0)"]
+tracing = ["opentelemetry-api (>=1.1.0,<2.0.0)"]
 
 [[package]]
 name = "google-crc32c"
@@ -3003,4 +3003,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "782cf462e7d97791b80eb4b36682c11ee7acae1976242c2a65b1010ec5846dfe"
+content-hash = "75ec5fac46312728d6cbb4748c31cc0edb6aad77b52fb225d60de888c85940f2"
