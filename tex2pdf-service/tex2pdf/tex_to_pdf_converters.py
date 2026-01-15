@@ -748,7 +748,9 @@ class BaseDviConverter(BaseConverter):
         # -R2: Run securely. -R2 disables both shell command execution in \special'{} (via
         # backticks ' ) and config files (via the E option), and opening of any absolute filenames.
         # -z: Pass html hyperdvi specials through to the output for eventual distillation into PDF
-        dvi_options = ["-R2"]
+        # -q: run silently, that in most cases we don't get any output to stderr (dvips echoes all
+        #     messages to stderr, which is then reported with logger.warning
+        dvi_options = ["-R2", "-q"]
         if self.zzrm and self.zzrm.is_landscape(stem):
             dvi_options.append("-t")
             dvi_options.append("landscape")

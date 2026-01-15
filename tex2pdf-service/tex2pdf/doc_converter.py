@@ -91,36 +91,43 @@ def combine_documents(
 
     # call gs to combine the pdf
     # we cannot use pikepdf (easily) here since it breaks annotations (links)
-    gs_cmd = [
-        "gs",
-        "-sDEVICE=pdfwrite",
-        "-dNOPAUSE",
-        "-dBATCH",
-        "-dSAFER",
-        f"-sOutputFile={output_path}",
-        *effective_pdf_list,
-    ]
-    pdftk_cmd = [
-        "pdftk",
-        *effective_pdf_list,
-        "cat",
-        "output",
-        output_path,
-    ]
-    logger.debug("Running gs to combine pdfs: %s", shlex.join(gs_cmd), extra=log_extra)
-    # exception handing is done in convert_driver:_finalize_pdf
-    try:
-        ret = subprocess.run(gs_cmd, capture_output=True, timeout=60, check=True, text=True)
-    except subprocess.TimeoutExpired as e:
-        logger.warning("gs command timed out, trying pdftk: %s", e, extra=log_extra)
-        logger.debug("Running pdftk to combine pdfs: %s", shlex.join(pdftk_cmd), extra=log_extra)
+    combine_programs_priority_list = ["pdfcpu", "gs", "pdftk"]
+    combine_programs = {
+        "gs": [
+            "gs",
+            "-sDEVICE=pdfwrite",
+            "-dNOPAUSE",
+            "-dBATCH",
+            "-dSAFER",
+            f"-sOutputFile={output_path}",
+            *effective_pdf_list,
+        ],
+        "pdftk": ["pdftk", *effective_pdf_list, "cat", "output", output_path],
+        "pdfcpu": ["pdfcpu", "merge", "-offline", output_path, *effective_pdf_list],
+    }
+    for prog in combine_programs_priority_list:
+        cmds = combine_programs[prog]
+        logger.debug("Running %s to combine pdfs: %s", prog, shlex.join(cmds), extra=log_extra)
         try:
-            ret = subprocess.run(pdftk_cmd, capture_output=True, timeout=120, check=True, text=True)
-        except subprocess.TimeoutExpired as e2:
-            logger.error("pdftk command timed out: %s", e2, extra=log_extra)
-            raise
-    addon_outcome["gs"] = {}
-    addon_outcome["gs"]["stdout"] = ret.stdout
-    addon_outcome["gs"]["stderr"] = ret.stderr
-    addon_outcome["gs"]["return_code"] = ret.returncode
+            ret = subprocess.run(cmds, capture_output=True, timeout=60, check=True, text=True)
+        except subprocess.TimeoutExpired as e:
+            logger.warning("%s command timed out, trying next: %s", prog, e, extra=log_extra)
+            continue
+        except subprocess.CalledProcessError as e:
+            logger.warning(
+                "%s command failed, trying next. returncode: %s, output: %s",
+                prog,
+                e.returncode,
+                e.output,
+                extra=log_extra,
+            )
+            continue
+        if not ret:
+            raise Exception("Concatenation of PDF files failed with all programs, giving up.")
+        addon_outcome["pdfconcat"] = {}
+        addon_outcome["pdfconcat"]["prog"] = prog
+        addon_outcome["pdfconcat"]["stdout"] = ret.stdout
+        addon_outcome["pdfconcat"]["stderr"] = ret.stderr
+        addon_outcome["pdfconcat"]["return_code"] = ret.returncode
+        break
     return out_filename, strip_to_basename(converted_docs), strip_to_basename(failed_docs), addon_outcome
