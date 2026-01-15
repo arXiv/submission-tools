@@ -11,4 +11,4 @@ trap 'echo "Exit status $? at line $LINENO from: $BASH_COMMAND"' ERR
 make app2023.docker
 make app2025.docker
 make EXTRA_DOCKER_ARGS=-d TEX2PDF_CPUS=3 TEX2PDF_WORKERS=3 app2023.run
-make EXTRA_DOCKER_ARGS=-d TEX2PDF_CPUS=10 TEX2PDF_WORKERS=20 app2025.proxy.run-sandbox
+make EXTRA_DOCKER_ARGS=-d TEX2PDF_CPUS=10 TEX2PDF_WORKERS=20 app2025.proxy.run
