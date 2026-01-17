@@ -41,57 +41,85 @@ def get_image_dimensions(filepath: str) -> tuple[int, int] | None:
             ext = Path(filepath).suffix.lower()
 
             if ext == ".png":
-                # PNG: read IHDR chunk
-                f.seek(16)  # Skip PNG signature and chunk length/type
+                # PNG: validate signature and read IHDR chunk
+                # PNG signature: 89 50 4E 47 0D 0A 1A 0A
+                signature = f.read(8)
+                if signature != b"\x89PNG\r\n\x1a\n":
+                    logger.debug(f"Invalid PNG signature in {filepath}")
+                    return None
+                # Read chunk length (4 bytes), chunk type (4 bytes), then IHDR data
+                f.read(8)  # Skip chunk length and chunk type (IHDR)
                 width, height = struct.unpack(">II", f.read(8))
                 return width, height
 
             elif ext in {".jpg", ".jpeg"}:
-                # JPEG: scan for SOF markers
-                f.seek(2)  # Skip JPEG signature
-                while True:
+                # JPEG: validate signature and scan for SOF markers
+                # JPEG signature: FF D8
+                signature = f.read(2)
+                if signature != b"\xff\xd8":
+                    logger.debug(f"Invalid JPEG signature in {filepath}")
+                    return None
+
+                # Scan for SOF markers with safety limit to prevent infinite loops on malformed files
+                max_iterations = 100
+                for _ in range(max_iterations):
                     marker = f.read(2)
                     if len(marker) != 2:
                         break
                     if marker[0] != 0xFF:
                         break
                     marker_type = marker[1]
-                    # SOF0-SOF15 markers (except SOF4, SOF8, SOF12)
+                    # SOF0-SOF15 markers (except SOF4, SOF8, SOF12 which are unsupported)
                     if marker_type in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
-                        f.seek(3, 1)  # Skip length and precision
+                        f.seek(3, 1)  # Skip segment length (2 bytes) and precision (1 byte)
                         height, width = struct.unpack(">HH", f.read(4))
                         return width, height
-                    # Read segment length and skip
+                    # Read segment length and skip to next marker
                     seg_len = struct.unpack(">H", f.read(2))[0]
                     f.seek(seg_len - 2, 1)
 
             elif ext == ".gif":
-                # GIF: dimensions at bytes 6-10
-                f.seek(6)
+                # GIF: validate signature and read dimensions
+                # GIF signature: "GIF87a" or "GIF89a"
+                signature = f.read(6)
+                if signature not in (b"GIF87a", b"GIF89a"):
+                    logger.debug(f"Invalid GIF signature in {filepath}")
+                    return None
+                # Dimensions immediately follow signature
                 width, height = struct.unpack("<HH", f.read(4))
                 return width, height
 
             elif ext == ".bmp":
-                # BMP: dimensions at bytes 18-26
+                # BMP: validate signature and read dimensions
+                # BMP signature: "BM" (42 4D)
+                signature = f.read(2)
+                if signature != b"BM":
+                    logger.debug(f"Invalid BMP signature in {filepath}")
+                    return None
+                # Skip to dimensions at offset 18
                 f.seek(18)
                 width, height = struct.unpack("<II", f.read(8))
                 return width, height
 
             elif ext in {".tif", ".tiff"}:
                 # TIFF: more complex, read IFD entries
-                # Read byte order
+                # TIFF uses either little-endian (II) or big-endian (MM) byte order
                 byte_order = f.read(2)
                 if byte_order == b"II":
                     endian = "<"
                 elif byte_order == b"MM":
                     endian = ">"
                 else:
+                    logger.debug(f"Invalid TIFF byte order in {filepath}")
                     return None
 
-                # Skip magic number
-                f.read(2)
+                # Validate TIFF magic number (42)
+                magic = struct.unpack(endian + "H", f.read(2))[0]
+                if magic != 42:
+                    logger.debug(f"Invalid TIFF magic number in {filepath}")
+                    return None
 
-                # Read IFD offset
+                # Read IFD (Image File Directory) offset
                 ifd_offset = struct.unpack(endian + "I", f.read(4))[0]
                 f.seek(ifd_offset)
 
@@ -99,34 +127,37 @@ def get_image_dimensions(filepath: str) -> tuple[int, int] | None:
                 num_entries = struct.unpack(endian + "H", f.read(2))[0]
 
                 width = height = None
+                # Each IFD entry is 12 bytes: tag(2) + type(2) + count(4) + value/offset(4)
                 for _ in range(num_entries):
                     tag, field_type = struct.unpack(endian + "HH", f.read(4))
-                    # count = struct.unpack(endian + "I", f.read(4))[0]
-                    value_offset = f.read(4)
+                    f.read(4)  # Skip count field (4 bytes)
+                    # For SHORT(3) and LONG(4) types with count=1, value is stored directly
+                    # in the value/offset field rather than being a pointer
+                    value_bytes = f.read(4)
 
-                    # Tag 256 = ImageWidth, Tag 257 = ImageLength
-                    if tag == 256:
-                        if field_type in (3, 4):  # SHORT or LONG
-                            width = struct.unpack(
-                                endian + ("H" if field_type == 3 else "I"), value_offset[: 2 if field_type == 3 else 4]
-                            )[0]
-                    elif tag == 257:
-                        if field_type in (3, 4):
-                            height = struct.unpack(
-                                endian + ("H" if field_type == 3 else "I"), value_offset[: 2 if field_type == 3 else 4]
-                            )[0]
+                    # Tag 256 = ImageWidth, Tag 257 = ImageLength (height)
+                    # We only handle field types 3 (SHORT, 2 bytes) and 4 (LONG, 4 bytes)
+                    if tag == 256 and field_type in (3, 4):
+                        width = struct.unpack(
+                            endian + ("H" if field_type == 3 else "I"), value_bytes[: 2 if field_type == 3 else 4]
+                        )[0]
+                    elif tag == 257 and field_type in (3, 4):
+                        height = struct.unpack(
+                            endian + ("H" if field_type == 3 else "I"), value_bytes[: 2 if field_type == 3 else 4]
+                        )[0]
 
                 if width and height:
                     return width, height
 
             elif ext == ".pdf":
                 # For PDF, we can't easily get dimensions without parsing
-                # PDF structure. Return None to skip dimension check
+                # the full PDF structure. Return None to skip dimension check
                 return None
 
             elif ext in {".eps", ".ps"}:
-                # EPS/PS: look for BoundingBox comment
-                # Read first 1KB to find BoundingBox
+                # EPS/PS: look for BoundingBox comment in DSC (Document Structuring Conventions)
+                # Read first 1KB to find BoundingBox (sufficient for most well-formed EPS files)
+                # Note: Some files may have BoundingBox later, but reading more increases I/O cost
                 data = f.read(1024).decode("latin-1", errors="ignore")
                 for line in data.split("\n"):
                     if line.startswith("%%BoundingBox:"):
@@ -139,8 +170,11 @@ def get_image_dimensions(filepath: str) -> tuple[int, int] | None:
                                 pass
                 return None
 
-    except Exception as e:
+    except (OSError, struct.error, UnicodeDecodeError) as e:
         logger.debug(f"Could not read dimensions for {filepath}: {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"Unexpected error reading dimensions for {filepath}: {e}")
         return None
 
     return None
