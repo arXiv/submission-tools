@@ -46,6 +46,7 @@ TEXLIVE_ROOT: str = f"/usr/local/texlive/{TEXLIVE_BASE_RELEASE}"
 TEXLIVE_BIN_DIR: str = f"{TEXLIVE_ROOT}/bin/x86_64-linux"
 
 ENABLE_SANDBOX: bool = env_flag("ENABLE_SANDBOX")
+ENABLE_MAKEINDEX: bool = env_flag("ENABLE_MAKEINDEX")
 
 PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
 PROJECT_NR: int = int(os.environ.get("PROJECT_NR", "0"))

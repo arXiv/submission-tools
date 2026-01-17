@@ -696,3 +696,17 @@ def test_empty_toplevel_fn(docker_container):
     cmd = f"""docker logs {container_2025_name} 2>&1 | grep -e '"severity": "ERROR", "message": "Empty filename in toplevel entry, ignoring it!"'"""  # noqa: E501
     proc = subprocess.run(cmd, check=False, shell=True)
     assert proc.returncode == 0
+
+
+@pytest.mark.integration
+def test_makeindex(docker_container):
+    """Test that makeindex is run when .idx file is generated."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-makeindex/test-makeindex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-makeindex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    # pdflatex (creates .idx), makeindex (creates .ind), pdflatex, pdflatex
+    assert len(meta["converters"][0]["runs"]) == 4
+    assert meta["converters"][0]["runs"][1]["step"] == "makeindex_run"
