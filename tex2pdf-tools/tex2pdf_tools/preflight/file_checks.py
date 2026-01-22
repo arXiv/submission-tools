@@ -10,8 +10,9 @@ from .checks import CheckResult, CheckSeverity, logger
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf", ".eps", ".ps", ".bmp", ".gif", ".tif", ".tiff"}
 
 # Default threshold for oversized images (in megapixels)
-# 50 megapixels = reasonable maximum for academic papers
-DEFAULT_IMAGE_SIZE_THRESHOLD_MPIXELS = 50
+# Assuming 600dpi on a full page A4 paper we would have
+# (8.3 x 11.7 x 600 x 600) / (1024 x 1024) ≈ 33.34007263 MPixels
+DEFAULT_IMAGE_SIZE_THRESHOLD_MPIXELS = 34
 
 FILE_CHECKS = {
     "no-exe": lambda res, rundir: check_no_exe(res),
