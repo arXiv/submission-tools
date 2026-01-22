@@ -14,6 +14,7 @@ from tex2pdf_tools.tex_inspection import find_pdfoutput_1
 from tex2pdf_tools.zerozeroreadme import ZeroZeroReadMe
 
 from . import (
+    ENABLE_MAKEINDEX,
     ENABLE_SANDBOX,
     ID_TAG,
     MAX_LATEX_RUNS,
@@ -299,6 +300,41 @@ class BaseConverter:
                     }
                 )
                 return outcome
+
+        # if idx file is present and ind file is not, run makeindex
+        if ENABLE_MAKEINDEX:
+            idx_file = f"{in_dir}/{stem}.idx"
+            ind_file = f"{in_dir}/{stem}.ind"
+            if os.path.exists(idx_file) and not os.path.exists(ind_file):
+                makeindex_step = "makeindex_run"
+                logger.debug("Starting makeindex run")
+                makeindex_args = [f"{TEXLIVE_BIN_DIR}/makeindex", stem]
+                makeindex_run, makeindex_out, makeindex_err = self._exec_cmd(makeindex_args, stem, in_dir, work_dir)
+                # makeindex outputs to stdout, even errors
+                # since the frontend only shows the `log` entry, move the stdout part to log
+                makeindex_run["log"] = makeindex_out
+                self._report_run(
+                    makeindex_run, makeindex_out, makeindex_err, makeindex_step, in_dir, out_dir, "idx", f"{stem}.ind"
+                )
+                if makeindex_run["return_code"] != 0:
+                    logger.debug("makeindex run failed")
+                    # remove generated pdf to be sure it will not be shown
+                    # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                    # believes all is fine and continues with success!
+                    if os.path.exists(artifact_file):
+                        logger.debug("Output %s deleted due to failed run", output_name)
+                        os.unlink(artifact_file)
+                        # the pdf/dvi file was generated in the first run
+                        self.runs[0][base_format] = file_props(artifact_file)
+                    outcome.update(
+                        {
+                            "status": "fail",
+                            "step": makeindex_step,
+                            "reason": "makeindex run returned error code",
+                            "runs": self.runs,
+                        }
+                    )
+                    return outcome
 
         # if DVI/PDF is generated, rerun for TOC and references
         # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
