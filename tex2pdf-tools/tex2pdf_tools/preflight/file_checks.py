@@ -2,6 +2,7 @@
 
 import os
 import struct
+from collections.abc import Callable
 from pathlib import Path
 
 from .checks import CheckResult, CheckSeverity, logger
@@ -14,13 +15,14 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf", ".eps", ".ps", ".bmp", ".gi
 # (8.3 x 11.7 x 600 x 600) / (1024 x 1024) ≈ 33.34007263 MPixels
 DEFAULT_IMAGE_SIZE_THRESHOLD_MPIXELS = 34
 
-FILE_CHECKS = {
-    "no-exe": lambda res, rundir: check_no_exe(res),
+
+FILE_CHECKS: dict[str, Callable[[list[str], str], CheckResult]] = {
+    "no-exe": lambda res, rundir: check_no_exe(res, rundir),
     "image-sizes": lambda res, rundir: check_image_sizes(res, rundir),
 }
 
 
-def check_no_exe(files: list[str]) -> CheckResult:
+def check_no_exe(files: list[str], rundir: str) -> CheckResult:
     """Check for presence of EXE files."""
     logger.debug("Checking for presence of EXE files")
     if foo := [f for f in files if f.lower().endswith(".exe")]:
