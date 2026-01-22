@@ -997,14 +997,14 @@ class ImageInfo(BaseModel):
     width: int | None = None
     height: int | None = None
     megapixels: float | None = None
-    file_size_bytes: int | None = None
+    file_bytes: int | None = None
     is_oversized: bool = False
 
     def file_size_mb(self) -> float | None:
         """Return file size in megabytes."""
-        if self.file_size_bytes is None:
+        if self.file_bytes is None:
             return None
-        return self.file_size_bytes / (1024 * 1024)
+        return self.file_bytes / (1024 * 1024)
 
 
 class ToplevelFile(BaseModel):

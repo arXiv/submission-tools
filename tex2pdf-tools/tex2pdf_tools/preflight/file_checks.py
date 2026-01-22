@@ -209,7 +209,7 @@ def collect_image_info(files: list[str], rundir: str) -> list[dict]:
 
         image_info = {
             "filename": filepath,
-            "file_size_bytes": file_size,
+            "file_bytes": file_size,
         }
 
         if dimensions:
@@ -250,7 +250,7 @@ def check_image_sizes(
         if megapixels and megapixels > threshold_mpixels:
             width = img_info["width"]
             height = img_info["height"]
-            file_size_mb = img_info["file_size_bytes"] / (1024 * 1024)
+            file_size_mb = img_info["file_bytes"] / (1024 * 1024)
             filepath = img_info["filename"]
             oversized_images.append(f"{filepath} ({width}x{height}px, {megapixels:.1f}MP, {file_size_mb:.1f}MB)")
             img_info["is_oversized"] = True
