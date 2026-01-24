@@ -455,6 +455,7 @@ class IssueType(str, Enum):
     bbl_bib_file_missing = "bbl_bib_file_missing"
     multiple_bibliography_types = "multiple_bibliography_types"
     bbl_usage_mismatch = "bbl_usage_mismatch"
+    oversized_image = "oversized_image"
     other = "other"
 
 
@@ -989,6 +990,23 @@ class ParsedTeXFile(BaseModel):
         return found
 
 
+class ImageInfo(BaseModel):
+    """Information about an image file."""
+
+    filename: str
+    width: int | None = None
+    height: int | None = None
+    megapixels: float | None = None
+    file_bytes: int | None = None
+    is_oversized: bool = False
+
+    def file_size_mb(self) -> float | None:
+        """Return file size in megabytes."""
+        if self.file_bytes is None:
+            return None
+        return self.file_bytes / (1024 * 1024)
+
+
 class ToplevelFile(BaseModel):
     """Toplevel file and how to compile it."""
 
@@ -1006,6 +1024,7 @@ class PreflightResponse(BaseModel):
     tex_files: list[ParsedTeXFile]
     ancillary_files: list[str]
     maybe_used_files: list[str]
+    image_files: list[ImageInfo] = []
 
     def to_json(self, **kwargs: typing.Any) -> str:
         """Return a json representation."""
@@ -1379,16 +1398,37 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     return n
 
 
-def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str], list[str]]:
-    """Parse all TeX files in a directory."""
+def parse_dir(
+    rundir: str,
+) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str], list[str], list[ImageInfo], list[TeXFileIssue]]:
+    """Parse all TeX files in a directory.
+
+    Returns:
+        Tuple of (nodes, anc_files, maybe_files, image_files, warning_issues)
+    """
     glob_files = glob.glob(f"{rundir}/**/*", recursive=True)
     # strip rundir/ prefix
     n = len(rundir) + 1
     all_files = [f[n:] for f in glob_files if os.path.isfile(f)]
     # run checks on all files
-    checks_succeeded, failed_checks = run_file_checks(all_files, "all")
+    checks_succeeded, error_checks, warning_checks = run_file_checks(all_files, "all", rundir)
+
+    # Errors raise exception as before
     if not checks_succeeded:
-        raise CheckPreflightException("\n".join([z.info for z in failed_checks]))
+        raise CheckPreflightException("\n".join([z.info for z in error_checks]))
+
+    # Warnings are collected and will be added to issues
+    warning_issues: list[TeXFileIssue] = []
+    image_files: list[ImageInfo] = []
+
+    for warning in warning_checks:
+        # Create issue for the warning
+        warning_issues.append(TeXFileIssue(key=IssueType.oversized_image, info=warning.info))
+
+        # Extract image metadata if available
+        if warning.metadata and "image_files" in warning.metadata:
+            for img_data in warning.metadata["image_files"]:
+                image_files.append(ImageInfo(**img_data))
     # we will not analyze ancillary files
     files = [f for f in all_files if not f.startswith("anc/")]
     # ancillary files
@@ -1414,6 +1454,8 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
                 ),
                 anc_files,
                 maybe_files,
+                image_files,
+                warning_issues,
             )
         else:
             # check for HTML submissions
@@ -1425,6 +1467,8 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
                         ),
                         anc_files,
                         maybe_files,
+                        image_files,
+                        warning_issues,
                     )
     only_image_files = [t for t in files if os.path.splitext(t)[1].lower() in ONLY_IMAGE_PARSE_FILE_EXTENSIONS]
     logging.debug(f"First round of tex file parsing: {tex_files}")
@@ -1433,7 +1477,7 @@ def parse_dir(rundir: str) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, lis
     nodes_imgs = {f: parse_file(rundir, f, only_image=True) for f in only_image_files}
     nodes.update(nodes_imgs)
     # print(nodes)
-    return nodes, anc_files, maybe_files
+    return nodes, anc_files, maybe_files, image_files, warning_issues
 
 
 def kpse_search_files(
@@ -2109,8 +2153,11 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     roots: dict[str, ParsedTeXFile]
     toplevel_files: dict[str, ToplevelFile]
 
+    image_files: list[ImageInfo] = []
+    warning_issues: list[TeXFileIssue] = []
+
     try:
-        n, anc_files, maybe_files = parse_dir(rundir)
+        n, anc_files, maybe_files, image_files, warning_issues = parse_dir(rundir)
         tests_succeeded = True
         error_msg = ""
     except CheckPreflightException as e:
@@ -2162,6 +2209,10 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             deal_with_bibliographies(rundir, toplevel_files, nodes)
             deal_with_indices(rundir, toplevel_files, nodes)
             update_toplevel_issues(toplevel_files, nodes)
+            # Add warning issues to the first toplevel file (or create a dummy if none)
+            if toplevel_files and warning_issues:
+                first_tlf = next(iter(toplevel_files.values()))
+                first_tlf.issues.extend(warning_issues)
             # TODO check for suspicious status!
             status = PreflightStatus(key=PreflightStatusValues.success)
     return PreflightResponse(
@@ -2170,6 +2221,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         tex_files=[n for n in nodes.values()],
         ancillary_files=anc_files,
         maybe_used_files=maybe_files,
+        image_files=image_files,
     )
 
 
