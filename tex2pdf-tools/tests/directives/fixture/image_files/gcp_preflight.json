@@ -1,0 +1,103 @@
+{
+  "status": {
+    "key": "success"
+  },
+  "detected_toplevel_files": [
+    {
+      "filename": "image_files_test.tex",
+      "process": {
+        "compiler": {
+          "engine": "tex",
+          "lang": "latex",
+          "output": "pdf",
+          "postp": "none"
+        },
+        "bibliography": {
+          "pre_generated": true,
+          "can_be_generated": true
+        }
+      },
+      "hyperref_found": true,
+      "issues": [
+        {
+          "key": "oversized_image",
+          "info": "Found 3 oversized image(s) (>34MP)"
+        }
+      ]
+    }
+  ],
+  "tex_files": [
+    {
+      "filename": "image_files_test.tex",
+      "language": "latex",
+      "contains_documentclass": true,
+      "hyperref_found": true,
+      "used_tex_files": [
+        "IEEEtran.cls"
+      ],
+      "used_bib_files": [
+        "ref_abb.bib"
+      ],
+      "used_other_files": [
+        "fig1.png",
+        "fig2.png",
+        "fig3.png",
+        "fig4.png",
+        "fig5.png",
+        "fig6.png"
+      ]
+    },
+    {
+      "filename": "IEEEtran.cls",
+      "language": "latex"
+    }
+  ],
+  "ancillary_files": [],
+  "maybe_used_files": [],
+  "image_files": [
+    {
+      "filename": "fig1.png",
+      "width": 900,
+      "height": 865,
+      "megapixels": 0.7785,
+      "file_bytes": 484746
+    },
+    {
+      "filename": "fig2.png",
+      "width": 1627,
+      "height": 1177,
+      "megapixels": 1.914979,
+      "file_bytes": 479448
+    },
+    {
+      "filename": "fig3.png",
+      "width": 1262,
+      "height": 623,
+      "megapixels": 0.786226,
+      "file_bytes": 66439
+    },
+    {
+      "filename": "fig4.png",
+      "width": 8848,
+      "height": 5114,
+      "megapixels": 45.248672,
+      "file_bytes": 4626006,
+      "is_oversized": true
+    },
+    {
+      "filename": "fig5.png",
+      "width": 17411,
+      "height": 8861,
+      "megapixels": 154.278871,
+      "file_bytes": 26697062,
+      "is_oversized": true
+    },
+    {
+      "filename": "fig6.png",
+      "width": 8084,
+      "height": 4176,
+      "megapixels": 33.758784,
+      "file_bytes": 419316
+    }
+  ]
+}
