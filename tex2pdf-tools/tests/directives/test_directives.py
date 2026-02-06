@@ -300,7 +300,7 @@ class TestDirectiveManager(unittest.TestCase):
         preflight_image_names = {e.get("filename") for e in image_entries if isinstance(e, dict)}
         self.assertSetEqual(
             preflight_image_names,
-            {"fig1.png", "fig2.png", "fig3.png", "fig4.png"},
+            {"fig1.png", "fig2.png", "fig3.png", "fig4.png", "fig5.png","fig6.png"},
             "Unexpected image filenames in preflight.image_files"
         )
 
