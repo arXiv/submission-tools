@@ -1,7 +1,9 @@
 """This module implements QA checks for general files."""
 
 import os
+import re
 import struct
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -14,12 +16,6 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf", ".eps", ".ps", ".bmp", ".gi
 # Assuming 600dpi on a full page A4 paper we would have
 # (8.3 x 11.7 x 600 x 600) / (1024 x 1024) ≈ 33.34007263 MPixels
 DEFAULT_IMAGE_SIZE_THRESHOLD_MPIXELS = 34
-
-
-FILE_CHECKS: dict[str, Callable[[list[str], str], CheckResult]] = {
-    "no-exe": lambda res, rundir: check_no_exe(res, rundir),
-    "image-sizes": lambda res, rundir: check_image_sizes(res, rundir),
-}
 
 
 def check_no_exe(files: list[str], rundir: str) -> CheckResult:
@@ -183,6 +179,59 @@ def get_image_dimensions(filepath: str) -> tuple[int, int] | None:
     return None
 
 
+def check_png_fast_copy(filepath: str) -> bool | None:
+    """Check if a PNG file supports pdfTeX fast copy optimization.
+
+    pdfTeX can include PNG files without recompression ("fast copy") only if the PNG:
+    - Does not have an alpha channel (RGB+alpha, alpha)
+    - Does not contain certain chunks: gAMA, sRGB, cHRM, iCCP, sBIT, bKGD, hIST, tRNS, sPLT
+    - Is not interlaced
+
+    This check matches the logic in pdftex's writepng.c source code.
+
+    Args:
+        filepath: Path to the PNG file
+
+    Returns:
+        True if the PNG supports fast copy, False if it does not, None if check failed
+    """
+    try:
+        result = subprocess.run(
+            ["pngcheck", "-v", filepath],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+
+        # pngcheck returns non-zero for invalid files, but we still check the output
+        output = result.stdout + result.stderr
+
+        # Check for patterns that prevent fast copy
+        # Based on pdftex's writepng.c logic
+        # RGB+alpha and alpha indicate alpha channel presence
+        # The other patterns are chunk types or properties that require reprocessing
+        # Note: Use negative lookbehind for "interlaced" to avoid matching "non-interlaced"
+        incompatible_pattern = re.compile(
+            r"RGB\+alpha|gAMA|sRGB|cHRM|iCCP|sBIT|bKGD|hIST|tRNS|sPLT|(?<!non-)interlaced|(?<!RGB\+)alpha"
+        )
+
+        if incompatible_pattern.search(output):
+            return False
+        else:
+            return True
+
+    except FileNotFoundError:
+        logger.debug("pngcheck not found, skipping fast copy check")
+        return None
+    except subprocess.TimeoutExpired:
+        logger.warning(f"pngcheck timed out for {filepath}")
+        return None
+    except Exception as e:
+        logger.debug(f"Could not run pngcheck on {filepath}: {e}")
+        return None
+
+
 def collect_image_info(files: list[str], rundir: str) -> list[dict]:
     """Collect information about all image files.
 
@@ -222,6 +271,12 @@ def collect_image_info(files: list[str], rundir: str) -> list[dict]:
                     "megapixels": megapixels,
                 }
             )
+
+        # Check if PNG supports pdfTeX fast copy
+        if ext == ".png":
+            fast_copy = check_png_fast_copy(full_path)
+            if fast_copy is not None:
+                image_info["pdftex-fast-copy"] = fast_copy
 
         image_info_list.append(image_info)
 
@@ -273,6 +328,12 @@ def check_image_sizes(
         severity=CheckSeverity.warning,
         metadata={"image_files": all_image_info, "threshold_mpixels": threshold_mpixels},
     )
+
+
+FILE_CHECKS: dict[str, Callable[[list[str], str], CheckResult]] = {
+    "no-exe": check_no_exe,
+    "image-sizes": check_image_sizes,
+}
 
 
 def run_checks(
