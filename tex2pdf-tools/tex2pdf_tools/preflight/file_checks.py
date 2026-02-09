@@ -302,7 +302,9 @@ def check_image_sizes(
 
     for img_info in all_image_info:
         megapixels = img_info.get("megapixels")
-        if megapixels and megapixels > threshold_mpixels:
+        fast_copy = img_info.get("pdftex-fast-copy")
+        # if fast_copy is None, we consider it a slow copy => False
+        if megapixels and megapixels > threshold_mpixels and not fast_copy:
             width = img_info["width"]
             height = img_info["height"]
             file_size_mb = img_info["file_bytes"] / (1024 * 1024)
