@@ -42,8 +42,8 @@ jobs:
           alkalami
           chivo
           tex-gyre
-    - name: Install pdfinfo via poppler-utils
-      run: sudo apt-get update && sudo apt-get install --no-install-recommends -y poppler-utils
+    - name: Install pdfinfo via poppler-utils and pngcheck
+      run: sudo apt-get update && sudo apt-get install --no-install-recommends -y poppler-utils pngcheck
     - name: Install dependencies for tools
       run: |
         cd tex2pdf-tools
