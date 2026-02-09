@@ -118,8 +118,9 @@ def test_check_image_sizes_oversized():
     """Test that oversized images are detected."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a 100MP image (exceeds 50MP threshold)
+        # Use color_type=6 (RGBA) so it doesn't support fast-copy
         png_file = os.path.join(tmpdir, "huge.png")
-        create_test_png(png_file, 10000, 10000)
+        create_test_png(png_file, 10000, 10000, color_type=6)
 
         files = ["huge.png"]
         result = check_image_sizes(files, tmpdir, threshold_mpixels=50)
@@ -137,10 +138,10 @@ def test_check_image_sizes_oversized():
 def test_check_image_sizes_multiple_oversized():
     """Test detecting multiple oversized images."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create two oversized images
+        # Create two oversized images that don't support fast-copy
         png1 = os.path.join(tmpdir, "huge1.png")
         png2 = os.path.join(tmpdir, "huge2.jpg")
-        create_test_png(png1, 8000, 8000)
+        create_test_png(png1, 8000, 8000, color_type=6)  # RGBA - no fast-copy
         create_test_jpeg(png2, 9000, 9000)
 
         files = ["huge1.png", "huge2.jpg"]
@@ -155,9 +156,9 @@ def test_check_image_sizes_multiple_oversized():
 def test_check_image_sizes_custom_threshold():
     """Test using a custom threshold."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a 10MP image
+        # Create a 10MP image that doesn't support fast-copy
         png_file = os.path.join(tmpdir, "medium.png")
-        create_test_png(png_file, 3162, 3162)  # ~10MP
+        create_test_png(png_file, 3162, 3162, color_type=6)  # ~10MP, RGBA - no fast-copy
 
         files = ["medium.png"]
 
@@ -188,9 +189,9 @@ def test_check_image_sizes_ignores_non_images():
 def test_run_checks_with_image_sizes():
     """Test running image size checks through run_checks interface."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create oversized image
+        # Create oversized image that doesn't support fast-copy
         png_file = os.path.join(tmpdir, "oversized.png")
-        create_test_png(png_file, 10000, 10000)
+        create_test_png(png_file, 10000, 10000, color_type=6)  # RGBA - no fast-copy
 
         files = ["oversized.png"]
         passed, error_checks, warning_checks = run_checks(files, "image-sizes", tmpdir)
@@ -272,8 +273,8 @@ def test_check_image_sizes_returns_all_images():
         # Create mix of normal and oversized images
         png1 = os.path.join(tmpdir, "normal.png")
         png2 = os.path.join(tmpdir, "huge.png")
-        create_test_png(png1, 1920, 1080)
-        create_test_png(png2, 10000, 10000)
+        create_test_png(png1, 1920, 1080, color_type=2)
+        create_test_png(png2, 10000, 10000, color_type=6)  # RGBA - no fast-copy
 
         files = ["normal.png", "huge.png"]
         result = check_image_sizes(files, tmpdir, threshold_mpixels=50)

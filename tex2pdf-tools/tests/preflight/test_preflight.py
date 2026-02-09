@@ -1,12 +1,13 @@
 import json
 import os
+import tempfile
+
 import pytest
-import unittest
-from mock import patch
 
 import tex2pdf_tools.preflight
-from tex2pdf_tools.preflight import IssueType, UNICODE_TEX_PACKAGES
-from tex2pdf_tools.preflight import PreflightResponse, generate_preflight_response
+from tex2pdf_tools.preflight import UNICODE_TEX_PACKAGES, IssueType, PreflightResponse, generate_preflight_response
+
+from .test_file_checks import create_test_png
 
 _DIR = os.path.abspath(os.path.dirname(__file__))
 FIXTURE_DIR = os.path.join(_DIR, "fixture")
@@ -582,7 +583,7 @@ def test_biber_bibtex_mix():
     assert tf.used_other_files == []
 
 def test_biblatex_with_bibliography():
-    """Test submission with using biblatex and \bibliography."""
+    r"""Test submission with using biblatex and \bibliography."""
     dir_path = os.path.join(FIXTURE_DIR, "biblatex-bibliography")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -642,7 +643,7 @@ def test_plain_tex_sub_enable_pdfetex():
 
 
 def test_plain_no_bye():
-    """Test plain tex files without \bye."""
+    r"""Test plain tex files without \bye."""
     dir_path = os.path.join(FIXTURE_DIR, "plain-tex-no-bye")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "success"
@@ -850,4 +851,220 @@ def test_exe_detection():
     assert pf.status.info == "QA check failed: EXE file found"
     assert len(pf.detected_toplevel_files) == 0
     assert len(pf.tex_files) == 0
+
+
+def test_pngcheck_available():
+    """Test that pngcheck is available on the system.
+
+    This is a prerequisite for the pdftex fast-copy tests to work correctly.
+    """
+    import shutil
+
+    pngcheck_path = shutil.which("pngcheck")
+    assert pngcheck_path is not None, "pngcheck binary is not available in PATH"
+
+
+def test_pdftex_fast_copy_oversized_images():
+    """Test that large PNG images with pdftex-fast-copy support are not marked as oversized.
+
+    This test verifies the behavior where:
+    - Large PNG images that support pdftex fast copy (simple RGB) are NOT marked as oversized
+    - Large PNG images without fast copy support (with alpha/problematic chunks) ARE marked as oversized
+    - Small images are never marked as oversized regardless of fast copy support
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a minimal LaTeX file that includes the images
+        tex_content = r"""\documentclass{article}
+\usepackage{graphicx}
+\begin{document}
+Test document with images.
+\includegraphics{large_fast_copy.png}
+\includegraphics{large_no_fast_copy.png}
+\includegraphics{small_image.png}
+\end{document}
+"""
+        tex_file = os.path.join(tmpdir, "main.tex")
+        with open(tex_file, "w") as f:
+            f.write(tex_content)
+
+        # Create large PNG that supports fast copy (simple RGB, no problematic chunks)
+        # 7000x7000 = 49MP which exceeds the 34MP threshold
+        large_fast_copy = os.path.join(tmpdir, "large_fast_copy.png")
+        create_test_png(large_fast_copy, 7000, 7000, color_type=2)
+
+        # Create large PNG that does NOT support fast copy (has alpha channel)
+        # 7000x7000 = 49MP which exceeds the 34MP threshold
+        large_no_fast_copy = os.path.join(tmpdir, "large_no_fast_copy.png")
+        create_test_png(large_no_fast_copy, 7000, 7000, color_type=6)  # color_type=6 is RGBA
+
+        # Create small PNG (below threshold)
+        # 1000x1000 = 1MP which is well below the 34MP threshold
+        small_image = os.path.join(tmpdir, "small_image.png")
+        create_test_png(small_image, 1000, 1000, color_type=2)
+
+        # Run preflight
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+
+        # The preflight should succeed (warnings don't cause failure)
+        assert pf.status.key.value == "success"
+
+        # We should have at least one detected toplevel file
+        assert len(pf.detected_toplevel_files) > 0
+
+        # Check image_files field in the PreflightResponse
+        assert len(pf.image_files) == 3, "Should have info about all 3 images"
+
+        # Find each image in the image_files list
+        large_fast_info = next((img for img in pf.image_files if img.filename == "large_fast_copy.png"), None)
+        large_no_fast_info = next((img for img in pf.image_files if img.filename == "large_no_fast_copy.png"), None)
+        small_info = next((img for img in pf.image_files if img.filename == "small_image.png"), None)
+
+        assert large_fast_info is not None, "Should find large_fast_copy.png in image_files"
+        assert large_no_fast_info is not None, "Should find large_no_fast_copy.png in image_files"
+        assert small_info is not None, "Should find small_image.png in image_files"
+
+        # Verify dimensions
+        assert large_fast_info.width == 7000
+        assert large_fast_info.height == 7000
+        assert large_fast_info.megapixels == 49.0
+
+        assert large_no_fast_info.width == 7000
+        assert large_no_fast_info.height == 7000
+        assert large_no_fast_info.megapixels == 49.0
+
+        assert small_info.width == 1000
+        assert small_info.height == 1000
+        assert small_info.megapixels == 1.0
+
+        # Check pdftex-fast-copy field - pngcheck should be available
+        assert large_fast_info.pdftex_fast_copy is True, "Simple RGB PNG should support fast copy"
+        assert large_no_fast_info.pdftex_fast_copy is False, "PNG with alpha should not support fast copy"
+
+        # The key check: only large_no_fast_copy should be marked as oversized
+        assert not large_fast_info.is_oversized, \
+            "Large PNG with fast copy support should NOT be marked as oversized"
+        assert large_no_fast_info.is_oversized, \
+            "Large PNG without fast copy support SHOULD be marked as oversized"
+        assert not small_info.is_oversized, \
+            "Small image should NOT be marked as oversized"
+
+        # Check that we have an oversized warning issue for exactly 1 image
+        has_oversized_warning = False
+        for issue in pf.detected_toplevel_files[0].issues:
+            if issue.key.value == "oversized_image":
+                has_oversized_warning = True
+                # The warning info should mention 1 oversized image
+                assert "1" in issue.info
+
+        # We should have found the oversized warning
+        assert has_oversized_warning, "Expected to find oversized image warning in preflight issues"
+
+
+def test_pdftex_fast_copy_with_problematic_chunks():
+    """Test that large PNG images with problematic chunks are marked as oversized.
+
+    This test verifies that PNG images with chunks that prevent fast copy
+    (gAMA, sRGB, cHRM, iCCP, etc.) are correctly identified and marked as oversized
+    when they exceed the size threshold.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a minimal LaTeX file
+        tex_content = r"""\documentclass{article}
+\usepackage{graphicx}
+\begin{document}
+Test document.
+\includegraphics{large_with_gamma.png}
+\includegraphics{large_with_srgb.png}
+\end{document}
+"""
+        tex_file = os.path.join(tmpdir, "main.tex")
+        with open(tex_file, "w") as f:
+            f.write(tex_content)
+
+        # Create large PNG with gAMA chunk (prevents fast copy)
+        # 7000x7000 = 49MP which exceeds the 34MP threshold
+        large_with_gamma = os.path.join(tmpdir, "large_with_gamma.png")
+        create_test_png(large_with_gamma, 7000, 7000, color_type=2, extra_chunks=[b"gAMA"])
+
+        # Create large PNG with sRGB chunk (prevents fast copy)
+        large_with_srgb = os.path.join(tmpdir, "large_with_srgb.png")
+        create_test_png(large_with_srgb, 7000, 7000, color_type=2, extra_chunks=[b"sRGB"])
+
+        # Run preflight
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+
+        # Should succeed with warnings
+        assert pf.status.key.value == "success"
+        assert len(pf.detected_toplevel_files) > 0
+
+        # Check that both images are in image_files
+        assert len(pf.image_files) == 2, "Should have info about both images"
+
+        gamma_info = next((img for img in pf.image_files if img.filename == "large_with_gamma.png"), None)
+        srgb_info = next((img for img in pf.image_files if img.filename == "large_with_srgb.png"), None)
+
+        assert gamma_info is not None
+        assert srgb_info is not None
+
+        # Both should be marked as oversized
+        assert gamma_info.is_oversized, "PNG with gAMA chunk should be marked as oversized"
+        assert srgb_info.is_oversized, "PNG with sRGB chunk should be marked as oversized"
+
+        # Verify fast-copy is False for both
+        assert not gamma_info.pdftex_fast_copy, "PNG with gAMA should not support fast copy"
+        assert not srgb_info.pdftex_fast_copy, "PNG with sRGB should not support fast copy"
+
+        # Check that we have an oversized warning issue
+        has_oversized_warning = False
+        for issue in pf.detected_toplevel_files[0].issues:
+            if issue.key.value == "oversized_image":
+                has_oversized_warning = True
+
+        assert has_oversized_warning, "Expected to find oversized image warning"
+
+
+def test_pdftex_fast_copy_all_small_images():
+    """Test that when all images are below the threshold, no oversized warning is issued."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a minimal LaTeX file
+        tex_content = r"""\documentclass{article}
+\usepackage{graphicx}
+\begin{document}
+Test document.
+\includegraphics{small1.png}
+\includegraphics{small2.png}
+\end{document}
+"""
+        tex_file = os.path.join(tmpdir, "main.tex")
+        with open(tex_file, "w") as f:
+            f.write(tex_content)
+
+        # Create small PNG images (well below 34MP threshold)
+        small1 = os.path.join(tmpdir, "small1.png")
+        create_test_png(small1, 2000, 2000, color_type=2)  # 4MP
+
+        small2 = os.path.join(tmpdir, "small2.png")
+        create_test_png(small2, 3000, 3000, color_type=6)  # 9MP, has alpha but small enough
+
+        # Run preflight
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+
+        # Should succeed
+        assert pf.status.key.value == "success"
+        assert len(pf.detected_toplevel_files) > 0
+
+        # When there are no oversized warnings, image_files may be empty or populated
+        # If populated, verify none are marked as oversized
+        if pf.image_files:
+            for img in pf.image_files:
+                assert not img.is_oversized, f"Small image {img.filename} should not be marked as oversized"
+
+        # Check that there's no oversized warning issue (or if there is, no images are marked oversized)
+        has_oversized_warning = False
+        for issue in pf.detected_toplevel_files[0].issues:
+            if issue.key.value == "oversized_image":
+                has_oversized_warning = True
+
+        # With small images only, we should NOT have an oversized warning
+        assert not has_oversized_warning, "Should not have oversized warning for small images only"
 
