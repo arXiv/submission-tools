@@ -39,7 +39,7 @@ line-length = 120
 max-line-length = 120
 
 [tool.pytest.ini_options]
-addopts = "--cov=tex2pdf_tools --cov-fail-under=69"
+addopts = "--cov=tex2pdf_tools --cov-fail-under=70"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -999,6 +999,9 @@ class ImageInfo(BaseModel):
     megapixels: float | None = None
     file_bytes: int | None = None
     is_oversized: bool = False
+    pdftex_fast_copy: bool | None = Field(
+        default=None, alias="pdftex-fast-copy", serialization_alias="pdftex-fast-copy"
+    )
 
     def file_size_mb(self) -> float | None:
         """Return file size in megabytes."""

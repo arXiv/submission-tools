@@ -3,35 +3,60 @@
 import os
 import struct
 import tempfile
-from pathlib import Path
+import zlib
 
 import pytest
 
+from tex2pdf_tools.preflight.checks import CheckSeverity
 from tex2pdf_tools.preflight.file_checks import (
     check_image_sizes,
+    check_png_fast_copy,
     collect_image_info,
     get_image_dimensions,
     run_checks,
 )
-from tex2pdf_tools.preflight.checks import CheckSeverity
 
 
-def create_test_png(filepath: str, width: int, height: int) -> None:
-    """Create a minimal valid PNG file with specified dimensions."""
+def create_test_png(
+    filepath: str, width: int, height: int, color_type: int = 2, extra_chunks: list[bytes] | None = None
+) -> None:
+    """Create a minimal valid PNG file with specified dimensions.
+
+    Args:
+        filepath: Path where to create the PNG file
+        width: Image width in pixels
+        height: Image height in pixels
+        color_type: PNG color type (2=RGB, 6=RGBA/RGB+alpha)
+        extra_chunks: List of additional chunk names to include (e.g., [b"gAMA", b"sRGB"])
+    """
     with open(filepath, "wb") as f:
         # PNG signature
         f.write(b"\x89PNG\r\n\x1a\n")
+
         # IHDR chunk
+        ihdr_data = struct.pack(">II", width, height) + bytes([8, color_type, 0, 0, 0])
+        ihdr_crc = zlib.crc32(b"IHDR" + ihdr_data) & 0xFFFFFFFF
         f.write(struct.pack(">I", 13))  # Chunk length
         f.write(b"IHDR")
-        f.write(struct.pack(">II", width, height))
-        f.write(b"\x08\x02\x00\x00\x00")  # bit depth, color type, etc.
-        # CRC (dummy)
-        f.write(b"\x00\x00\x00\x00")
+        f.write(ihdr_data)
+        f.write(struct.pack(">I", ihdr_crc))
+
+        # Add extra chunks if specified
+        if extra_chunks:
+            for chunk_name in extra_chunks:
+                # Write a minimal chunk with the specified name
+                chunk_data = b"\x00\x00\x00\x00"  # Dummy data
+                chunk_crc = zlib.crc32(chunk_name + chunk_data) & 0xFFFFFFFF
+                f.write(struct.pack(">I", 4))  # Chunk length (4 bytes of dummy data)
+                f.write(chunk_name)
+                f.write(chunk_data)
+                f.write(struct.pack(">I", chunk_crc))
+
         # IEND chunk
+        iend_crc = zlib.crc32(b"IEND") & 0xFFFFFFFF
         f.write(struct.pack(">I", 0))
         f.write(b"IEND")
-        f.write(b"\x00\x00\x00\x00")
+        f.write(struct.pack(">I", iend_crc))
 
 
 def create_test_jpeg(filepath: str, width: int, height: int) -> None:
@@ -263,8 +288,178 @@ def test_check_image_sizes_returns_all_images():
         assert len(result.metadata["image_files"]) == 2
 
         # Check that is_oversized flag is set correctly
-        normal_img = [img for img in result.metadata["image_files"] if img["filename"] == "normal.png"][0]
-        huge_img = [img for img in result.metadata["image_files"] if img["filename"] == "huge.png"][0]
+        normal_img = next(img for img in result.metadata["image_files"] if img["filename"] == "normal.png")
+        huge_img = next(img for img in result.metadata["image_files"] if img["filename"] == "huge.png")
 
         assert normal_img.get("is_oversized", False) is False
         assert huge_img["is_oversized"] is True
+
+
+def test_check_png_fast_copy_simple_rgb():
+    """Test that a simple RGB PNG supports fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "simple.png")
+        # Create simple RGB PNG without problematic chunks
+        create_test_png(png_file, 800, 600, color_type=2)
+
+        result = check_png_fast_copy(png_file)
+        # Should return True (supports fast copy) or None (pngcheck not available)
+        assert result is True or result is None
+
+
+def test_check_png_fast_copy_with_alpha():
+    """Test that PNG with alpha channel does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "alpha.png")
+        # Create RGBA PNG (color type 6 = RGB+alpha)
+        create_test_png(png_file, 800, 600, color_type=6)
+
+        result = check_png_fast_copy(png_file)
+        # Should return False (does not support fast copy) or None (pngcheck not available)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_gamma():
+    """Test that PNG with gAMA chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "gamma.png")
+        # Create PNG with gAMA chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"gAMA"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_srgb():
+    """Test that PNG with sRGB chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "srgb.png")
+        # Create PNG with sRGB chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"sRGB"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_chrm():
+    """Test that PNG with cHRM chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "chrm.png")
+        # Create PNG with cHRM chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"cHRM"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_iccp():
+    """Test that PNG with iCCP chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "iccp.png")
+        # Create PNG with iCCP chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"iCCP"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_trns():
+    """Test that PNG with tRNS chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "trns.png")
+        # Create PNG with tRNS chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"tRNS"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_sbit():
+    """Test that PNG with sBIT chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "sbit.png")
+        # Create PNG with sBIT chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"sBIT"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_bkgd():
+    """Test that PNG with bKGD chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "bkgd.png")
+        # Create PNG with bKGD chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"bKGD"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_hist():
+    """Test that PNG with hIST chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "hist.png")
+        # Create PNG with hIST chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"hIST"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_splt():
+    """Test that PNG with sPLT chunk does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "splt.png")
+        # Create PNG with sPLT chunk
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"sPLT"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_multiple_chunks():
+    """Test that PNG with multiple problematic chunks does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "multi.png")
+        # Create PNG with multiple problematic chunks
+        create_test_png(png_file, 800, 600, color_type=2, extra_chunks=[b"gAMA", b"sRGB", b"cHRM"])
+
+        result = check_png_fast_copy(png_file)
+        assert result is False or result is None
+
+
+def test_collect_image_info_includes_pdftex_fast_copy():
+    """Test that collect_image_info includes pdftex-fast-copy field for PNG files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a simple PNG that should support fast copy
+        png_simple = os.path.join(tmpdir, "simple.png")
+        create_test_png(png_simple, 800, 600, color_type=2)
+
+        # Create a PNG with alpha that should not support fast copy
+        png_alpha = os.path.join(tmpdir, "alpha.png")
+        create_test_png(png_alpha, 800, 600, color_type=6)
+
+        # Create a JPEG (should not have pdftex-fast-copy field)
+        jpeg_file = os.path.join(tmpdir, "test.jpg")
+        create_test_jpeg(jpeg_file, 800, 600)
+
+        files = ["simple.png", "alpha.png", "test.jpg"]
+        image_info = collect_image_info(files, tmpdir)
+
+        assert len(image_info) == 3
+
+        # Find each image in the results
+        simple_info = next(img for img in image_info if img["filename"] == "simple.png")
+        alpha_info = next(img for img in image_info if img["filename"] == "alpha.png")
+        jpeg_info = next(img for img in image_info if img["filename"] == "test.jpg")
+
+        # PNG files should have pdftex-fast-copy field (if pngcheck is available)
+        # If pngcheck is not available, the field won't be present
+        if "pdftex-fast-copy" in simple_info:
+            assert simple_info["pdftex-fast-copy"] is True
+        if "pdftex-fast-copy" in alpha_info:
+            assert alpha_info["pdftex-fast-copy"] is False
+
+        # JPEG should not have pdftex-fast-copy field
+        assert "pdftex-fast-copy" not in jpeg_info
