@@ -273,6 +273,135 @@ class TestDirectiveManager(unittest.TestCase):
         self.assertIn("used_files", directives["preflight"])
         self.assertIn("solvable.ind", directives["preflight"]["used_files"])
 
+    def test_image_files(self) -> None:
+        """Ensure preflight.image_files are present and consistent in the
+           directives output."""
+        dir_path = os.path.join(self.fixture_dir, "image_files")
+
+        preflight_file = os.path.join(dir_path, 'gcp_preflight.json')
+        # src_dir is not required for this test, but the module checks that
+        # a src_dif exists
+        src_dir = dir_path
+        #output_json = <some temporary location that exists during tests>
+
+        # Read the preflight JSON file and check specific fields
+        with open(preflight_file, 'r') as f:
+            preflight_json = json.load(f)
+
+        # Preflight should expose image_files as a list of dicts with filename (and possibly is_oversized)
+        image_entries = preflight_json.get("image_files", [])
+        self.assertIsInstance(image_entries, list, "preflight.image_files should be a list")
+        self.assertGreaterEqual(len(image_entries), 1, "Expected at least one image in preflight.image_files")
+
+        # Expected names from preflight.image_files
+        expected_names = {e["filename"] for e in image_entries if isinstance(e, dict) and "filename" in e}
+        self.assertTrue(all(isinstance(n, str) for n in expected_names), "Filenames must be strings")
+
+        preflight_image_names = {e.get("filename") for e in image_entries if isinstance(e, dict)}
+        self.assertSetEqual(
+            preflight_image_names,
+            {"fig1.png", "fig2.png", "fig3.png", "fig4.png", "fig5.png","fig6.png"},
+            "Unexpected image filenames in preflight.image_files"
+        )
+
+        # Oversized from preflight.image_files
+        preflight_oversized = {e["filename"] for e in image_entries if isinstance(e, dict) and e.get("is_oversized")}
+
+        # Oversized flag should be present for fig4.png as per the uploaded preflight
+        oversized_map = {e.get("filename"): e.get("is_oversized", False) for e in image_entries if isinstance(e, dict)}
+        self.assertTrue(
+            oversized_map.get("fig4.png", False),
+            "Expected fig4.png to be marked is_oversized=True in preflight.image_files"
+        )
+
+        # put together arguments and call
+
+        # Create
+        manager = DirectiveManager(dir_path, src_dir)
+        directives = {}
+        serial = manager.process_directives()
+        directives["directives"] = serial
+        preflight_data = manager.load_preflight_data(preflight_file)
+        directives["preflight"] = preflight_data
+
+        # For manual inspection
+        with open('/tmp/test_output.json', "w") as outfile:
+            json.dump(directives, outfile, indent=2)
+
+        # Inspect the combined JSON output for specific field values
+        # Check for image files in the preflight and directives data.
+
+        # --- Assertions on the combined directives JSON ---
+
+        # 1) preflight.image_files must be present in the emitted JSON and match the fixture
+        out_image_entries = directives["preflight"].get("image_files", [])
+        self.assertIsInstance(out_image_entries, list, "directives.preflight.image_files should be a list")
+        out_names = {e["filename"] for e in out_image_entries if isinstance(e, dict) and "filename" in e}
+        self.assertSetEqual(out_names, expected_names,
+                            "Image filenames in directives.preflight.image_files must match preflight")
+
+        # 2) Basic fields are present for each image entry (width/height/megapixels/file_bytes)
+        for img in out_image_entries:
+            self.assertIn("filename", img)
+            self.assertIn("width", img)
+            self.assertIn("height", img)
+            self.assertIn("megapixels", img)
+            self.assertIn("file_bytes", img)
+            # basic value sanity
+            self.assertGreater(img["width"], 0)
+            self.assertGreater(img["height"], 0)
+            self.assertGreater(img["file_bytes"], 0)
+            self.assertGreaterEqual(img["megapixels"], 0)
+
+        # 3) Every image filename should also appear in preflight.used_files (subset check)
+        used_files = set(directives["preflight"].get("used_files", []))
+        missing_from_used = sorted(n for n in expected_names if n not in used_files)
+        self.assertFalse(
+            missing_from_used,
+            f"These images are in preflight.image_files but not in preflight.used_files: {missing_from_used}",
+        )
+
+        # 4) Oversized count consistency: issues say "Found 3 oversized..." -> count True flags must be 3
+        # Pull the "oversized_image" issue message if present and extract the expected count.
+        issue_msgs = []
+        for det in directives["preflight"].get("detected_top_level_files", []):
+            for issue in det.get("issues", []):
+                if issue.get("key") == "oversized_image" and isinstance(issue.get("info"), str):
+                    issue_msgs.append(issue["info"])
+
+        # Now parse out the number of expected oversize images.
+
+        def parse_oversized_count(msg: str) -> int | None:
+            # expects pattern like: "Found 3 oversized image(s) (>34MP)"
+            import re
+            m = re.search(r"Found\s+(\d+)\s+oversized", msg)
+            return int(m.group(1)) if m else None
+
+        expected_oversized_count = None
+        for m in issue_msgs:
+            c = parse_oversized_count(m)
+            if c is not None:
+                expected_oversized_count = c
+                break
+
+        # Check that we have the correct number of oversize images
+
+        if expected_oversized_count is not None:
+            self.assertEqual(
+                len(preflight_oversized),
+                expected_oversized_count,
+                f"Expected {expected_oversized_count} oversized images per "
+                f"issues, found {len(preflight_oversized)} in image_files",
+            )
+
+            # If the directives side also emitted is_oversized flags, verify at least those match for the same files
+            out_oversized = {e["filename"] for e in out_image_entries if isinstance(e, dict) and e.get("is_oversized")}
+            if out_oversized:  # only assert mapping if the field is surfaced
+                self.assertSetEqual(
+                    out_oversized, preflight_oversized,
+                    "Mismatch between preflight.image_files.is_oversized and directives.preflight.image_files.is_oversized",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

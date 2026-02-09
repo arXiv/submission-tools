@@ -141,4 +141,5 @@ class PreflightReport:
             "used_files": list(used_files),
             "not_selected": not_selected_files,
             "maybe_used_files": self.data.get("maybe_used_files", []),
+            "image_files": self.data.get("image_files", []),
         }
