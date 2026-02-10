@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""CLI wrapper for converting PNG images to pdfTeX fast copy compatible format."""
+
+import sys
+from pathlib import Path
+
+# Add the parent directory to path so we can import tex2pdf_tools
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from tex2pdf_tools.preflight.png_to_fast_copy import main
+
+if __name__ == "__main__":
+    sys.exit(main())
