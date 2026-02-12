@@ -1053,18 +1053,13 @@ Test document.
         assert pf.status.key.value == "success"
         assert len(pf.detected_toplevel_files) > 0
 
-        # When there are no oversized warnings, image_files may be empty or populated
-        # If populated, verify none are marked as oversized
-        if pf.image_files:
-            for img in pf.image_files:
-                assert not img.is_oversized, f"Small image {img.filename} should not be marked as oversized"
+        # should contain image info
+        assert len(pf.image_files) == 2, "image_files fields should always be included"
 
-        # Check that there's no oversized warning issue (or if there is, no images are marked oversized)
-        has_oversized_warning = False
-        for issue in pf.detected_toplevel_files[0].issues:
-            if issue.key.value == "oversized_image":
-                has_oversized_warning = True
+        for img in pf.image_files:
+            assert not img.is_oversized, f"Small image {img.filename} should not be marked as oversized"
 
-        # With small images only, we should NOT have an oversized warning
-        assert not has_oversized_warning, "Should not have oversized warning for small images only"
+        # Should not have any issues reported
+        assert not pf.detected_toplevel_files[0].issues, \
+            f"Should not have any issues at all but found {pf.detected_toplevel_files[0].issues}"
 
