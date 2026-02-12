@@ -4,8 +4,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .checks import CheckResult, logger
 from .feature_flags import ENABLE_JS_CHECKS
+from .models import CheckResult, logger
 
 PDF_CHECKS = {
     "javascript": lambda res: check_javascript(res),

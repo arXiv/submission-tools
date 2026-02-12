@@ -7,12 +7,14 @@ import zlib
 
 import pytest
 
-from tex2pdf_tools.preflight.checks import CheckSeverity
+from tex2pdf_tools.preflight.models import CheckSeverity
+from tex2pdf_tools.preflight.images import (
+    check_png_fast_copy,
+    get_image_dimensions,
+)
 from tex2pdf_tools.preflight.file_checks import (
     check_image_sizes,
-    check_png_fast_copy,
     collect_image_info,
-    get_image_dimensions,
     run_checks,
 )
 
@@ -108,7 +110,7 @@ def test_check_image_sizes_normal():
         create_test_png(png_file, 1600, 1200)
 
         files = ["normal.png"]
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=50)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50})
 
         assert result.check_passed is True
         assert result.info == ""
@@ -123,16 +125,15 @@ def test_check_image_sizes_oversized():
         create_test_png(png_file, 10000, 10000, color_type=6)
 
         files = ["huge.png"]
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=50)
+        image_files =  collect_image_info(files, tmpdir)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files})
 
         assert result.check_passed is False
         assert result.severity == CheckSeverity.warning
         assert "oversized image" in result.info.lower()
         assert "huge.png" in result.long_info
-        assert result.metadata is not None
-        assert "image_files" in result.metadata
-        assert len(result.metadata["image_files"]) == 1
-        assert result.metadata["image_files"][0]["is_oversized"] is True
+        assert len(image_files) == 1
+        assert image_files[0].is_oversized is True
 
 
 def test_check_image_sizes_multiple_oversized():
@@ -145,12 +146,13 @@ def test_check_image_sizes_multiple_oversized():
         create_test_jpeg(png2, 9000, 9000)
 
         files = ["huge1.png", "huge2.jpg"]
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=50)
+        image_files = collect_image_info(files, tmpdir)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files})
 
         assert result.check_passed is False
-        assert "2" in result.info or "multiple" in result.info.lower()
+        assert "1" in result.info
         assert "huge1.png" in result.long_info
-        assert "huge2.jpg" in result.long_info
+        assert "huge2.jpg" not in result.long_info
 
 
 def test_check_image_sizes_custom_threshold():
@@ -163,11 +165,11 @@ def test_check_image_sizes_custom_threshold():
         files = ["medium.png"]
 
         # Should pass with 20MP threshold
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=20)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 20})
         assert result.check_passed is True
 
         # Should fail with 5MP threshold
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=5)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 5})
         assert result.check_passed is False
 
 
@@ -180,7 +182,7 @@ def test_check_image_sizes_ignores_non_images():
             f.write("This is not an image")
 
         files = ["not_an_image.txt"]
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=50)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50})
 
         # Should pass (no images found)
         assert result.check_passed is True
@@ -257,14 +259,14 @@ def test_collect_image_info():
         image_info = collect_image_info(files, tmpdir)
 
         assert len(image_info) == 2
-        assert image_info[0]["filename"] == "small.png"
-        assert image_info[0]["width"] == 800
-        assert image_info[0]["height"] == 600
-        assert image_info[0]["megapixels"] == pytest.approx(0.48, rel=0.01)
-        assert image_info[1]["filename"] == "large.png"
-        assert image_info[1]["width"] == 4000
-        assert image_info[1]["height"] == 3000
-        assert image_info[1]["megapixels"] == pytest.approx(12.0, rel=0.01)
+        assert image_info[0].filename == "small.png"
+        assert image_info[0].width == 800
+        assert image_info[0].height == 600
+        assert image_info[0].megapixels == pytest.approx(0.48, rel=0.01)
+        assert image_info[1].filename == "large.png"
+        assert image_info[1].width == 4000
+        assert image_info[1].height == 3000
+        assert image_info[1].megapixels == pytest.approx(12.0, rel=0.01)
 
 
 def test_check_image_sizes_returns_all_images():
@@ -277,23 +279,22 @@ def test_check_image_sizes_returns_all_images():
         create_test_png(png2, 10000, 10000, color_type=6)  # RGBA - no fast-copy
 
         files = ["normal.png", "huge.png"]
-        result = check_image_sizes(files, tmpdir, threshold_mpixels=50)
+        image_files = collect_image_info(files, tmpdir)
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files})
 
         # Should fail due to oversized image
         assert result.check_passed is False
         assert result.severity == CheckSeverity.warning
 
         # But metadata should contain info about ALL images
-        assert result.metadata is not None
-        assert "image_files" in result.metadata
-        assert len(result.metadata["image_files"]) == 2
+        assert len(image_files) == 2
 
         # Check that is_oversized flag is set correctly
-        normal_img = next(img for img in result.metadata["image_files"] if img["filename"] == "normal.png")
-        huge_img = next(img for img in result.metadata["image_files"] if img["filename"] == "huge.png")
+        normal_img = next(img for img in image_files if img.filename == "normal.png")
+        huge_img = next(img for img in image_files if img.filename == "huge.png")
 
-        assert normal_img.get("is_oversized", False) is False
-        assert huge_img["is_oversized"] is True
+        assert normal_img.is_oversized is False
+        assert huge_img.is_oversized is True
 
 
 def test_check_png_fast_copy_simple_rgb():
@@ -317,6 +318,18 @@ def test_check_png_fast_copy_with_alpha():
 
         result = check_png_fast_copy(png_file)
         # Should return False (does not support fast copy) or None (pngcheck not available)
+        assert result is False or result is None
+
+
+def test_check_png_fast_copy_with_palette():
+    """Test that PNG with palette color type does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "palette.png")
+        # Create palette PNG (color type 3) with PLTE chunk
+        create_test_png(png_file, 800, 600, color_type=3, extra_chunks=[b"PLTE"])
+
+        result = check_png_fast_copy(png_file)
+        # Palette/indexed color is not allowed for fast copy
         assert result is False or result is None
 
 
@@ -451,16 +464,16 @@ def test_collect_image_info_includes_pdftex_fast_copy():
         assert len(image_info) == 3
 
         # Find each image in the results
-        simple_info = next(img for img in image_info if img["filename"] == "simple.png")
-        alpha_info = next(img for img in image_info if img["filename"] == "alpha.png")
-        jpeg_info = next(img for img in image_info if img["filename"] == "test.jpg")
+        simple_info = next(img for img in image_info if img.filename == "simple.png")
+        alpha_info = next(img for img in image_info if img.filename == "alpha.png")
+        jpeg_info = next(img for img in image_info if img.filename == "test.jpg")
 
         # PNG files should have pdftex-fast-copy field (if pngcheck is available)
         # If pngcheck is not available, the field won't be present
         if "pdftex-fast-copy" in simple_info:
-            assert simple_info["pdftex-fast-copy"] is True
+            assert simple_info.pdftex_fast_copy is True
         if "pdftex-fast-copy" in alpha_info:
-            assert alpha_info["pdftex-fast-copy"] is False
+            assert alpha_info.pdftex_fast_copy is False
 
-        # JPEG should not have pdftex-fast-copy field
-        assert "pdftex-fast-copy" not in jpeg_info
+        # JPEG should be tagged as fast embeddable
+        assert jpeg_info.pdftex_fast_copy is True

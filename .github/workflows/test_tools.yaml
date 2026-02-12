@@ -58,6 +58,11 @@ jobs:
     - uses: astral-sh/ruff-action@v3
       with:
         version: "0.12.x"
-    - run: ruff check
-    - run: ruff format --check --diff
+        args: "--version" # don't run check automatically
+    - run: |
+        cd tex2pdf-tools
+        ruff check
+    - run: |
+        cd tex2pdf-tools
+        ruff format --check --diff
 
