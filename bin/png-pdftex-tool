@@ -1,0 +1,637 @@
+#!/usr/bin/env python3
+
+"""Convert PNG images to pdfTeX fast copy compatible format.
+
+This module provides utilities to convert PNG files that are incompatible with
+pdfTeX's fast copy optimization into compatible versions by:
+- Removing alpha channels (converting RGBA to RGB)
+- Stripping problematic color/metadata chunks
+- Deinterlacing if needed
+- Optionally reducing file size
+"""
+
+import argparse
+import logging
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+from collections.abc import Callable
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Problematic PNG chunks that prevent fast copy
+INCOMPATIBLE_CHUNKS = ["gAMA", "sRGB", "cHRM", "iCCP", "sBIT", "bKGD", "hIST", "tRNS", "sPLT"]
+
+
+def get_pngcheck_output(filepath: str) -> str | None:
+    """Get output from pngcheck -v for a PNG file.
+
+    Args:
+        filepath: Path to the PNG file
+
+    Returns:
+        Combined stdout and stderr output, or None if check failed
+    """
+    try:
+        result = subprocess.run(
+            ["pngcheck", "-v", filepath],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return result.stdout + result.stderr
+    except FileNotFoundError:
+        logger.debug("pngcheck not found")
+        return None
+    except subprocess.TimeoutExpired:
+        logger.warning(f"pngcheck timed out for {filepath}")
+        return None
+    except Exception as e:
+        logger.debug(f"Could not run pngcheck on {filepath}: {e}")
+        return None
+
+
+def get_incompatible_features(filepath: str) -> list[str] | None:
+    """Get list of incompatible features for a PNG file.
+
+    Args:
+        filepath: Path to the PNG file
+
+    Returns:
+        List of incompatible feature names (empty list if none found),
+        or None if check failed
+    """
+    output = get_pngcheck_output(filepath)
+    if output is None:
+        return None
+
+    features = []
+
+    # Check for palette/indexed color type (not allowed for fast copy)
+    if "palette" in output.lower():
+        features.append("palette")
+
+    # Check for RGBA color type
+    if "RGB+alpha" in output:
+        features.append("RGBA")
+    elif re.search(r"(?<!RGB\+)alpha", output):
+        features.append("alpha")
+
+    # Check for problematic chunks
+    chunk_patterns = {
+        "gAMA": "gAMA",
+        "sRGB": "sRGB",
+        "cHRM": "cHRM",
+        "iCCP": "iCCP",
+        "sBIT": "sBIT",
+        "bKGD": "bKGD",
+        "hIST": "hIST",
+        "tRNS": "tRNS",
+        "sPLT": "sPLT",
+    }
+
+    for pattern, name in chunk_patterns.items():
+        if pattern in output:
+            features.append(name)
+
+    # Check for interlacing (avoid matching "non-interlaced")
+    if re.search(r"(?<!non-)interlaced", output):
+        features.append("interlaced")
+
+    return features
+
+
+def check_png_fast_copy(filepath: str) -> bool | None:
+    """Check if a PNG file supports pdfTeX fast copy optimization.
+
+    pdfTeX can include PNG files without recompression ("fast copy") only if the PNG:
+    - Is grayscale or RGB color type (not palette/indexed, not alpha)
+    - Does not have an alpha channel (RGB+alpha, alpha)
+    - Does not contain certain chunks: gAMA, sRGB, cHRM, iCCP, sBIT, bKGD, hIST, tRNS, sPLT
+    - Is not interlaced
+
+    This check matches the logic in pdftex's writepng.c source code.
+
+    Args:
+        filepath: Path to the PNG file
+
+    Returns:
+        True if the PNG supports fast copy, False if it does not, None if check failed
+    """
+    features = get_incompatible_features(filepath)
+    if features is None:
+        # pngcheck not available or failed
+        return None
+    # Return True if no incompatible features, False if any found
+    return len(features) == 0
+
+
+def has_tool(tool: str) -> bool:
+    """Check if a tool is available in PATH."""
+    return shutil.which(tool) is not None
+
+
+def convert_with_imagemagick(input_path: str, output_path: str, strip_profiles: bool = True) -> bool:
+    """Convert PNG using ImageMagick (convert/magick).
+
+    Converts palette/indexed PNGs to RGB, removes alpha channels by compositing
+    on white background, strips color profiles and metadata, and ensures non-interlaced.
+
+    Args:
+        input_path: Path to input PNG
+        output_path: Path to output PNG
+        strip_profiles: Whether to strip color profiles and metadata
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Use 'magick' if available (ImageMagick 7+), otherwise 'convert'
+        tool = "magick" if has_tool("magick") else "convert"
+        if not has_tool(tool):
+            logger.debug(f"{tool} not found")
+            return False
+
+        cmd = [tool, input_path]
+
+        # Convert palette/indexed to RGB and RGBA to RGB by compositing on white background
+        cmd.extend(["-background", "white", "-alpha", "remove", "-alpha", "off"])
+
+        # Explicitly set PNG color type to RGB (type 2) to handle palette conversion
+        # Type 2 = RGB without alpha (type 6 would be RGBA, which is not allowed)
+        cmd.extend(["-define", "png:color-type=2"])
+
+        # Strip color profiles and metadata
+        if strip_profiles:
+            cmd.extend(["-strip"])
+
+        # Ensure not interlaced (non-interlaced is default)
+        cmd.extend(["-interlace", "None"])
+
+        cmd.append(output_path)
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+        if result.returncode == 0:
+            logger.info(f"Successfully converted {input_path} using {tool}")
+            return True
+        else:
+            logger.warning(f"{tool} failed: {result.stderr}")
+            return False
+
+    except FileNotFoundError:
+        logger.debug("ImageMagick tool not found")
+        return False
+    except subprocess.TimeoutExpired:
+        logger.warning(f"ImageMagick timeout converting {input_path}")
+        return False
+    except Exception as e:
+        logger.warning(f"Error converting with ImageMagick: {e}")
+        return False
+
+
+def convert_with_pngcrush(input_path: str, output_path: str) -> bool:
+    """Convert PNG using pngcrush.
+
+    pngcrush removes color chunks and can reduce file size, but CANNOT convert
+    palette/indexed PNGs to RGB. For palette conversion, use ImageMagick or PNM.
+
+    Args:
+        input_path: Path to input PNG
+        output_path: Path to output PNG
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        if not has_tool("pngcrush"):
+            logger.debug("pngcrush not found")
+            return False
+
+        # Check if the PNG is palette/indexed - pngcrush cannot convert color types
+        features = get_incompatible_features(input_path)
+        if features and "palette" in features:
+            logger.debug("pngcrush cannot convert palette PNGs to RGB, skipping")
+            return False
+
+        # Remove problematic ancillary chunks and optimize output.
+        cmd = ["pngcrush", "-q"]
+        for chunk in INCOMPATIBLE_CHUNKS:
+            cmd.extend(["-rem", chunk])
+        cmd.extend(["-reduce", input_path, output_path])
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+        if result.returncode == 0:
+            logger.info(f"Successfully converted {input_path} using pngcrush")
+            return True
+        else:
+            logger.warning(f"pngcrush failed: {result.stderr}")
+            return False
+
+    except FileNotFoundError:
+        logger.debug("pngcrush not found")
+        return False
+    except subprocess.TimeoutExpired:
+        logger.warning(f"pngcrush timeout converting {input_path}")
+        return False
+    except Exception as e:
+        logger.warning(f"Error converting with pngcrush: {e}")
+        return False
+
+
+def convert_with_pnm(input_path: str, output_path: str) -> bool:
+    """Convert PNG using pnmtopng via PNM intermediate format.
+
+    This approach strips all metadata and chunks by converting through PNM format.
+    Forces RGB output by converting through PPM (Portable PixMap) which is always
+    RGB, ensuring palette/indexed PNGs are converted. This is the most reliable
+    method for complete chunk removal and palette conversion.
+
+    Args:
+        input_path: Path to input PNG
+        output_path: Path to output PNG
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        if not has_tool("pngtopnm") or not has_tool("pnmtopng"):
+            logger.debug("pngtopnm or pnmtopng not found")
+            return False
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ppm_file = os.path.join(tmpdir, "temp.ppm")
+
+            # Convert PNG to PPM (always RGB format, strips all chunks/profiles)
+            # Using -plain for ASCII PPM which is always RGB
+            pngtopnm_cmd = ["pngtopnm", input_path]
+            with open(ppm_file, "wb") as f:
+                result = subprocess.run(pngtopnm_cmd, stdout=f, stderr=subprocess.PIPE, timeout=30, check=False)
+                if result.returncode != 0:
+                    logger.warning(f"pngtopnm failed: {result.stderr.decode('utf-8', errors='replace')}")
+                    return False
+
+            # Convert PPM back to PNG with -force to prevent palette optimization
+            # This ensures output is RGB even if pnmtopng would prefer palette
+            pnmtopng_cmd = ["pnmtopng", "-force", ppm_file]
+            with open(output_path, "wb") as f:
+                result = subprocess.run(pnmtopng_cmd, stdout=f, stderr=subprocess.PIPE, timeout=30, check=False)
+            if result.returncode == 0:
+                logger.info(f"Successfully converted {input_path} using pngtopnm->pnmtopng")
+                return True
+            else:
+                logger.warning(f"pnmtopng failed: {result.stderr.decode('utf-8', errors='replace')}")
+                return False
+
+    except FileNotFoundError:
+        logger.debug("pngtopnm or pnmtopng not found")
+        return False
+    except subprocess.TimeoutExpired:
+        logger.warning(f"PNM conversion timeout for {input_path}")
+        return False
+    except Exception as e:
+        logger.warning(f"Error converting with PNM: {e}")
+        return False
+
+
+def check_output_fast_copy(filepath: str) -> bool | None:
+    """Check whether converted output is fast copy compatible."""
+    try:
+        return check_png_fast_copy(filepath)
+    except Exception as e:
+        logger.debug(f"Could not verify fast copy compatibility for {filepath}: {e}")
+        return None
+
+
+def run_method_and_verify(
+    method_name: str, method_func: Callable[[str, str], bool], input_path: str, output_path: str
+) -> bool:
+    """Run one conversion method and verify output compatibility when possible."""
+    if not method_func(input_path, output_path):
+        return False
+
+    fast_copy = check_output_fast_copy(output_path)
+    if fast_copy is False:
+        logger.warning(f"{method_name} conversion succeeded but output is not fast copy compatible")
+        return False
+
+    return True
+
+
+def convert_png_to_fast_copy(
+    input_path: str, output_path: str | None = None, method: str = "auto", backup: bool = True
+) -> bool:
+    """Convert a PNG to pdfTeX fast copy compatible format.
+
+    This function attempts to convert a PNG file that may have alpha channel,
+    color profiles, or metadata chunks into a format compatible with pdfTeX's
+    fast copy optimization.
+
+    Args:
+        input_path: Path to input PNG file
+        output_path: Path to output PNG file (defaults to input_path)
+        method: Conversion method to use:
+            - "auto": Try methods in order (imagemagick, pngcrush, pnm)
+            - "imagemagick": Use ImageMagick only
+            - "pngcrush": Use pngcrush only
+            - "pnm": Use PNM conversion only
+        backup: If True and output_path == input_path, create a backup of the original
+
+    Returns:
+        True if conversion was successful, False otherwise
+    """
+    if not os.path.exists(input_path):
+        logger.error(f"Input file not found: {input_path}")
+        return False
+
+    if output_path is None:
+        output_path = input_path
+
+    # Create backup if overwriting original
+    backup_path = None
+    if backup and output_path == input_path:
+        backup_path = f"{input_path}.bak"
+        if not os.path.exists(backup_path):
+            logger.info(f"Creating backup: {backup_path}")
+            shutil.copy2(input_path, backup_path)
+
+    try:
+        if method == "auto":
+            # Try methods in order of preference
+            methods: list[tuple[str, Callable[[str, str], bool]]] = [
+                ("imagemagick", convert_with_imagemagick),
+                ("pngcrush", convert_with_pngcrush),
+                ("pnm", convert_with_pnm),
+            ]
+
+            for method_name, method_func in methods:
+                if run_method_and_verify(method_name, method_func, input_path, output_path):
+                    return True
+
+            logger.error("All conversion methods failed")
+            return False
+
+        elif method == "imagemagick":
+            return run_method_and_verify("imagemagick", convert_with_imagemagick, input_path, output_path)
+        elif method == "pngcrush":
+            return run_method_and_verify("pngcrush", convert_with_pngcrush, input_path, output_path)
+        elif method == "pnm":
+            return run_method_and_verify("pnm", convert_with_pnm, input_path, output_path)
+        else:
+            logger.error(f"Unknown conversion method: {method}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Conversion failed: {e}")
+        if backup_path and os.path.exists(backup_path):
+            logger.info(f"Restoring backup from {backup_path}")
+            shutil.copy2(backup_path, input_path)
+        return False
+
+
+def convert_png_directory(
+    directory: str, pattern: str = "*.png", method: str = "auto", backup: bool = True, inplace: bool = True
+) -> tuple[int, int]:
+    """Convert all PNG files in a directory to fast copy compatible format.
+
+    Args:
+        directory: Path to directory containing PNG files
+        pattern: Glob pattern for matching files (default: *.png)
+        method: Conversion method to use (see convert_png_to_fast_copy)
+        backup: Whether to create backups
+        inplace: If True, overwrite originals; if False, create .fastcopy.png variants
+
+    Returns:
+        Tuple of (successful_count, failed_count)
+    """
+    png_files = Path(directory).glob(pattern)
+    successful = 0
+    failed = 0
+
+    for png_file in png_files:
+        output_file = str(png_file) if inplace else str(png_file).replace(".png", ".fastcopy.png")
+
+        if convert_png_to_fast_copy(str(png_file), output_file, method=method, backup=backup):
+            successful += 1
+        else:
+            failed += 1
+
+    return successful, failed
+
+
+def setup_and_validate_args(args) -> tuple[str | None, str | None, int | None]:
+    """Set up logging and validate file/directory arguments.
+
+    Args:
+        args: Parsed command-line arguments with verbose, file, and directory attributes
+
+    Returns:
+        Tuple of (file_path, directory_path, error_code):
+        - If validation passes: (file_path or None, directory_path or None, None)
+        - If validation fails: (None, None, error_code)
+    """
+    # Setup logging
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
+
+    # Validate arguments
+    if args.directory:
+        return None, args.directory, None
+    elif args.file:
+        if Path(args.file).is_dir():
+            print(f"Error: '{args.file}' is a directory. Use -d/--directory to check all files in a directory.")
+            return None, None, 1
+        return args.file, None, None
+    else:
+        print("Error: must specify either a file or --directory")
+        return None, None, 1
+
+
+def check_command(args) -> int:
+    """Check PNG files for fast copy compatibility.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        Exit code (0 if all compatible, 1 if any incompatible or error)
+    """
+    file_path, directory_path, error_code = setup_and_validate_args(args)
+    if error_code is not None:
+        return error_code
+
+    if directory_path:
+        # Check all PNGs in directory
+        png_files = list(Path(directory_path).glob("*.png"))
+        if not png_files:
+            print(f"No PNG files found in {directory_path}")
+            return 0
+
+        incompatible_count = 0
+        for png_file in sorted(png_files):
+            features = get_incompatible_features(str(png_file))
+            if features is None:
+                print(f"? {png_file.name} (check failed)")
+            elif len(features) > 0:
+                print(f"✗ {png_file.name} {', '.join(features)}")
+                incompatible_count += 1
+            else:
+                print(f"✓ {png_file.name}")
+
+        return 1 if incompatible_count > 0 else 0
+
+    else:
+        # Check single file
+        features = get_incompatible_features(file_path)
+        if features is None:
+            print(f"? {file_path} (check failed)")
+            return 1
+        elif len(features) > 0:
+            print(f"✗ {file_path} {', '.join(features)}")
+            return 1
+        else:
+            print(f"✓ {file_path}")
+            return 0
+
+
+def convert_command(args) -> int:
+    """Convert PNG files to fast copy compatible format.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        Exit code (0 for success, 1 for failure)
+    """
+    file_path, directory_path, error_code = setup_and_validate_args(args)
+    if error_code is not None:
+        return error_code
+
+    if directory_path:
+        # Process directory
+        print(f"Converting PNGs in {directory_path} (method: {args.method})...")
+        successful, failed = convert_png_directory(
+            directory_path, method=args.method, backup=not args.no_backup, inplace=not args.no_inplace
+        )
+        print(f"\n✓ Success: {successful}")
+        if failed > 0:
+            print(f"✗ Failed: {failed}")
+        return 0 if failed == 0 else 1
+
+    else:
+        # Process single file
+        print(f"Converting PNG (method: {args.method})...")
+        success = convert_png_to_fast_copy(
+            file_path, output_path=args.output, method=args.method, backup=not args.no_backup
+        )
+        if success:
+            output_info = f" → {args.output}" if args.output else " (in-place)"
+            print(f"✓ Successfully converted: {file_path}{output_info}")
+            return 0
+        else:
+            print(f"✗ Failed to convert: {file_path}")
+            return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the PNG to fast copy conversion CLI.
+
+    Args:
+        argv: Command-line arguments (defaults to sys.argv[1:])
+
+    Returns:
+        Exit code (0 for success, 1 for failure)
+    """
+    parser = argparse.ArgumentParser(
+        prog="png-pdftex-tool",
+        description="Check and convert PNG images for pdfTeX fast copy compatibility",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+DESCRIPTION:
+  Check PNG files for pdfTeX fast copy compatibility or convert incompatible
+  images into compatible format. This improves TeX compilation performance
+  by avoiding PNG recompression.
+
+INCOMPATIBLE FEATURES:
+  - Palette/indexed color type
+  - Alpha channels (RGBA, alpha)
+  - Color/metadata chunks: gAMA, sRGB, cHRM, iCCP, sBIT, bKGD, hIST, tRNS, sPLT
+  - Interlacing (Adam7)
+
+CONVERSION METHODS:
+  auto         Try ImageMagick, pngcrush, and PNM in order (default)
+  imagemagick  Use ImageMagick (convert/magick) only
+  pngcrush     Use pngcrush only
+  pnm          Use pngtopnm and pnmtopng for maximum chunk removal
+
+EXAMPLES:
+  # Check single PNG
+  png-pdftex-tool check image.png
+
+  # Check all PNGs in directory
+  png-pdftex-tool check --directory /path/to/images
+
+  # Convert single PNG in-place
+  png-pdftex-tool convert image.png
+
+  # Convert and save to different file
+  png-pdftex-tool convert image.png -o converted.png
+
+  # Convert all PNGs in directory
+  png-pdftex-tool convert --directory /path/to/images
+
+  # Use specific method
+  png-pdftex-tool convert image.png --method imagemagick
+
+  # Don't create backups when overwriting
+  png-pdftex-tool convert image.png --no-backup
+
+  # Create .fastcopy.png variants instead of overwriting
+  png-pdftex-tool convert --directory /path --no-inplace
+        """,
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # Check subcommand
+    check_parser = subparsers.add_parser("check", help="Check PNG files for fast copy compatibility")
+    check_parser.add_argument("file", nargs="?", help="PNG file to check")
+    check_parser.add_argument("-d", "--directory", help="Check all PNGs in directory")
+    check_parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    check_parser.set_defaults(func=check_command)
+
+    # Convert subcommand
+    convert_parser = subparsers.add_parser("convert", help="Convert PNG images to fast copy compatible format")
+    convert_parser.add_argument("file", nargs="?", help="PNG file to convert")
+    convert_parser.add_argument("-o", "--output", help="Output file path")
+    convert_parser.add_argument("-d", "--directory", help="Convert all PNGs in directory")
+    convert_parser.add_argument(
+        "-m",
+        "--method",
+        choices=["auto", "imagemagick", "pngcrush", "pnm"],
+        default="auto",
+        help="Conversion method (default: auto)",
+    )
+    convert_parser.add_argument("--no-backup", action="store_true", help="Don't create backups when overwriting")
+    convert_parser.add_argument(
+        "--no-inplace", action="store_true", help="Create .fastcopy.png variants instead of overwriting"
+    )
+    convert_parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    convert_parser.set_defaults(func=convert_command)
+
+    args = parser.parse_args(argv)
+
+    if not args.command:
+        parser.print_help()
+        return 1
+
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
