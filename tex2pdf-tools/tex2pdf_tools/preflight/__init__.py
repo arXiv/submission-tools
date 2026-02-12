@@ -1020,8 +1020,11 @@ def parse_dir(
     warning_issues: list[TeXFileIssue] = []
 
     # Collect all warnings
+    logger.debug("Got warning_issues %s", warning_issues)
     for warning in warning_checks:
-        warning.issues.extend(warning.issues)
+        logger.debug("Warning %s issues %s", warning, warning.issues)
+        warning_issues.extend(warning.issues)
+    logger.debug("Final warning_issues %s", warning_issues)
 
     # we will not analyze ancillary files
     files = [f for f in all_files if not f.startswith("anc/")]

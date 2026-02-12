@@ -39,12 +39,15 @@ def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult
 
     if "image_files" in extra:
         all_image_info = extra["image_files"]
+        logger.debug(f"Found image_files info {all_image_info}")
     else:
         all_image_info = collect_image_info(files, rundir)
+        logger.debug(f"Created all_image_info {all_image_info}")
 
     for img_info in all_image_info:
         megapixels = img_info.megapixels
         fast_copy = img_info.pdftex_fast_copy
+        logger.debug(f"Checking image {img_info.filename} mp = {megapixels}, fast copy = {fast_copy}")
         # if fast_copy is None, we consider it a slow copy => False
         if megapixels and megapixels > threshold_mpixels and not fast_copy:
             width = img_info.width
@@ -54,6 +57,7 @@ def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult
             oversized_images.append(f"{filepath} ({width}x{height}px, {megapixels:.1f}MP, {file_size_mb:.1f}MB)")
             img_info.is_oversized = True
 
+    logger.debug(f"Found oversized images {oversized_images}")
     if oversized_images:
         info = f"Found {len(oversized_images)} oversized image(s) (>{threshold_mpixels}MP)"
         long_info = "\n".join(oversized_images)
