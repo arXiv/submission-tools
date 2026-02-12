@@ -321,6 +321,18 @@ def test_check_png_fast_copy_with_alpha():
         assert result is False or result is None
 
 
+def test_check_png_fast_copy_with_palette():
+    """Test that PNG with palette color type does not support fast copy."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        png_file = os.path.join(tmpdir, "palette.png")
+        # Create palette PNG (color type 3) with PLTE chunk
+        create_test_png(png_file, 800, 600, color_type=3, extra_chunks=[b"PLTE"])
+
+        result = check_png_fast_copy(png_file)
+        # Palette/indexed color is not allowed for fast copy
+        assert result is False or result is None
+
+
 def test_check_png_fast_copy_with_gamma():
     """Test that PNG with gAMA chunk does not support fast copy."""
     with tempfile.TemporaryDirectory() as tmpdir:

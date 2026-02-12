@@ -167,6 +167,7 @@ def check_png_fast_copy(filepath: str) -> bool | None:
     """Check if a PNG file supports pdfTeX fast copy optimization.
 
     pdfTeX can include PNG files without recompression ("fast copy") only if the PNG:
+    - Is grayscale or RGB color type (not palette/indexed, not alpha)
     - Does not have an alpha channel (RGB+alpha, alpha)
     - Does not contain certain chunks: gAMA, sRGB, cHRM, iCCP, sBIT, bKGD, hIST, tRNS, sPLT
     - Is not interlaced
@@ -192,12 +193,14 @@ def check_png_fast_copy(filepath: str) -> bool | None:
         output = result.stdout + result.stderr
 
         # Check for patterns that prevent fast copy
-        # Based on pdftex's writepng.c logic
-        # RGB+alpha and alpha indicate alpha channel presence
-        # The other patterns are chunk types or properties that require reprocessing
+        # Based on pdftex's writepng.c logic (line 567-577)
+        # - Palette/indexed color type is not allowed (only grayscale or RGB)
+        # - RGB+alpha and alpha indicate alpha channel presence
+        # - The other patterns are chunk types or properties that require reprocessing
         # Note: Use negative lookbehind for "interlaced" to avoid matching "non-interlaced"
         incompatible_pattern = re.compile(
-            r"RGB\+alpha|gAMA|sRGB|cHRM|iCCP|sBIT|bKGD|hIST|tRNS|sPLT|(?<!non-)interlaced|(?<!RGB\+)alpha"
+            r"palette|RGB\+alpha|gAMA|sRGB|cHRM|iCCP|sBIT|bKGD|hIST|tRNS|sPLT|(?<!non-)interlaced|(?<!RGB\+)alpha",
+            re.IGNORECASE,
         )
 
         if incompatible_pattern.search(output):
