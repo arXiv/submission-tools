@@ -59,7 +59,10 @@ def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult
 
     logger.debug(f"Found oversized images {oversized_images}")
     if oversized_images:
-        info = f"Found {len(oversized_images)} oversized image(s) (>{threshold_mpixels}MP)"
+        info = (
+            f"Found {len(oversized_images)} oversized image(s) (>{threshold_mpixels}MP). "
+            + "This may cause timeout or compilation errors. See https://info.arxiv.org/help/sizes.html"
+        )
         long_info = "\n".join(oversized_images)
         issue = TeXFileIssue(key=IssueType.oversized_image, info=info)
         return CheckResult(
