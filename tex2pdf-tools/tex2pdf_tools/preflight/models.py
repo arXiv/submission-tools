@@ -93,6 +93,7 @@ class IssueType(str, Enum):
     multiple_bibliography_types = "multiple_bibliography_types"
     bbl_usage_mismatch = "bbl_usage_mismatch"
     oversized_image = "oversized_image"
+    pdf_not_pdf = "pdf_not_pdf"
     other = "other"
 
 

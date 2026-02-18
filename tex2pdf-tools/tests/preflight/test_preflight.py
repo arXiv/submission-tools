@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 
 import pytest
@@ -1063,3 +1064,64 @@ Test document.
         assert not pf.detected_toplevel_files[0].issues, \
             f"Should not have any issues at all but found {pf.detected_toplevel_files[0].issues}"
 
+
+_SIMPLE_TEX = r"""\documentclass{article}
+\usepackage{graphicx}
+\begin{document}
+Hello world.
+\end{document}
+"""
+
+_VALID_PDF = os.path.join(FIXTURE_DIR, "single-pdf", "hello-world.pdf")
+
+
+def test_pdf_are_pdf_no_pdf_files():
+    """Preflight on a submission with no .pdf files: check is a no-op and passes."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "main.tex"), "w") as f:
+            f.write(_SIMPLE_TEX)
+
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+        assert pf.status.key.value == "success"
+        all_issues = [i for tf in pf.detected_toplevel_files for i in tf.issues]
+        assert not any(i.key == IssueType.pdf_not_pdf for i in all_issues)
+
+
+def test_pdf_are_pdf_valid_pdf_passes():
+    """A real PDF included as a figure is accepted without errors."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        shutil.copy(_VALID_PDF, os.path.join(tmpdir, "figure.pdf"))
+        tex = _SIMPLE_TEX.replace(r"\end{document}", r"\includegraphics{figure}" + "\n" + r"\end{document}")
+        with open(os.path.join(tmpdir, "main.tex"), "w") as f:
+            f.write(tex)
+
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+        assert pf.status.key.value == "success"
+        all_issues = [i for tf in pf.detected_toplevel_files for i in tf.issues]
+        assert not any(i.key == IssueType.pdf_not_pdf for i in all_issues)
+
+
+def test_pdf_are_pdf_nonpdf_renamed_detected():
+    """A text file renamed to .pdf is detected and causes an error status."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "fake.pdf"), "w") as f:
+            f.write("This is definitely not a PDF file.\n")
+        with open(os.path.join(tmpdir, "main.tex"), "w") as f:
+            f.write(_SIMPLE_TEX)
+
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+        assert pf.status.key.value == "error"
+        assert "QA check failed" in pf.status.info
+        assert "PDF" in pf.status.info
+
+
+def test_pdf_are_pdf_nonpdf_renamed_detected_single_pdf():
+    """A text file renamed to .pdf is detected and causes an error status."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, "fake.pdf"), "w") as f:
+            f.write("This is definitely not a PDF file.\n")
+
+        pf: PreflightResponse = generate_preflight_response(tmpdir)
+        assert pf.status.key.value == "error"
+        assert "QA check failed" in pf.status.info
+        assert "PDF" in pf.status.info

@@ -2,12 +2,14 @@
 
 import os
 import struct
+import subprocess
 import tempfile
 import zlib
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tex2pdf_tools.preflight.models import CheckSeverity
+from tex2pdf_tools.preflight.models import CheckSeverity, IssueType
 from tex2pdf_tools.preflight.images import (
     check_png_fast_copy,
     get_image_dimensions,
@@ -15,6 +17,7 @@ from tex2pdf_tools.preflight.images import (
 from tex2pdf_tools.preflight.file_checks import (
     check_image_sizes,
     collect_image_info,
+    pdf_are_pdf,
     run_checks,
 )
 
