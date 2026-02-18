@@ -1,5 +1,6 @@
 """This module implements QA checks for general files."""
 
+import subprocess
 from collections.abc import Callable
 
 from .images import collect_image_info
@@ -82,9 +83,58 @@ def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult
     )
 
 
+def pdf_are_pdf(files: list[str], rundir: str, extra: dict) -> CheckResult:
+    """Check PDFs for actually being pdfs and not renamed docx etc.
+
+    Args:
+        files: List of relative file paths
+        rundir: Base directory containing the files
+        extra: Extra information that might be test dependent
+
+    Returns:
+        CheckResult with warning if pdfs that aren't really are found
+    """
+    logger.debug("Checking for pdfs actually being pdfs")
+    pdf_that_arent_pdfs = []
+    for pdf_file in [f for f in files if f.lower().endswith(".pdf")]:
+        try:
+            result = subprocess.run(
+                ["pdfinfo", pdf_file], capture_output=True, text=True, timeout=5, check=False, cwd=rundir
+            )
+            if "May not be a PDF file" in result.stderr:
+                pdf_that_arent_pdfs.append(pdf_file)
+        except FileNotFoundError:
+            logger.error("pdfinfo not found, this should not happen!")
+        except subprocess.TimeoutExpired:
+            logger.error(f"pdfinfo timed out for {pdf_file}")
+        except Exception as e:
+            logger.debug(f"Could not run pdfinfo on {pdf_file}: {e}")
+
+    if pdf_that_arent_pdfs:
+        info = f"Found {len(pdf_that_arent_pdfs)} PDFs that don't look like a PDF."
+        long_info = "\n".join(pdf_that_arent_pdfs)
+        issue = TeXFileIssue(key=IssueType.pdf_not_pdf, info=info)
+        return CheckResult(
+            check_passed=False,
+            info=info,
+            long_info=long_info,
+            severity=CheckSeverity.error,
+            issues=[issue],
+        )
+
+    return CheckResult(
+        check_passed=True,
+        info="",
+        long_info="",
+        severity=CheckSeverity.warning,
+        issues=[],
+    )
+
+
 FILE_CHECKS: dict[str, Callable[[list[str], str, dict], CheckResult]] = {
     "no-exe": check_no_exe,
     "image-sizes": check_image_sizes,
+    "pdf-are-pdf": pdf_are_pdf,
 }
 
 
