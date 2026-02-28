@@ -57,6 +57,12 @@ from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
+from .typst import (
+    ParsedTypstFile,
+    compute_typst_document_graph,
+    compute_typst_toplevel_files,
+    parse_typst_dir,
+)
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -645,6 +651,7 @@ class PreflightResponse(BaseModel):
     status: PreflightStatus
     detected_toplevel_files: list[ToplevelFile]
     tex_files: list[ParsedTeXFile]
+    typst_files: list[ParsedTypstFile] = []
     ancillary_files: list[str]
     maybe_used_files: list[str]
     image_files: list[ImageInfo] = []
@@ -669,6 +676,8 @@ ONLY_IMAGE_PARSE_FILE_EXTENSIONS = [".cls", ".clo"]
 MAYBE_USED_FILE_EXTENSIONS = [
     ".pygtex",  # frozen cache of minted/pygmentize
 ]
+
+PARSED_TYPST_EXTENSIONS = [".typ"]
 
 single_argument_include_commands = [
     "include",
@@ -995,7 +1004,13 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
 
 def parse_dir(
     rundir: str,
-) -> tuple[dict[str, ParsedTeXFile] | ToplevelFile, list[str], list[str], list[ImageInfo], list[TeXFileIssue]]:
+) -> tuple[
+    dict[str, ParsedTeXFile] | dict[str, ParsedTypstFile] | ToplevelFile,
+    list[str],
+    list[str],
+    list[ImageInfo],
+    list[TeXFileIssue],
+]:
     """Parse all TeX files in a directory.
 
     Returns:
@@ -1034,12 +1049,18 @@ def parse_dir(
     # maybe files
     maybe_files = [t for t in files if os.path.splitext(t)[1].lower() in MAYBE_USED_FILE_EXTENSIONS]
     # files = os.listdir(rundir)
+    # check for typst files
+    typst_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_TYPST_EXTENSIONS]
     # needs more extensions that we support
     tex_files = [t for t in files if os.path.splitext(t)[1].lower() in PARSED_FILE_EXTENSIONS]
     logger.debug(f"Detected files for {rundir} = {tex_files}")
     if not tex_files:
+        if len(typst_files) > 0:
+            # A typst submission
+            typst_nodes = parse_typst_dir(typst_files, rundir)
+            return typst_nodes, anc_files, maybe_files, image_files, warning_issues
         # we didn't find any tex file, check for a single PDF file
-        if len(files) == 1 and files[0].lower().endswith(".pdf"):
+        elif len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
             # run checks that might reject the PDF
             checks_succeeded, failed_checks = run_pdf_checks(f"{rundir}/{files[0]}", "all")
@@ -1743,10 +1764,11 @@ def _dump_nodes(nodes: dict[str, ParsedTeXFile]) -> None:
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     """Parse submission and generated preflight response as dictionary."""
     # parse files
-    n: dict[str, ParsedTeXFile] | ToplevelFile
+    n: dict[str, ParsedTeXFile] | dict[str, ParsedTypstFile] | ToplevelFile
     anc_files: list[str]
     maybe_files: list[str]
-    nodes: dict[str, ParsedTeXFile]
+    tex_nodes: dict[str, ParsedTeXFile] = {}
+    typst_nodes: dict[str, ParsedTypstFile] = {}
     roots: dict[str, ParsedTeXFile]
     toplevel_files: dict[str, ToplevelFile]
 
@@ -1761,7 +1783,6 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         tests_succeeded = False
         error_msg = f"QA check failed: {e!s}"
     if not tests_succeeded:
-        nodes = {}
         toplevel_files = {}
         anc_files = []
         maybe_files = []
@@ -1769,43 +1790,58 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     elif isinstance(n, ToplevelFile):
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
-        nodes = {}
         status = PreflightStatus(key=PreflightStatusValues.success)
+    elif n and isinstance(next(iter(n.values())), ParsedTypstFile):
+        # Typst submission
+        typst_nodes = n  # type: ignore[assignment]
+        if typst_nodes == {}:
+            toplevel_files = {}
+            status = PreflightStatus(key=PreflightStatusValues.error, info="No Typst files found")
+        else:
+            typst_roots, typst_nodes = compute_typst_document_graph(typst_nodes)
+            toplevel_files = compute_typst_toplevel_files(typst_roots, typst_nodes)
+            if not toplevel_files:
+                status = PreflightStatus(key=PreflightStatusValues.error, info="No toplevel Typst files found")
+            else:
+                if toplevel_files and warning_issues:
+                    first_tlf = next(iter(toplevel_files.values()))
+                    first_tlf.issues.extend(warning_issues)
+                status = PreflightStatus(key=PreflightStatusValues.success)
     else:
-        nodes = n
-        if nodes == {}:
+        tex_nodes = n  # type: ignore[assignment]
+        if tex_nodes == {}:
             roots = {}
             toplevel_files = {}
             status = PreflightStatus(key=PreflightStatusValues.error, info="No TeX files found")
         else:
-            logger.debug("generate preflight: initial nodes = %s", nodes)
+            logger.debug("generate preflight: initial nodes = %s", tex_nodes)
             # search for TeX files only in a first round
-            kpse_found = kpse_search_files(rundir, nodes)
+            kpse_found = kpse_search_files(rundir, tex_nodes)
             # update nodes with information of found kpse
-            nodes = update_nodes_with_kpse_info(nodes, kpse_found, only_tex=True)
-            logger.debug("found TeX file nodes: %s", nodes.keys())
+            tex_nodes = update_nodes_with_kpse_info(tex_nodes, kpse_found, only_tex=True)
+            logger.debug("found TeX file nodes: %s", tex_nodes.keys())
             # create tree
-            roots, nodes = compute_document_graph(nodes)
+            roots, tex_nodes = compute_document_graph(tex_nodes)
             logger.debug("found root nodes: %s", roots.keys())
             # determine toplevel files
-            toplevel_files = compute_toplevel_files(roots, nodes)
+            toplevel_files = compute_toplevel_files(roots, tex_nodes)
             # search for all other files per toplevel file
             for tlf in toplevel_files.keys():
-                tl_n = nodes[tlf]
+                tl_n = tex_nodes[tlf]
                 logger.debug(
                     "Working on toplevel file %s searching for other files %s", tl_n.filename, tl_n.used_other_files
                 )
-                kpse_found2 = kpse_search_files(rundir, nodes, tl_n)
-                nodes = update_nodes_with_kpse_info(nodes, kpse_found2, only_tex=False, toplevel_node=tl_n)
+                kpse_found2 = kpse_search_files(rundir, tex_nodes, tl_n)
+                tex_nodes = update_nodes_with_kpse_info(tex_nodes, kpse_found2, only_tex=False, toplevel_node=tl_n)
                 logger.debug(
                     "After working on toplevel file %s searching for other files - n.used_other_files = %s",
                     tl_n.filename,
-                    nodes[tlf].used_other_files,
+                    tex_nodes[tlf].used_other_files,
                 )
-            guess_compilation_parameters(toplevel_files, nodes)
-            deal_with_bibliographies(rundir, toplevel_files, nodes)
-            deal_with_indices(rundir, toplevel_files, nodes)
-            update_toplevel_issues(toplevel_files, nodes)
+            guess_compilation_parameters(toplevel_files, tex_nodes)
+            deal_with_bibliographies(rundir, toplevel_files, tex_nodes)
+            deal_with_indices(rundir, toplevel_files, tex_nodes)
+            update_toplevel_issues(toplevel_files, tex_nodes)
             # Add warning issues to the first toplevel file (or create a dummy if none)
             if toplevel_files and warning_issues:
                 first_tlf = next(iter(toplevel_files.values()))
@@ -1815,7 +1851,8 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     return PreflightResponse(
         status=status,
         detected_toplevel_files=[tl for tl in toplevel_files.values()],
-        tex_files=[n for n in nodes.values()],
+        tex_files=[nd for nd in tex_nodes.values()],
+        typst_files=[nd for nd in typst_nodes.values()],
         ancillary_files=anc_files,
         maybe_used_files=maybe_files,
         image_files=image_files,

@@ -15,6 +15,7 @@ T = TypeVar("T")
 #
 PDF_SUBMISSION_STRING = "pdf_submission"
 HTML_SUBMISSION_STRING = "html_submission"
+TYPST_SUBMISSION_STRING = "typst_submission"
 
 
 TEX_EXTENSIONS = "tex"
@@ -177,6 +178,7 @@ class LanguageType(str, Enum):
     latex209 = "latex209"
     pdf = "pdf"
     html = "html"
+    typst = "typst"
 
 
 class EngineType(str, Enum):
@@ -341,6 +343,8 @@ class CompilerSpec(BaseModel):
             return PDF_SUBMISSION_STRING
         if self.lang.value == "html":
             return HTML_SUBMISSION_STRING
+        if self.lang.value == "typst":
+            return TYPST_SUBMISSION_STRING
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -367,6 +371,8 @@ class CompilerSpec(BaseModel):
             return PDF_SUBMISSION_STRING
         if self.lang.value == "html":
             return HTML_SUBMISSION_STRING
+        if self.lang.value == "typst":
+            return TYPST_SUBMISSION_STRING
         if self.lang in self._COMPILER_SELECTION:
             if self.output in self._COMPILER_SELECTION[self.lang]:
                 if self.engine in self._COMPILER_SELECTION[self.lang][self.output]:
@@ -385,6 +391,12 @@ class CompilerSpec(BaseModel):
             self.lang = LanguageType.html
             self.engine = EngineType.unknown
             self.output = OutputType.unknown
+            self.postp = PostProcessType.none
+            return
+        if compiler == TYPST_SUBMISSION_STRING:
+            self.lang = LanguageType.typst
+            self.engine = EngineType.unknown
+            self.output = OutputType.pdf
             self.postp = PostProcessType.none
             return
         # further aliases:
