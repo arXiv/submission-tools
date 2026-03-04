@@ -575,6 +575,9 @@ class BaseConverter:
         err_lines = err.splitlines()
         err_lines_not_ignored = []
         for el in err_lines:
+            if el.startswith("bubblewrapping call"):
+                # this is issued on each call head
+                continue
             if el.startswith("libxpdf: Syntax Warning: Bad annotation destination"):
                 # ignore this warning, it is not important
                 continue
