@@ -1,0 +1,15 @@
+\documentclass{article}
+\usepackage[backend=bibtex]{biblatex}
+\addbibresource{foo.bib}
+\begin{document}
+Hello Wolrd
+\begin{refsection}
+(Type your content here.) \cite{abc} Hell WOrld
+\printbibliography[heading=subbibintoc,title={Refs1}]
+\end{refsection}
+\begin{refsection}
+\section*{Bla}
+Hello World\cite{def}
+\printbibliography[heading=subbibintoc,title={Refs2}]
+\end{refsection}
+\end{document}

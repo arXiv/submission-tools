@@ -126,19 +126,17 @@ class BaseConverter:
         """Run the base engine of the converter."""
         pass
 
-    def _determine_bib_bbl_processor(self, in_dir: str) -> tuple[str, list[str], list[str]]:
+    def _determine_bib_bbl_processor(self, in_dir: str) -> list[tuple[str, list[str], list[str]]]:
         logger = get_logger()
         stem = self.stem
         # if bib processer is requested, run it
         bbl_file = f"{in_dir}/{stem}.bbl"
         if os.path.exists(bbl_file):
             logger.debug("bbl file present, do not run any bib-to-bbl processor")
-            return "", [], []
+            return []
         else:
+            ret_hash: list[tuple[str, list[str], list[str]]] = []
             # try to determine the correct bib-to-bbl processor
-            bibprog = ""
-            bibopts = []
-            bibargs = []
             xmlrun_file = f"{in_dir}/{stem}.run.xml"
             if os.path.exists(xmlrun_file):
                 logger.debug("determine_bib_bbl: checking run.xml file")
@@ -149,32 +147,51 @@ class BaseConverter:
                     # we cannot open the xml file, fall back to bibtex
                     xrd = {}
                 # extract bibprogram if all components are defined and set, otherwise give ""
-                bibprog = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("binary", "")
-                if bibprog == "":
-                    # we cannot parse the .xml.run file or cannot get the correct value,
-                    # Maybe the .run.xml file was create not from biblatex?
-                    logger.debug("determine_bib_bbl_processor: parsing .run.xml did not find bib program")
-                    # do not return so that we can continue parsing the .aux file
+                xml_requests_external_value: list[dict] | dict = xrd.get("requests", {}).get("external", {})
+                external_progs: list[dict] = []
+                if isinstance(xml_requests_external_value, dict):
+                    external_progs = [xml_requests_external_value]
                 else:
-                    xrd_option = (
-                        xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("option", [])
-                    )  # options could be missing
-                    xrd_infile = xrd.get("requests", {}).get("external", {}).get("cmdline", {}).get("infile", "stem")
-                    if type(xrd_option) is str:
-                        bibopts = [xrd_option]
-                    elif type(xrd_option) is list:
-                        bibopts = xrd_option
-                    else:
-                        # what should that be?
+                    external_progs = xml_requests_external_value
+                # search for biblatex created requests
+                found_biblatex_request = False
+                for exreq in external_progs:
+                    logger.debug(f"Checking xml request external {exreq}")
+                    if exreq.get("@package", None) == "biblatex":
+                        found_biblatex_request = True
+                        break
+                if found_biblatex_request:
+                    for exreq in external_progs:
+                        cmdline = exreq.get("cmdline", {})
                         bibopts = []
-                    if type(xrd_infile) is str:
-                        bibargs = [xrd_infile]
-                    elif type(xrd_infile) is list:
-                        bibargs = xrd_infile
-                    else:
-                        # what should that be?
-                        bibargs = [stem]
-                    return bibprog, bibopts, bibargs
+                        bibargs = []
+                        bibprog: str = cmdline.get("binary", "")
+                        if bibprog == "":
+                            # we cannot parse the .xml.run file or cannot get the correct value,
+                            # Maybe the .run.xml file was create not from biblatex?
+                            logger.debug(
+                                "determine_bib_bbl_processor: parsing .run.xml entry for biblatex withut cmdline"
+                            )
+                            continue
+                        xrd_option = cmdline.get("option", [])
+                        xrd_infile = cmdline.get("infile", "stem")
+                        if type(xrd_option) is str:
+                            bibopts = [xrd_option]
+                        elif type(xrd_option) is list:
+                            bibopts = xrd_option
+                        else:
+                            # what should that be?
+                            bibopts = []
+                        if type(xrd_infile) is str:
+                            bibargs = [xrd_infile]
+                        elif type(xrd_infile) is list:
+                            bibargs = xrd_infile
+                        else:
+                            # what should that be?
+                            bibargs = [stem]
+                        ret_hash.append((bibprog, bibopts, bibargs))
+
+                    return ret_hash
 
             # we are still here, check .aux file for traces of \bibstyle
             # We are still here, check the .aux file
@@ -232,13 +249,13 @@ class BaseConverter:
 
                 if bibstyle and bibdata_files_present:
                     logger.debug("determine_bib_bbl_processor: found some bibstyle, assuming bibtex")
-                    return "bibtex", [], [stem]
+                    return [("bibtex", [], [stem])]
                 else:
                     logger.debug("determine_bib_bbl_processor: no \\bibstyle found in .aux file.")
-                    return "", [], []
+                    return []
             else:
                 logger.warning("determine_bib_bbl_processor: no aux file found, strange.")
-                return "", [], []
+                return []
 
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
@@ -267,39 +284,42 @@ class BaseConverter:
             )
             return outcome
 
-        bibprog, bibopts, bibargs = self._determine_bib_bbl_processor(in_dir)
+        bib_call_items = self._determine_bib_bbl_processor(in_dir)
 
-        if bibprog:
-            # make sure that options with spaces are split and everything flattened
-            # for bibtex8, the option contains '--min_crossrefs 2'
-            bibopts = [y for ys in bibopts for y in str.split(ys)]
-            bib_step = f"{bibprog}_run"
-            logger.debug(f"Starting {bibprog} run")
-            bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts, *bibargs]
-            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
-            # bibtex and biber only outputs to stdout, even errors
-            # since the frontend only shows the `log` entry, move the stdout part to log
-            bib_run["log"] = bib_out
-            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
-            if bib_run["return_code"] != 0:
-                logger.debug(f"{bibprog} run failed")
-                # remove generated pdf to be sure it will not be shown
-                # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
-                # believes all is fine and continues with success!
-                if os.path.exists(artifact_file):
-                    logger.debug("Output %s deleted due to failed run", output_name)
-                    os.unlink(artifact_file)
-                    # the pdf/dvi file was generated in the first run
-                    self.runs[0][base_format] = file_props(artifact_file)
-                outcome.update(
-                    {
-                        "status": "fail",
-                        "step": bib_step,
-                        "reason": f"{bibprog} run returned error code",
-                        "runs": self.runs,
-                    }
-                )
-                return outcome
+        if bib_call_items:
+            bib_run_nr = 0
+            for bibprog, bibopts, bibargs in bib_call_items:
+                # make sure that options with spaces are split and everything flattened
+                # for bibtex8, the option contains '--min_crossrefs 2'
+                bibopts_list = [y for ys in bibopts for y in str.split(ys)]
+                bib_step = f"bib_run:{bib_run_nr}:{bibprog}"
+                logger.debug(f"Starting {bibprog} run")
+                bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts_list, *bibargs]
+                bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+                # bibtex and biber only outputs to stdout, even errors
+                # since the frontend only shows the `log` entry, move the stdout part to log
+                bib_run["log"] = bib_out
+                self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+                if bib_run["return_code"] != 0:
+                    logger.debug(f"{bibprog} run failed")
+                    # remove generated pdf to be sure it will not be shown
+                    # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                    # believes all is fine and continues with success!
+                    if os.path.exists(artifact_file):
+                        logger.debug("Output %s deleted due to failed run", output_name)
+                        os.unlink(artifact_file)
+                        # the pdf/dvi file was generated in the first run
+                        self.runs[0][base_format] = file_props(artifact_file)
+                    outcome.update(
+                        {
+                            "status": "fail",
+                            "step": bib_step,
+                            "reason": f"{bibprog} run returned error code",
+                            "runs": self.runs,
+                        }
+                    )
+                    return outcome
+                bib_run_nr += 1
 
         # if idx file is present and ind file is not, run makeindex
         if ENABLE_MAKEINDEX:

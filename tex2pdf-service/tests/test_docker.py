@@ -513,7 +513,7 @@ def test_bibtex(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
-    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:bibtex"
 
 
 @pytest.mark.integration
@@ -525,7 +525,22 @@ def test_biblatex_biber(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, biber, pdflatex, pdflatex
-    assert meta["converters"][0]["runs"][1]["step"] == "biber_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:biber"
+
+
+@pytest.mark.integration
+def test_biblatex_bib_multiple(docker_container):
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/biblatex-bib-multiple/biblatex-bib-multiple.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/biblatex-bib-multiple.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    print(meta)
+    assert len(meta["converters"][0]["runs"]) == 6  # pdflatex, bibtex, bibtex, bibtex, pdflatex, pdflatex
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:bibtex"
+    assert meta["converters"][0]["runs"][2]["step"] == "bib_run:1:bibtex"
+    assert meta["converters"][0]["runs"][3]["step"] == "bib_run:2:bibtex"
 
 
 @pytest.mark.integration
@@ -537,7 +552,7 @@ def test_biblatex_bibtex(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
-    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:bibtex"
 
 
 @pytest.mark.integration
@@ -549,7 +564,7 @@ def test_biblatex_bibtex8(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex8, pdflatex, pdflatex
-    assert meta["converters"][0]["runs"][1]["step"] == "bibtex8_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:bibtex8"
 
 
 @pytest.mark.integration
@@ -590,7 +605,7 @@ def test_no_bib_processor(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 4  # pdflatex, bibtex, pdflatex, pdflatex
-    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:bibtex"
 
 
 def test_tl2023_on_zzrm_without_texlive_version(docker_container):
@@ -663,7 +678,7 @@ def test_bibtex_fail(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, bibtex
-    assert meta["converters"][0]["runs"][1]["step"] == "bibtex_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:bibtex"
     assert meta["converters"][0]["runs"][0]["pdf"]["size"] is None
     assert meta["converters"][0]["runs"][1]["log"].startswith("This is BibTeX, Version")
     assert "I couldn't open style file" in meta["converters"][0]["runs"][1]["log"]
@@ -678,7 +693,7 @@ def test_biber_fail(docker_container):
     assert status == 200
     assert meta is not None
     assert len(meta["converters"][0]["runs"]) == 2  # pdflatex, bibtex
-    assert meta["converters"][0]["runs"][1]["step"] == "biber_run"
+    assert meta["converters"][0]["runs"][1]["step"] == "bib_run:0:biber"
     assert meta["converters"][0]["runs"][0]["pdf"]["size"] is None
     assert meta["converters"][0]["runs"][1]["log"].startswith("INFO - This is Biber")
     assert "ERROR - Cannot find" in meta["converters"][0]["runs"][1]["log"]
