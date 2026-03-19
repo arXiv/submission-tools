@@ -299,7 +299,8 @@ class BaseConverter:
                 # bibtex and biber only outputs to stdout, even errors
                 # since the frontend only shows the `log` entry, move the stdout part to log
                 bib_run["log"] = bib_out
-                self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", f"{stem}.bbl")
+                bbl_filename = os.path.join(in_dir, f"{stem}.bbl")
+                self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", bbl_filename)
                 if bib_run["return_code"] != 0:
                     logger.debug(f"{bibprog} run failed")
                     # remove generated pdf to be sure it will not be shown
@@ -333,8 +334,9 @@ class BaseConverter:
                 # makeindex outputs to stdout, even errors
                 # since the frontend only shows the `log` entry, move the stdout part to log
                 makeindex_run["log"] = makeindex_out
+                ind_filename = os.path.join(in_dir, f"{stem}.ind")
                 self._report_run(
-                    makeindex_run, makeindex_out, makeindex_err, makeindex_step, in_dir, out_dir, "idx", f"{stem}.ind"
+                    makeindex_run, makeindex_out, makeindex_err, makeindex_step, in_dir, out_dir, "idx", ind_filename
                 )
                 if makeindex_run["return_code"] != 0:
                     logger.debug("makeindex run failed")

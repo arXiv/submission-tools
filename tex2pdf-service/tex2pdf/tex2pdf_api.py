@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 import traceback
 import typing
 from enum import Enum
@@ -298,7 +299,8 @@ async def convert_pdf(
     log_extra = {"source_filename": filename}
     logger = get_logger()
     logger.debug("Request: %s", request.url, extra=log_extra)
-    logger.info("%s", incoming.filename)
+    start_time = time.perf_counter()
+    logger.info("Start processing %s", incoming.filename)
     tag = os.path.basename(filename)
     while True:
         [stem, ext] = os.path.splitext(tag)
@@ -388,7 +390,7 @@ async def convert_pdf(
         logger.debug("compile_service: %s", compile_service, extra=log_extra)
 
         if compile_service == "current":
-            logger.info("Using current compilation service.")
+            logger.debug("Using current compilation service.")
             return _convert_pdf_current(
                 tempdir=tempdir,
                 in_dir=in_dir,
@@ -406,7 +408,7 @@ async def convert_pdf(
                 log_extra=log_extra,
             )
         else:
-            logger.info("Using convert_pdf_remote")
+            logger.debug("Using convert_pdf_remote")
             status_code, msg = convert_pdf_remote(
                 compile_service=compile_service,
                 arxivid=arxivid,
@@ -423,6 +425,8 @@ async def convert_pdf(
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
             )
+            elapse_time = time.perf_counter() - start_time
+            logger.info("End processing %s - used time (secs) %.2f", incoming.filename, elapse_time)
             if status_code == 200:
                 headers = {
                     "Content-Type": "application/gzip",
