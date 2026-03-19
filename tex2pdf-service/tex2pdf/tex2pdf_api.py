@@ -391,7 +391,7 @@ async def convert_pdf(
 
         if compile_service == "current":
             logger.debug("Using current compilation service.")
-            return _convert_pdf_current(
+            response = _convert_pdf_current(
                 tempdir=tempdir,
                 in_dir=in_dir,
                 out_dir=out_dir,
@@ -407,6 +407,9 @@ async def convert_pdf(
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
             )
+            elapse_time = time.perf_counter() - start_time
+            logger.info("End processing %s - used time (secs) %.2f", incoming.filename, elapse_time)
+            return response
         else:
             logger.debug("Using convert_pdf_remote")
             status_code, msg = convert_pdf_remote(
