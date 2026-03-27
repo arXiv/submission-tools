@@ -775,7 +775,7 @@ bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
 bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
 rerun_needles = [
-    "Rerun to get cross-references right\.",
+    "Rerun to get cross-references right.",
 ]
 error_needles = [
     (
