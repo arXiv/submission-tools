@@ -247,7 +247,7 @@ def healthcheck() -> str:
     responses={
         STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}}, "description": "Conversion result"},
         STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
-        STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+        STATCODE.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Message},
         STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message},
     },
 )
@@ -375,13 +375,13 @@ async def convert_pdf(
             except ZZRMException as e:
                 logger.error("Failed to load ZeroZeroReadMe from %s", in_dir, exc_info=True, extra=log_extra)
                 return JSONResponse(
-                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT,
                     content={"message": f"ZZRM cannot be loaded: {e!s}"},
                 )
             except ValueError as e:
                 logger.error("Failed to determine compilation system: %s -- %s, %s", str(e), ts, zzrm.texlive_version)
                 return JSONResponse(
-                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT,
                     content={"message": f"Invalid configuration: {e!s}"},
                 )
         else:
@@ -478,20 +478,20 @@ def _convert_pdf_current(
     except RemovedSubmission as exc:
         logger.info("Archive is marked deleted: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
-            status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
+            status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT, content={"message": "The source is marked deleted."}
         )
 
     except ZZRMUnsupportedCompiler as exc:
         logger.error("ZZRM selected compiler is not supported: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
-            status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"message": "ZZRM selected compiler is not supported."},
         )
 
     except ZZRMUnderspecified as exc:
         logger.error("ZZRM missing or underspecified: %s", str(exc), exc_info=True, extra=log_extra)
         return JSONResponse(
-            status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"message": "ZZRM missing or underspecified."},
         )
 
@@ -590,7 +590,7 @@ async def stamp_pdf(
     responses={
         STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}}, "description": "Conversion result"},
         STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
-        STATCODE.HTTP_422_UNPROCESSABLE_ENTITY: {"model": Message},
+        STATCODE.HTTP_422_UNPROCESSABLE_CONTENT: {"model": Message},
         STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message},
     },
 )
@@ -638,7 +638,7 @@ async def autotex_pdf(
                 arxiv_identifier_id = arxiv_identifier.id
             except IdentifierException:
                 return JSONResponse(
-                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT,
                     content={"message": "Cannot determine arXiv identifier."},
                 )
     if arxiv_identifier_id is None:
@@ -668,7 +668,8 @@ async def autotex_pdf(
             # TODO how can we detect this???
             logger.info("Archive is marked deleted.")
             return JSONResponse(
-                status_code=STATCODE.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": "The source is marked deleted."}
+                status_code=STATCODE.HTTP_422_UNPROCESSABLE_CONTENT,
+                content={"message": "The source is marked deleted."},
             )
 
         except Exception as exc:

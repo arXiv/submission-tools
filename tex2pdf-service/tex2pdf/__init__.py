@@ -4,7 +4,7 @@ import os
 import stat
 from typing import Any
 
-from pythonjsonlogger.jsonlogger import JsonFormatter
+from pythonjsonlogger.json import JsonFormatter
 
 from .service_logger import get_logger
 
