@@ -94,6 +94,8 @@ class IssueType(str, Enum):
     bbl_usage_mismatch = "bbl_usage_mismatch"
     oversized_image = "oversized_image"
     pdf_not_pdf = "pdf_not_pdf"
+    graphics_driver_option = "graphics_driver_option"
+    graphics_driver_unsupported = "graphics_driver_unsupported"
     other = "other"
 
 
