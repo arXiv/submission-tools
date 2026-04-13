@@ -65,6 +65,18 @@ MODULE_PATH = os.path.dirname(__file__)
 # packages that require unicode tex (xetex, luatex)
 UNICODE_TEX_PACKAGES = ["fontspec", "polyglossia", "unicode-math"]
 
+# Known driver options for graphicx/graphics packages
+# These should generally not be specified explicitly since LaTeX auto-detects the driver
+GRAPHICS_DRIVER_UNSUPPORTED = {"dvipdfm", "dvipdfmx", "xdvi", "oztex", "textures", "vtex"}
+GRAPHICS_DRIVER_SUPPORTED = {"dvips", "xetex", "pdftex"}
+if ENABLE_LUALATEX:
+    GRAPHICS_DRIVER_SUPPORTED.add("luatex")
+else:
+    GRAPHICS_DRIVER_UNSUPPORTED.add("luatex")
+
+# The graphics/graphicx package names (without .sty)
+GRAPHICS_PACKAGES = {"graphics", "graphicx"}
+
 # Pre-compiled regex patterns for performance optimization
 # These patterns are used frequently during TeX file parsing
 _RE_BYE = re.compile(rb"^[^%\n]*\\bye(?![a-zA-Z])", re.MULTILINE)
@@ -136,6 +148,7 @@ class ParsedTeXFile(BaseModel):
     contains_pdfoutput_true: bool = False
     contains_pdfoutput_false: bool = False
     hyperref_found: bool | None = None
+    _graphics_driver_options: list[str] = []
     used_tex_files: list[str] = []
     used_bib_files: list[str] = []
     used_idx_files: list[str] = []
@@ -437,6 +450,29 @@ class ParsedTeXFile(BaseModel):
                 if fn == "biblatex.sty":
                     self._uses_bibliography = True
                     self._uses_bbl_file_type.add(BblType.biblatex)
+                # check for driver options on graphics/graphicx packages
+                pkg_name = fn.removesuffix(".sty")
+                if pkg_name in GRAPHICS_PACKAGES and include_options:
+                    opts = [o.strip() for o in include_options.split(",")]
+                    for opt in opts:
+                        if opt in GRAPHICS_DRIVER_UNSUPPORTED:
+                            self._graphics_driver_options.append(opt)
+                            self.issues.append(
+                                TeXFileIssue(
+                                    IssueType.graphics_driver_unsupported,
+                                    f"Package {pkg_name} loaded with unsupported driver option '{opt}'. "
+                                    f"{opt} is not supported; consider removing the driver option.",
+                                )
+                            )
+                        elif opt in GRAPHICS_DRIVER_SUPPORTED:
+                            self.issues.append(
+                                TeXFileIssue(
+                                    IssueType.graphics_driver_option,
+                                    f"Package {pkg_name} loaded with explicit driver option '{opt}'. "
+                                    f"The driver is auto-detected; specifying it may cause issues "
+                                    f"if the compilation engine does not match.",
+                                )
+                            )
         elif incdef.cmd == "psfig" or incdef.cmd == "epsfig":
             # Command syntax: \(e)psfig{file=xxxx, ...}
             # which is similar to \includegraphics[...]{xxxx}

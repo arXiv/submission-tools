@@ -1125,3 +1125,40 @@ def test_pdf_are_pdf_nonpdf_renamed_detected_single_pdf():
         assert pf.status.key.value == "error"
         assert "QA check failed" in pf.status.info
         assert "PDF" in pf.status.info
+
+
+def test_graphics_driver_dvipdfm():
+    """Test that dvipdfm driver option on graphicx is flagged as unsupported."""
+    dir_path = os.path.join(FIXTURE_DIR, "graphics-driver-dvipdfm")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    driver_issues = [i for tf in pf.tex_files for i in tf.issues if i.key == IssueType.graphics_driver_unsupported]
+    assert len(driver_issues) == 1
+    assert "dvipdfm" in driver_issues[0].info
+    assert "not supported" in driver_issues[0].info
+
+
+def test_graphics_driver_explicit():
+    """Test that explicit driver option on graphicx generates a warning."""
+    dir_path = os.path.join(FIXTURE_DIR, "graphics-driver-dvips")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    driver_issues = [i for tf in pf.tex_files for i in tf.issues if i.key == IssueType.graphics_driver_option]
+    assert len(driver_issues) == 1
+    assert "dvips" in driver_issues[0].info
+    assert "auto-detected" in driver_issues[0].info
+
+
+def test_graphics_no_driver_option():
+    """Test that graphicx without driver option produces no driver warnings."""
+    dir_path = os.path.join(FIXTURE_DIR, "graphics-driver-none")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    driver_issues = [
+        i for tf in pf.tex_files for i in tf.issues
+        if i.key in (IssueType.graphics_driver_option, IssueType.graphics_driver_unsupported)
+    ]
+    assert len(driver_issues) == 0
