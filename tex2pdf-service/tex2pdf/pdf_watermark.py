@@ -35,7 +35,7 @@ def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, 
 
     try:
         logger.debug("Trying to open PDF file: %s", in_pdf)
-        with pymupdf.open(in_pdf) as source:
+        with pymupdf.open(in_pdf) as source:  # type: ignore[no-untyped-call]
             logger.debug("pymupdf open file succeeded")
             # pymupdf.open() can open multiple file types, including PDF, XPS, and EPUB.
             # When a non-PDF is submitted, raise an error.
@@ -58,7 +58,7 @@ def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, 
             top = (page_size[1] - wm_length) / 2
             bot = (page_size[1] + wm_length) / 2
             # let us check for page color as well as overlap
-            pix = page.get_pixmap(clip=pymupdf.Rect(lef, top, rig, bot), alpha=True)
+            pix = page.get_pixmap(clip=pymupdf.Rect(lef, top, rig, bot), alpha=True)  # type: ignore[no-untyped-call]
             color_count = pix.color_count()
             color_topusage = pix.color_topusage()
             # cases:
@@ -94,7 +94,7 @@ def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, 
             # - transparent or uni-color background get an overlay on top of it
             # - everything else gets an "underlay" (i.e. the watermark is below the content)
             page.insert_text(
-                pymupdf.Point(rig, bot),
+                pymupdf.Point(rig, bot),  # type: ignore[no-untyped-call]
                 watermark.text,
                 fontname=fname,
                 fontsize=fsize,
@@ -104,7 +104,7 @@ def add_watermark_text_to_pdf(watermark: Watermark, in_pdf: pathlib.Path | str, 
             )
             if watermark.link:
                 page.insert_link(
-                    {"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(lef, top, rig, bot), "uri": watermark.link}
+                    {"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(lef, top, rig, bot), "uri": watermark.link}  # type: ignore[no-untyped-call]
                 )
             if isinstance(out_pdf, io.FileIO):
                 logger.debug("Saving to FileIO object")
