@@ -41,6 +41,7 @@ def convert_pdf_remote(
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
+    override_ts: int | None = None,
 ) -> tuple[int, str]:
     """
     Submit a tarball to a remote compilation service and get back the outcome tarball.
@@ -60,6 +61,7 @@ def convert_pdf_remote(
     :param auto_detect: whether to auto-detect the main .tex file using preflight
     :param hide_anc_dir: whether to hide the ancillary directory during compilation
     :param log_extra: extra context for logging
+    :param override_ts: Override the compilation time using SOURCE_DATE_EPOCH
     :return: tuple of (HTTP status code, path to outcome tarball or error message
     """
     logger = get_logger()
@@ -90,6 +92,9 @@ def convert_pdf_remote(
                     args_dict["watermark_text"] = watermark_text
                     if watermark_link:
                         args_dict["watermark_link"] = watermark_link
+                if override_ts is not None:
+                    args_dict["ts"] = override_ts
+                    args_dict["override_time"] = True
                 logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
                 logger.debug("uploading = %s", uploading, extra=log_extra)
                 try:

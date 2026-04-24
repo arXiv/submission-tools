@@ -293,6 +293,9 @@ async def convert_pdf(
     watermark_link: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
+    override_time: typing.Annotated[
+        bool, Query(title="Fake compilation time to ts", description="Fakes the time the compilation sees.")
+    ] = False,
 ) -> Response:
     """Get a tarball, and convert to PDF."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
@@ -301,6 +304,18 @@ async def convert_pdf(
     logger.debug("Request: %s", request.url, extra=log_extra)
     start_time = time.perf_counter()
     logger.info("Start processing %s", incoming.filename)
+
+    override_ts: int | None = None
+    if override_time:
+        if ts is None:
+            return JSONResponse(
+                status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "Requesting override_time requires ts."}
+            )
+        else:
+            override_ts = int(ts)
+    else:
+        override_ts = None
+
     tag = os.path.basename(filename)
     while True:
         [stem, ext] = os.path.splitext(tag)
@@ -406,6 +421,7 @@ async def convert_pdf(
                 auto_detect=auto_detect,
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
+                override_ts=override_ts,
             )
             elapse_time = time.perf_counter() - start_time
             logger.info("End processing %s - used time (secs) %.2f", incoming.filename, elapse_time)
@@ -427,6 +443,7 @@ async def convert_pdf(
                 auto_detect=auto_detect,
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
+                override_ts=override_ts,
             )
             elapse_time = time.perf_counter() - start_time
             logger.info("End processing %s - used time (secs) %.2f", incoming.filename, elapse_time)
@@ -456,6 +473,7 @@ def _convert_pdf_current(
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
+    override_ts: int | None = None,
 ) -> Response:
     """Convert source to PDF using the built-in TeX system."""
     driver = ConverterDriver(

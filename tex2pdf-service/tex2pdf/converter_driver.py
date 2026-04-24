@@ -246,6 +246,12 @@ class ConverterDriver:
         # ensure that TEXMFVAR is always a new clean directory
         os.environ["TEXMFVAR"] = f"{self.work_dir}/texmf-var"
         try:
+            # set up environment to honor ts as compilation date
+            if self.ts:
+                saved_fsd: str | None = os.getenv("FORCE_SOURCE_DATE")
+                saved_sde: str | None = os.getenv("SOURCE_DATE_EPOCH")
+                os.environ["FORCE_SOURCE_DATE"] = 1
+                os.environ["SOURCE_DATE_EPOCH"] = str(self.ts)
             # run TeX under try and have a finally to rename the anc directory back
             # in case some exception happens in the TeX processing
             self._run_tex_commands()
@@ -255,8 +261,17 @@ class ConverterDriver:
             self.outcome["reason"] = str(e)
             self.outcome["in_files"] = file_props_in_dir(self.in_dir)
         finally:
-            # revert the TEXMFVAR to the unset value
+            # revert the TEXMFVAR to the unset value, and reset SOURCE_DATE_EPOCH settings
             del os.environ["TEXMFVAR"]
+            if self.ts:
+                if saved_fsd is None:
+                    del os.environ["FORCE_SOURCE_DATE"]
+                else:
+                    os.environ["FORCE_SOURCE_DATE"] = saved_fsd
+                if saved_sde is None:
+                    del os.environ["SOURCE_DATE_EPOCH"]
+                else:
+                    os.environ["SOURCE_DATE_EPOCH"] = saved_sde
             # deal with the anc directory reverting
             if self.hide_anc_dir and target is not None:
                 logger.debug("Renaming backup anc directory %s back to %s", target, ancdir)
