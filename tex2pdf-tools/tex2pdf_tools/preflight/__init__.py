@@ -1078,9 +1078,12 @@ def parse_dir(
         if len(files) == 1 and files[0].lower().endswith(".pdf"):
             # PDF only submission, only one PDF file, nothing else
             # run checks that might reject the PDF
-            checks_succeeded, failed_checks = run_pdf_checks(f"{rundir}/{files[0]}", "all")
+            checks_succeeded, error_checks, warning_checks = run_pdf_checks(f"{rundir}/{files[0]}", "all")
             if not checks_succeeded:
-                raise CheckPreflightException("\n".join([z.info for z in failed_checks]))
+                raise CheckPreflightException("\n".join([z.info for z in error_checks]))
+            for warning in warning_checks:
+                logger.debug("Warning %s issues %s", warning, warning.issues)
+                warning_issues.extend(warning.issues)
             return (
                 ToplevelFile(
                     filename=files[0], process=MainProcessSpec(compiler=CompilerSpec(compiler=PDF_SUBMISSION_STRING))

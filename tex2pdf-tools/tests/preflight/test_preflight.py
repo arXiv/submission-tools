@@ -820,14 +820,11 @@ def test_bst_system():
 
 def test_pdf_with_javascript():
     """Test detection of PDF file with javascript embedded."""
-    # ENABLE_JS_CHECKS is already imported into pdf_checks, so we need to monkeypatch it there!
-    monkeypatch.setattr(tex2pdf_tools.preflight.pdf_checks, "ENABLE_JS_CHECKS", True)
     dir_path = os.path.join(FIXTURE_DIR, "pdf-with-javascript")
     pf: PreflightResponse = generate_preflight_response(dir_path)
-    assert pf.status.key.value == "error"
-    assert len(pf.detected_toplevel_files) == 0
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
     assert len(pf.tex_files) == 0
-    assert pf.status.info == "QA check failed: JavaScript code found in PDF"
 
 def test_fontspec_font_detection():
     """Test detection of font files used by fontspec commands."""
@@ -849,7 +846,7 @@ def test_exe_detection():
     dir_path = os.path.join(FIXTURE_DIR, "detect-exe")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "error"
-    assert pf.status.info == "QA check failed: EXE file found"
+    assert pf.status.info == "QA check failed: xexe-in-submission"
     assert len(pf.detected_toplevel_files) == 0
     assert len(pf.tex_files) == 0
 

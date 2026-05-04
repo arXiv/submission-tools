@@ -129,7 +129,7 @@ def test_check_image_sizes_oversized():
 
         files = ["huge.png"]
         image_files =  collect_image_info(files, tmpdir)
-        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files})
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files}, severity=CheckSeverity.warning)
 
         assert result.check_passed is False
         assert result.severity == CheckSeverity.warning
@@ -283,7 +283,7 @@ def test_check_image_sizes_returns_all_images():
 
         files = ["normal.png", "huge.png"]
         image_files = collect_image_info(files, tmpdir)
-        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files})
+        result = check_image_sizes(files, tmpdir, extra={"threshold_mpixels": 50, "image_files": image_files}, severity=CheckSeverity.warning)
 
         # Should fail due to oversized image
         assert result.check_passed is False

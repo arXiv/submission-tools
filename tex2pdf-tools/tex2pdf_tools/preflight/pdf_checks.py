@@ -1,15 +1,11 @@
 """This module implements QA checks for PDF files."""
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .feature_flags import ENABLE_JS_CHECKS
-from .models import CheckResult, logger
-
-PDF_CHECKS = {
-    "javascript": lambda res: check_javascript(res),
-}
+from .models import CheckResult, CheckSeverity, logger
 
 
 def get_pdf_info(pdf: str) -> dict[str, Any]:
@@ -58,22 +54,33 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
     return results
 
 
-def check_javascript(res: dict) -> CheckResult:
+def check_javascript(res: dict, severity: CheckSeverity) -> CheckResult:
     """Check for presence of JavaScript in the PDF."""
     logger.debug("Checking for presence of JavaScript in PDF")
     if "pdfinfo_js" not in res:
         # TODO what should we do if a check cannot be run or failed to run?
         # For now return success to not break PDF production.
         logger.debug("Cannot find pdfinfo_js entry in the result dictionary, skipping check.")
-        return CheckResult(True, "", "")
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
     # "returncode" should be always set, and if it is 0, stdout and stderr are also set
     if res["pdfinfo_js"]["returncode"] == 0 and res["pdfinfo_js"]["stdout"].strip():
         logger.debug("Detected JavaScript in PDF")
-        return CheckResult(False, "JavaScript code found in PDF", res["pdfinfo_js"]["stdout"])
-    return CheckResult(True, "", "")
+        return CheckResult(
+            check_passed=False,
+            info="pdf-contains-js",
+            long_info=res["pdfinfo_js"]["stdout"],
+            severity=severity,
+            issues=[],
+        )
+    return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
 
 
-def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResult]]:
+PDF_CHECKS: dict[str, tuple[Callable[[dict, CheckSeverity], CheckResult], CheckSeverity]] = {
+    "javascript": (check_javascript, CheckSeverity.warning),
+}
+
+
+def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResult], list[CheckResult]]:
     """Run a list of checks or all.
 
     Args:
@@ -81,11 +88,13 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResul
         checks: List of checks to run
 
     Returns: a tuple containing:
-        a boolean indicating whether all checks passed
-        the list of **failed** CheckResults
+        - a boolean indicating whether all checks passed (no errors, warnings OK)
+        - the list of **failed** CheckResults with severity=error
+        - the list of **failed** CheckResults with severity=warning
     """
     pdf_info = get_pdf_info(pdf)
-    check_results: list[CheckResult] = []
+    error_results: list[CheckResult] = []
+    warning_results: list[CheckResult] = []
     if type(checks) is str:
         if checks == "all":
             checks = list(PDF_CHECKS.keys())
@@ -93,13 +102,15 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResul
             checks = [checks]
     for check in checks:
         if check in PDF_CHECKS:
-            if check == "javascript" and not ENABLE_JS_CHECKS:
-                logger.debug("Skipping JavaScript check, not enabled in ENABLE_JS_CHECKS env")
-                continue
-            res = PDF_CHECKS[check](pdf_info)
+            func = PDF_CHECKS[check][0]
+            severity = PDF_CHECKS[check][1]
+            res = func(pdf_info, severity)
             if not res.check_passed:
-                check_results.append(res)
+                if res.severity == CheckSeverity.error:
+                    error_results.append(res)
+                else:
+                    warning_results.append(res)
         else:
             logger.error(f"Unknown check: {check}")
     # if check_results is empty, all tests have passed and we return true, and the check_results
-    return not check_results, check_results
+    return not error_results, error_results, warning_results
