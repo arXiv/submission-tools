@@ -12,21 +12,32 @@ from .models import CheckResult, CheckSeverity, ImageInfo, IssueType, TeXFileIss
 DEFAULT_IMAGE_SIZE_THRESHOLD_MPIXELS = 34
 
 
-def check_no_exe(files: list[str], rundir: str, extra: dict) -> CheckResult:
+def check_no_exe(
+    files: list[str], rundir: str, extra: dict, severity: CheckSeverity = CheckSeverity.error
+) -> CheckResult:
     """Check for presence of EXE files."""
     logger.debug("Checking for presence of EXE files")
     if foo := [f for f in files if f.lower().endswith(".exe")]:
-        return CheckResult(False, "EXE file found", str(foo))
-    return CheckResult(True, "", "")
+        return CheckResult(
+            check_passed=False,
+            info="exe-in-submission",
+            long_info=f"Found .exe file in list of file {foo}",
+            severity=severity,
+            issues=[],
+        )
+    return CheckResult(True, info="", long_info="", severity=severity, issues=[])
 
 
-def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult:
+def check_image_sizes(
+    files: list[str], rundir: str, extra: dict, severity: CheckSeverity = CheckSeverity.error
+) -> CheckResult:
     """Check for oversized images.
 
     Args:
         files: List of relative file paths
         rundir: Base directory containing the files
         extra: Extra information that might be test dependent
+        severity: Optional CheckSeverity level, defaults to error
 
     Returns:
         CheckResult with warning if oversized images found, including image metadata
@@ -71,7 +82,7 @@ def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult
             check_passed=False,
             info=info,
             long_info=long_info,
-            severity=CheckSeverity.warning,
+            severity=severity,
             issues=[issue],
         )
 
@@ -79,18 +90,21 @@ def check_image_sizes(files: list[str], rundir: str, extra: dict) -> CheckResult
         check_passed=True,
         info="",
         long_info="",
-        severity=CheckSeverity.warning,
+        severity=severity,
         issues=[],
     )
 
 
-def pdf_are_pdf(files: list[str], rundir: str, extra: dict) -> CheckResult:
+def pdf_are_pdf(
+    files: list[str], rundir: str, extra: dict, severity: CheckSeverity = CheckSeverity.error
+) -> CheckResult:
     """Check PDFs for actually being pdfs and not renamed docx etc.
 
     Args:
         files: List of relative file paths
         rundir: Base directory containing the files
         extra: Extra information that might be test dependent
+        severity: Optional CheckSeverity level, defaults to error
 
     Returns:
         CheckResult with warning if pdfs that aren't really are found
@@ -119,7 +133,7 @@ def pdf_are_pdf(files: list[str], rundir: str, extra: dict) -> CheckResult:
             check_passed=False,
             info=info,
             long_info=long_info,
-            severity=CheckSeverity.error,
+            severity=severity,
             issues=[issue],
         )
 
@@ -127,15 +141,15 @@ def pdf_are_pdf(files: list[str], rundir: str, extra: dict) -> CheckResult:
         check_passed=True,
         info="",
         long_info="",
-        severity=CheckSeverity.warning,
+        severity=severity,
         issues=[],
     )
 
 
-FILE_CHECKS: dict[str, Callable[[list[str], str, dict], CheckResult]] = {
-    "no-exe": check_no_exe,
-    "image-sizes": check_image_sizes,
-    "pdf-are-pdf": pdf_are_pdf,
+FILE_CHECKS: dict[str, tuple[Callable[[list[str], str, dict, CheckSeverity], CheckResult], CheckSeverity]] = {
+    "no-exe": (check_no_exe, CheckSeverity.error),
+    "image-sizes": (check_image_sizes, CheckSeverity.warning),
+    "pdf-are-pdf": (pdf_are_pdf, CheckSeverity.error),
 }
 
 
@@ -166,7 +180,9 @@ def run_checks(
 
     for check in checks:
         if check in FILE_CHECKS:
-            res = FILE_CHECKS[check](files, rundir, extra)
+            func = FILE_CHECKS[check][0]
+            severity = FILE_CHECKS[check][1]
+            res = func(files, rundir, extra, severity)
             if not res.check_passed:
                 if res.severity == CheckSeverity.error:
                     error_results.append(res)
