@@ -846,7 +846,7 @@ def test_exe_detection():
     dir_path = os.path.join(FIXTURE_DIR, "detect-exe")
     pf: PreflightResponse = generate_preflight_response(dir_path)
     assert pf.status.key.value == "error"
-    assert pf.status.info == "QA check failed: xexe-in-submission"
+    assert pf.status.info == "QA check failed: exe-in-submission"
     assert len(pf.detected_toplevel_files) == 0
     assert len(pf.tex_files) == 0
 
