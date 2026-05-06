@@ -267,7 +267,9 @@ class ConverterDriver:
             pdf_result = self.outcome.get("pdf_file")
             if pdf_result:
                 pdf_file = f"{self.out_dir}/{pdf_result}"
-                checks_succeed, check_failed_results = run_pdf_checks(pdf_file, "all")
+                checks_succeed, check_failed_results, check_warn_results = run_pdf_checks(pdf_file, "all")
+                if check_warn_results:
+                    self.outcome["problems"] = self.outcome.get("problems", []) + [x.info for x in check_warn_results]
                 if not checks_succeed:
                     os.unlink(pdf_file)
                     logger.warning(f"self.outcome = {self.outcome}")
@@ -351,6 +353,11 @@ class ConverterDriver:
 
             # Once the runs made, attach it to the converter
             outcome["converters"].append(runs)
+
+            # check for missing citations in the last run
+            if "problems" in runs:
+                outcome["problems"] = outcome.get("problems", []) + runs["problems"]
+
             pdf_file_props = file_props(made_pdf_file)
             if pdf_file_props["size"]:
                 outcome["pdf_files"].append(pdf_file)

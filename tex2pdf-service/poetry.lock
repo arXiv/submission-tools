@@ -113,7 +113,7 @@ tomli_w = "*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "58e0883193dc8b5250978ac3e95d648bcee069f9"
+resolved_reference = "6ea529bb2a86e12da08932b5d0e74e48ca419c33"
 subdirectory = "tex2pdf-tools"
 
 [[package]]
