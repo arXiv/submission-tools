@@ -68,6 +68,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest poetry
         poetry install
+        # Overlay the in-tree tex2pdf-tools so CI tests against the working
+        # copy, not the GitHub-pinned commit recorded in poetry.lock.
+        poetry run pip install --no-deps -e ../tex2pdf-tools
     - name: pytest for tex2pdf
       run: |
         cd tex2pdf-service
