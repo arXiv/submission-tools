@@ -36,15 +36,22 @@ RUN useradd -m -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
 RUN chown worker:users $WORKER_HOME
 USER worker
 WORKDIR $WORKER_HOME
-COPY poetry.lock pyproject.toml ./
+COPY tex2pdf-service/poetry.lock tex2pdf-service/pyproject.toml ./
+# Bring the local tex2pdf-tools tree into the build context so we can overlay
+# it on top of the GitHub-pinned copy that poetry installs.
+COPY tex2pdf-tools/ /tmp/tex2pdf-tools/
 # poetry is BROKEN wrt to installing multiple packages from same git repo
 # see https://github.com/python-poetry/poetry/issues/6958
 # RUN poetry config installer.parallel false
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN poetry install --no-root --without=dev
+# Replace the pinned arxiv-tex2pdf-tools wheel with one built from the local
+# source so the image carries the working-tree version, not the GitHub commit
+# pinned in poetry.lock.
+RUN poetry run pip install --no-deps /tmp/tex2pdf-tools
 
 # copy this afterwards to avoid re-installing poetry deps on each docker build
-COPY tex2pdf/ ./tex2pdf/
+COPY tex2pdf-service/tex2pdf/ ./tex2pdf/
 # second poetry run should only install the current project
 RUN poetry install --without=dev
 
@@ -67,11 +74,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 # install the arXiv specific changes:
 # - special settings in texmf.cnf
-COPY texlive/common/texmf.cnf /usr/local/texlive/${TEXLIVE_BASE_RELEASE}/
+COPY tex2pdf-service/texlive/common/texmf.cnf /usr/local/texlive/${TEXLIVE_BASE_RELEASE}/
 
 COPY --from=arxiv-texlive-builder $WORKER_HOME $WORKER_HOME
 
-COPY bin/bwrap-tex.sh /usr/local/bin/bwrap-tex.sh
+COPY tex2pdf-service/bin/bwrap-tex.sh /usr/local/bin/bwrap-tex.sh
 
 # -M don't create home since we copied it above
 RUN useradd -M -d $WORKER_HOME -s /bin/bash -g users -u 1000 worker
@@ -81,8 +88,8 @@ WORKDIR $WORKER_HOME
 
 # application specific changes
 ENV PYTHONPATH=$WORKER_HOME
-COPY app-logging.conf .
-COPY app-logging.json .
-COPY hypercorn-config.toml .
-COPY app.sh ./app.sh
+COPY tex2pdf-service/app-logging.conf .
+COPY tex2pdf-service/app-logging.json .
+COPY tex2pdf-service/hypercorn-config.toml .
+COPY tex2pdf-service/app.sh ./app.sh
 CMD ["/bin/bash", "app.sh"]

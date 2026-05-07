@@ -1159,3 +1159,20 @@ def test_graphics_no_driver_option():
         if i.key in (IssueType.graphics_driver_option, IssueType.graphics_driver_unsupported)
     ]
     assert len(driver_issues) == 0
+
+
+def test_preflight_unsupported_zzrm_format(tmp_path):
+    """An uploaded 00README.yaml should produce an unsupported_zzrm_format issue."""
+    (tmp_path / "main.tex").write_text(
+        r"\documentclass{article}\begin{document}hello\end{document}"
+    )
+    (tmp_path / "00README.yaml").write_text("process:\n  compiler: pdflatex\n")
+    pf: PreflightResponse = generate_preflight_response(str(tmp_path))
+    assert pf.status.key.value == "success"
+    assert len(pf.detected_toplevel_files) == 1
+    issues = pf.detected_toplevel_files[0].issues
+    assert any(
+        i.key == IssueType.unsupported_zzrm_format and i.filename == "00README.yaml"
+        for i in issues
+    )
+

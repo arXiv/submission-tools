@@ -96,6 +96,7 @@ class IssueType(str, Enum):
     pdf_not_pdf = "pdf_not_pdf"
     graphics_driver_option = "graphics_driver_option"
     graphics_driver_unsupported = "graphics_driver_unsupported"
+    unsupported_zzrm_format = "unsupported_zzrm_format"
     other = "other"
 
 

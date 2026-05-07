@@ -28,7 +28,15 @@ EXTRA_DOCKER_ARGS ?=
 
 APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -e PORT=${dockerport} -e WORKERS=${TEX2PDF_WORKERS} --security-opt="no-new-privileges=true" ${EXTRA_DOCKER_ARGS}
 
-.PHONY: HELLO app.docker app.run app.stop
+.PHONY: HELLO app.docker app.run app.stop install.dev
+
+#-#
+#-# Command: install.dev
+#-#   poetry install + editable overlay of ../tex2pdf-tools so local edits to
+#-#   the tools tree are picked up immediately by tests
+install.dev:
+	poetry install
+	poetry run pip install --no-deps -e ../tex2pdf-tools
 
 default: HELLO
 
@@ -64,7 +72,7 @@ app2023.docker:
 		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2023_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2023_BASE_IMAGE_DATE} \
 		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
-		--platform=linux/amd64 -t ${app_tag}-${base_2023_tag_version}:latest .
+		--platform=linux/amd64 -t ${app_tag}-${base_2023_tag_version}:latest ..
 
 app2024.docker:
 	@if [ -n "$$INSIDE_EMACS" ]; then \
@@ -79,7 +87,7 @@ app2024.docker:
 		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2024_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2024_BASE_IMAGE_DATE} \
 		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
-		--platform=linux/amd64 -t ${app_tag}-${base_2024_tag_version}:latest .
+		--platform=linux/amd64 -t ${app_tag}-${base_2024_tag_version}:latest ..
 
 app2025.docker:
 	@if [ -n "$$INSIDE_EMACS" ]; then \
@@ -94,7 +102,7 @@ app2025.docker:
 		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2025_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2025_BASE_IMAGE_DATE} \
 		--build-arg GIT_COMMIT_HASH=$(shell git rev-parse --short HEAD) \
-		--platform=linux/amd64 -t ${app_tag}-${base_2025_tag_version}:latest .
+		--platform=linux/amd64 -t ${app_tag}-${base_2025_tag_version}:latest ..
 
 
 # Our test setup is:

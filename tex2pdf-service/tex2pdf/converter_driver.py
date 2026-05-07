@@ -1,6 +1,5 @@
 """This module is the core of the PDF generation. It takes a tarball, unpack it, and generate PDF."""
 
-import io
 import json
 import os
 import random
@@ -578,10 +577,7 @@ class ConversionOutcomeMaker:
 
         zzrm = converter_driver.zzrm
         assert zzrm is not None
-        zzrm_generated = io.StringIO()
-        zzrm.to_yaml(zzrm_generated)
-        zzrm_generated.seek(0)
-        zzrm_text = zzrm_generated.read()
+        zzrm_text = zzrm.to_json()
         outcome_meta = {
             "version": 1,  # outcome format version
             "version_info": f"{self.gen_id}:{GIT_COMMIT_HASH}",

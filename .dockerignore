@@ -1,0 +1,89 @@
+# Build context for tex2pdf-service/Appliance.Dockerfile is the repo root.
+# Keep that context lean: ignore everything that .gitignore covers plus the
+# usual local-only test artifacts and editor noise.
+
+# Git / version control
+.git
+.gitignore
+.gitattributes
+
+# Byte-compiled / packaging / venvs
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+__pypackages__/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Test / coverage / type-checker caches
+.pytest_cache/
+.cache
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+cover/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Local test outputs (uncommitted)
+tex2pdf-service/tests/output/
+tex2pdf-tools/*.json
+
+# Logs and reports
+*.log
+tex2pdf-service/reports/
+
+# Editor / IDE
+.idea/
+.vscode/
+*~
+\#*
+.python-version
+
+# Other monorepo subprojects we never need in the build context
+pdf_profile/
+
+# Top-level scratch / notes (untracked)
+encrypted-sub/
+sword/
+
+# CI / Docker meta — not needed inside the build
+.github/
+.dockerignore
