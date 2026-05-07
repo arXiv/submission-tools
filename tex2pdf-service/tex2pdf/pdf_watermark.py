@@ -25,7 +25,7 @@ class WatermarkFileTypeError(WatermarkError):
     pass
 
 
-def hex_to_rgbf(hex_color):
+def hex_to_rgbf(hex_color: str) -> tuple[float, float, float]:
     """
     Convert a hex color string to tuple of floats.
 
@@ -99,11 +99,11 @@ def add_watermark_text_to_pdf(
                 # note this overwrites the default fname of Times!
                 logger.debug("Trying to insert font %s", font_file)
                 fname = "__arxiv_ibmplexsans__"
-                pdf_font = pymupdf.Font(fontfile=font_file)
+                pdf_font = pymupdf.Font(fontfile=font_file)  # type: ignore[no-untyped-call]
                 page.insert_font(fontname=fname, fontbuffer=pdf_font.buffer)
             page_size = page.mediabox_size
             if pdf_font is not None:
-                wm_length = pdf_font.text_length(watermark.text, fontsize=fsize)
+                wm_length = pdf_font.text_length(watermark.text, fontsize=fsize)  # type: ignore[no-untyped-call]
             else:
                 wm_length = pymupdf.get_text_length(watermark.text, fontname=fname, fontsize=fsize)
             lef = 32 - fsize
