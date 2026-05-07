@@ -67,7 +67,7 @@ app2023.docker:
 	@echo "PLATFORM: ${PLATFORM}"
 	@echo "dockerport: ${app_2023_port}"
 	@echo "tag: ${app_tag}-${base_2023_tag_version}:latest"
-	docker buildx build -f tex2pdf-service/Appliance.Dockerfile \
+	docker buildx build -f ./Appliance.Dockerfile \
 		--progress=plain \
 		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2023_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2023_BASE_IMAGE_DATE} \
@@ -82,7 +82,7 @@ app2024.docker:
 	@echo "PLATFORM: ${PLATFORM}"
 	@echo "dockerport: ${app_2024_port}"
 	@echo "tag: ${app_tag}-${base_2024_tag_version}:latest"
-	docker buildx build -f tex2pdf-service/Appliance.Dockerfile \
+	docker buildx build -f ./Appliance.Dockerfile \
 		--progress=plain \
 		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2024_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2024_BASE_IMAGE_DATE} \
@@ -97,7 +97,7 @@ app2025.docker:
 	@echo "PLATFORM: ${PLATFORM}"
 	@echo "dockerport: ${app_2025_port}"
 	@echo "tag: ${app_tag}-${base_2025_tag_version}:latest"
-	docker buildx build -f tex2pdf-service/Appliance.Dockerfile \
+	docker buildx build -f ./Appliance.Dockerfile \
 		--progress=plain \
 		--build-arg TEXLIVE_BASE_RELEASE=${TEXLIVE_2025_BASE_RELEASE} \
 		--build-arg TEXLIVE_BASE_IMAGE_DATE=${TEXLIVE_2025_BASE_IMAGE_DATE} \
