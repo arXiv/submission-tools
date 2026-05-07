@@ -1,17 +1,14 @@
 """00README file parsing and handling."""
 
 import json
+import logging
 import os
 import typing
 from collections import OrderedDict
 from enum import Enum
 from json import JSONDecodeError
 
-import toml
-import tomli_w
 from pydantic import BaseModel, ConfigDict, ValidationError
-from ruamel.yaml import YAML, MappingNode, ScalarNode
-from ruamel.yaml.representer import RoundTripRepresenter
 
 from ..preflight import (
     CURRENT_TEXLIVE_VERSION,
@@ -40,28 +37,20 @@ Details on the specification are at https://info.arxiv.org/help/00README.html"""
 
 # 00README extensions
 ZZRM_V1_EXTS: list[str] = [".xxx"]
-ZZRM_V2_EXTS: list[str] = [".yml", ".yaml", ".json", ".jsn", ".ndjson", ".toml"]
+ZZRM_V2_EXTS: list[str] = [".json"]
+# Previously supported V2 extensions that we now ignore (with a warning).
+ZZRM_V2_DEPRECATED_EXTS: list[str] = [".yml", ".yaml", ".jsn", ".ndjson", ".toml"]
 ZZRM_EXTS: list[str] = ZZRM_V2_EXTS + ZZRM_V1_EXTS
 DEFAULT_EXT = ".json"
 DEFAULT_FORMAT = "json"
+
+logger = logging.getLogger("zerozeroreadme")
 
 # We default to pdflatex
 DEFAULT_ENGINE_TYPE: EngineType = EngineType.tex
 DEFAULT_LANGUAGE_TYPE: LanguageType = LanguageType.latex
 DEFAULT_OUTPUT_TYPE: OutputType = OutputType.pdf
 DEFAULT_POSTPROCESS_TYPE: PostProcessType = PostProcessType.none
-
-
-def yaml_repr_str(dumper: RoundTripRepresenter, data: str) -> ScalarNode:
-    """Convert string to yaml representation."""
-    if "\n" in data:
-        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
-
-
-def yaml_repr_ordered_dict(dumper: RoundTripRepresenter, data: OrderedDict) -> MappingNode:
-    """Convert ordered dict to yaml representation."""
-    return dumper.represent_mapping("tag:yaml.org,2002:map", dict(data))
 
 
 def strip_to_basename(path: str, extent: None | str = None) -> str:
@@ -180,6 +169,7 @@ class ZeroZeroReadMe:
         self.nohyperref: bool | None = None
         self.texlive_version: int | None = None
         self.comment: str | None = None
+        self.ignored_formats: list[str] = []
         if dir_or_file is None:
             return
         elif os.path.isdir(dir_or_file):
@@ -228,10 +218,15 @@ class ZeroZeroReadMe:
         stem, ext = os.path.splitext(os.path.basename(file))
         if stem.upper() != "00README":
             raise ZZRMUnsupportedFileError(f"File {file} must start with 00README (case-insensitive)")
-        if ext.lower() in ZZRM_V1_EXTS:
+        ext_lower = ext.lower()
+        if ext_lower in ZZRM_V1_EXTS:
             self._fetch_00readme_data(file, 1)
-        elif ext.lower() in ZZRM_V2_EXTS:
+        elif ext_lower in ZZRM_V2_EXTS:
             self._fetch_00readme_data(file, 2)
+        elif ext_lower in ZZRM_V2_DEPRECATED_EXTS:
+            basename = os.path.basename(file)
+            logger.warning("Ignoring unsupported 00README format %s; only .json is accepted", basename)
+            self.ignored_formats.append(basename)
         else:
             raise ZZRMUnsupportedFileError(f"Unsupported file extension {ext}")
 
@@ -260,10 +255,14 @@ class ZeroZeroReadMe:
             (stem, ext) = os.path.splitext(filename)
             if stem.upper() != "00README":
                 continue
-            if ext.lower() in ZZRM_V1_EXTS:
+            ext_lower = ext.lower()
+            if ext_lower in ZZRM_V1_EXTS:
                 zzrms_v1.append(filename)
-            elif ext.lower() in ZZRM_V2_EXTS:
+            elif ext_lower in ZZRM_V2_EXTS:
                 zzrms_v2.append(filename)
+            elif ext_lower in ZZRM_V2_DEPRECATED_EXTS:
+                logger.warning("Ignoring unsupported 00README format %s; only .json is accepted", filename)
+                self.ignored_formats.append(filename)
             else:
                 # ignore files that are named 00readme.SOMETHING but don't match
                 # the correct extensions
@@ -364,26 +363,11 @@ class ZeroZeroReadMe:
                     self.nohyperref = True
 
     def _fetch_00readme_v2(self, data: str, ext: str) -> None:
-        """Read and parse 00README.XXX file, v2."""
-        zzrm = None
-        match ext:
-            case ".yml" | ".yaml":
-                try:
-                    loader = YAML()
-                    zzrm = loader.load(data)
-                except Exception as e:
-                    # ruamel.yaml documentation is just **silent** about what exceptions it throws, how bad.
-                    raise ZZRMInvalidFormatError("Invalid file format") from e
-            case ".json" | ".jsn" | ".ndjson":
-                try:
-                    zzrm = json.loads(data)
-                except JSONDecodeError as e:
-                    raise ZZRMInvalidFormatError("Invalid file format") from e
-            case ".toml":
-                try:
-                    zzrm = toml.loads(data)
-                except toml.TomlDecodeError as e:
-                    raise ZZRMInvalidFormatError("Invalid file format") from e
+        """Read and parse 00README.json file, v2."""
+        try:
+            zzrm = json.loads(data)
+        except JSONDecodeError as e:
+            raise ZZRMInvalidFormatError("Invalid file format") from e
 
         if zzrm:
             self.filetype_version = 2
@@ -650,24 +634,6 @@ class ZeroZeroReadMe:
                 assembly.append(strip_to_basename(fn, ".pdf"))
         return assembly
 
-    def to_yaml(self, output: typing.TextIO, add_default_comment: bool = True) -> typing.TextIO:
-        """Provide YAML representation of ZZRM."""
-        yaml = YAML()
-        yaml.representer.add_representer(str, yaml_repr_str)
-        yaml.representer.add_representer(OrderedDict, yaml_repr_ordered_dict)
-        yaml.representer.add_representer(EngineType, yaml_repr_str)
-        yaml.representer.add_representer(LanguageType, yaml_repr_str)
-        yaml.representer.add_representer(OutputType, yaml_repr_str)
-        yaml.representer.add_representer(PostProcessType, yaml_repr_str)
-        yaml.representer.add_representer(FileUsageType, yaml_repr_str)
-        yaml.representer.add_representer(OrientationType, yaml_repr_str)
-        yaml.dump(self.to_dict(add_default_comment), output)
-        return output
-
     def to_json(self, indent: int | None = 4, add_default_comment: bool = True) -> str:
         """Provide JSON representation of ZZRM."""
         return json.dumps(self.to_dict(add_default_comment), indent=indent)
-
-    def to_toml(self, add_default_comment: bool = True) -> str:
-        """Provide TOML representation of ZZRM."""
-        return tomli_w.dumps(self.to_dict(add_default_comment))

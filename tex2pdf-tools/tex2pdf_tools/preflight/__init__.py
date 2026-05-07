@@ -1779,6 +1779,34 @@ def _dump_nodes(nodes: dict[str, ParsedTeXFile]) -> None:
         logger.debug("... ... used_other_files = %s", n.used_other_files)
 
 
+# Extensions that were once accepted as 00README V2 input but are no longer
+# supported. Kept here (rather than imported from tex2pdf_tools.zerozeroreadme)
+# to avoid a circular import: zerozeroreadme already imports from preflight.
+_UNSUPPORTED_ZZRM_EXTS: tuple[str, ...] = (".yml", ".yaml", ".jsn", ".ndjson", ".toml")
+
+
+def _check_unsupported_zzrm_formats(rundir: str) -> list[TeXFileIssue]:
+    """Detect 00README files in formats we no longer accept."""
+    issues: list[TeXFileIssue] = []
+    try:
+        entries = sorted(os.listdir(rundir))
+    except OSError:
+        return issues
+    for filename in entries:
+        stem, ext = os.path.splitext(filename)
+        if stem.upper() != "00README":
+            continue
+        if ext.lower() in _UNSUPPORTED_ZZRM_EXTS:
+            issues.append(
+                TeXFileIssue(
+                    IssueType.unsupported_zzrm_format,
+                    f"00README format {ext} is no longer supported; only .json is accepted",
+                    filename=filename,
+                )
+            )
+    return issues
+
+
 def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
     """Parse submission and generated preflight response as dictionary."""
     # parse files
@@ -1794,6 +1822,7 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
 
     try:
         n, anc_files, maybe_files, image_files, warning_issues = parse_dir(rundir)
+        warning_issues.extend(_check_unsupported_zzrm_formats(rundir))
         tests_succeeded = True
         error_msg = ""
     except CheckPreflightException as e:
