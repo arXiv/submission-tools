@@ -658,15 +658,38 @@ def test_failing_ps2pdf(docker_container, ts):
 
 @pytest.mark.integration
 def test_check_js_detection(docker_container, ts):
-    """Test submission with embedded Javascript fails.."""
+    """Test submission with embedded Javascript fails."""
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/check-js-detection/check-js-detection.tar.gz")
     outcome = os.path.join(SELF_DIR, "output/check-js-detection.outcome.tar.gz")
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
     assert meta is not None
-    assert meta.get("status") == "fail"
-    assert meta.get("pdf_file") is None
-    assert meta.get("reason", "") == "PDF QA check failed."
+    assert meta.get("status") == "success"
+    assert meta.get("problems", []) == ["pdf-contains-js"]
+
+
+@pytest.mark.integration
+def test_check_missing_cite_detection(docker_container, ts):
+    """Test submission with missing citations."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/missing-citation/missing-citation.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/missing-citation.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
+    assert meta is not None
+    assert meta.get("status") == "success"
+    assert meta.get("problems", []) == ["references_missing"]
+
+
+@pytest.mark.integration
+def test_check_missing_cite_detection_latex(docker_container, ts):
+    """Test submission with missing citations using latex+dvips+ps2pdf."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/missing-citation-latex/missing-citation-latex.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/missing-citation-latex.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
+    assert meta is not None
+    assert meta.get("status") == "success"
+    assert meta.get("problems", []) == ["references_missing"]
 
 
 @pytest.mark.integration

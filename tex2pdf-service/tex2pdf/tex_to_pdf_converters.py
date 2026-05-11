@@ -400,6 +400,7 @@ class BaseConverter:
                             logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
                         else:
                             status = "fail"
+            citation_missing = False
             for line in run["log"].splitlines():
                 for error_needle, error_msg in error_needles:
                     if error_needle.search(line):
@@ -419,7 +420,7 @@ class BaseConverter:
                         )
                         return outcome
                 for rerun_needle in rerun_needles:
-                    if line.find(rerun_needle) >= 0:
+                    if rerun_needle.search(line):
                         # Need retry
                         logger.debug(f"Found rerun needle {rerun_needle}")
                         if iteration == iteration_list[-1]:
@@ -429,11 +430,26 @@ class BaseConverter:
                         else:
                             status = "fail"
                         break
+                if MISSING_CITE_RE.search(line):
+                    logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} found in line {line}")
+                    citation_missing = True
+                else:
+                    logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} not found in line {line}")
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
-                break
-
+                # if no rerun needle is found, we would return now, but there might
+                # be still unresolved references. In this case, add a HOLD entry.
+                logger.debug(f"Checking for citation_missing = {citation_missing}")
+                if citation_missing:
+                    outcome.update(
+                        {
+                            "problems": ["references_missing"],
+                        }
+                    )
+                    return outcome
+                else:
+                    break
         return outcome
 
     def _exec_cmd(
@@ -774,8 +790,10 @@ bad_for_pdftex_file_exts = [".ps", ".eps"]
 bad_for_pdftex_packages = {pname: True for pname in ["fontspec"]}
 bad_for_tex_packages = {pname: True for pname in ["fontspec"]}
 
+# Thanks biblatex to slightly change the warning message from a ` to a ' ... wonderful trick!
+MISSING_CITE_RE = re.compile("LaTeX Warning: Citation [`'].*' on page [0-9]* undefined on input line [0-9]*\.")
 rerun_needles = [
-    "Rerun to get cross-references right.",
+    re.compile("Rerun to get cross-references right\."),
 ]
 error_needles = [
     (
