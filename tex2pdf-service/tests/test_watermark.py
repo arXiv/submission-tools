@@ -1,9 +1,12 @@
 import os
 import shutil
 import subprocess
+import tempfile
 import unittest
+from unittest import mock
 
 import pymupdf
+from tex2pdf.converter_driver import ConverterDriver
 from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
 
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -111,6 +114,41 @@ class TestCustomFont(unittest.TestCase):
             fcolor="#0000ff",
         )
         self._assert_watermark_pdf(out_path, text)
+
+
+class TestConverterDriverFontForwarding(unittest.TestCase):
+    """ConverterDriver must forward the watermark font customization to add_watermark_text_to_pdf."""
+
+    def _make_driver(self, **kwargs) -> ConverterDriver:
+        return ConverterDriver(
+            work_dir=tempfile.mkdtemp(),
+            source="dummy.tar.gz",
+            watermark=Watermark("watermark text", "https://arxiv.org"),
+            **kwargs,
+        )
+
+    def test_defaults_forwarded(self):
+        driver = self._make_driver()
+        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf") as stamp:
+            driver._watermark("/in.pdf", "/out.pdf")
+        stamp.assert_called_once_with(driver.water, "/in.pdf", "/out.pdf", font=None, fsize=None, fcolor=None)
+
+    def test_custom_values_forwarded(self):
+        driver = self._make_driver(
+            watermark_font="IBMPlexSans-Medium.otf",
+            watermark_font_size=32,
+            watermark_font_color="#ff0000",
+        )
+        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf") as stamp:
+            driver._watermark("/in.pdf", "/out.pdf")
+        stamp.assert_called_once_with(
+            driver.water,
+            "/in.pdf",
+            "/out.pdf",
+            font="IBMPlexSans-Medium.otf",
+            fsize=32,
+            fcolor="#ff0000",
+        )
 
 
 if __name__ == "__main__":

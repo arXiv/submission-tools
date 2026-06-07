@@ -291,6 +291,9 @@ async def convert_pdf(
     ] = None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
+    watermark_font: str | None = None,
+    watermark_font_size: int | None = None,
+    watermark_font_color: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
 ) -> Response:
@@ -403,6 +406,9 @@ async def convert_pdf(
                 max_appending_files=max_appending_files,
                 watermark_text=watermark_text,
                 watermark_link=watermark_link,
+                watermark_font=watermark_font,
+                watermark_font_size=watermark_font_size,
+                watermark_font_color=watermark_font_color,
                 auto_detect=auto_detect,
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
@@ -424,6 +430,9 @@ async def convert_pdf(
                 max_appending_files=max_appending_files,
                 watermark_text=watermark_text,
                 watermark_link=watermark_link,
+                watermark_font=watermark_font,
+                watermark_font_size=watermark_font_size,
+                watermark_font_color=watermark_font_color,
                 auto_detect=auto_detect,
                 hide_anc_dir=hide_anc_dir,
                 log_extra=log_extra,
@@ -453,6 +462,9 @@ def _convert_pdf_current(
     max_appending_files: int,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
+    watermark_font: str | None = None,
+    watermark_font_size: int | None = None,
+    watermark_font_color: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
@@ -464,6 +476,9 @@ def _convert_pdf_current(
         use_addon_tree=use_addon_tree,
         tag=tag,
         watermark=Watermark(watermark_text, watermark_link),
+        watermark_font=watermark_font,
+        watermark_font_size=watermark_font_size,
+        watermark_font_color=watermark_font_color,
         max_time_budget=timeout,
         max_tex_files=max_tex_files,
         max_appending_files=max_appending_files,
@@ -535,6 +550,9 @@ async def stamp_pdf(
     incoming: UploadFile,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
+    watermark_font: str | None = None,
+    watermark_font_size: int | None = None,
+    watermark_font_color: str | None = None,
 ) -> Response:
     """Get a PDF and return the PDF with a watermark."""
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
@@ -557,7 +575,14 @@ async def stamp_pdf(
 
     watermark = Watermark(watermark_text, watermark_link)
     try:
-        add_watermark_text_to_pdf(watermark, in_file, out_file)
+        add_watermark_text_to_pdf(
+            watermark,
+            in_file,
+            out_file,
+            font=watermark_font,
+            fsize=watermark_font_size,
+            fcolor=watermark_font_color,
+        )
     except WatermarkFileTypeError as exc:
         logger.warning("Failed watermarking - input file type error %s: %s", filename, exc, extra=log_extra)
         return JSONResponse(
