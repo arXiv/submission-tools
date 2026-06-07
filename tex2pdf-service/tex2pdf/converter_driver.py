@@ -75,6 +75,9 @@ class ConverterDriver:
     max_tex_files: int
     max_appending_files: int
     water: Watermark
+    watermark_font: str | None
+    watermark_font_size: int | None
+    watermark_font_color: str | None
     ts: int | None
     auto_detect: bool = False
     hide_anc_dir: bool = False
@@ -86,6 +89,9 @@ class ConverterDriver:
         use_addon_tree: bool | None = None,
         tag: str | None = None,
         watermark: Watermark | None = None,
+        watermark_font: str | None = None,
+        watermark_font_size: int | None = None,
+        watermark_font_color: str | None = None,
         max_time_budget: float | None = None,
         max_tex_files: int = 1,
         max_appending_files: int = 0,
@@ -100,6 +106,9 @@ class ConverterDriver:
         self.converters = []
         self.converter = None
         self.water = Watermark(None, None) if watermark is None else watermark
+        self.watermark_font = watermark_font
+        self.watermark_font_size = watermark_font_size
+        self.watermark_font_color = watermark_font_color
         self.outcome = {}
         self.log_extra = {ID_TAG: tag} if tag else {}
         self.note = ""
@@ -528,7 +537,14 @@ class ConverterDriver:
                 watered = os.path.join(os.path.dirname(pdf_file), "watermarked-" + os.path.basename(pdf_file))
                 pass
             try:
-                add_watermark_text_to_pdf(self.water, pdf_file, watered)
+                add_watermark_text_to_pdf(
+                    self.water,
+                    pdf_file,
+                    watered,
+                    font=self.watermark_font,
+                    fsize=self.watermark_font_size,
+                    fcolor=self.watermark_font_color,
+                )
                 output = watered
             except WatermarkError as _exc:
                 logger.warning("Failed watermarking %s", pdf_file, exc_info=True, extra=self.log_extra)

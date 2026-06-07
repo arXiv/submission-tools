@@ -38,6 +38,9 @@ def convert_pdf_remote(
     outcome_filename: str | None = None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
+    watermark_font: str | None = None,
+    watermark_font_size: int | None = None,
+    watermark_font_color: str | None = None,
     auto_detect: bool = False,
     hide_anc_dir: bool = False,
     log_extra: dict[str, typing.Any] = {},
@@ -57,6 +60,9 @@ def convert_pdf_remote(
     :param outcome_filename: name for the outcome, defaults to "outcome-${tag}"
     :param watermark_text: optional watermark text to add to the PDF
     :param watermark_link: optional watermark link to add to the PDF
+    :param watermark_font: optional watermark font (full path or kpsewhich-resolvable name)
+    :param watermark_font_size: optional watermark font size in points
+    :param watermark_font_color: optional watermark font color as a hex string (e.g. #808080)
     :param auto_detect: whether to auto-detect the main .tex file using preflight
     :param hide_anc_dir: whether to hide the ancillary directory during compilation
     :param log_extra: extra context for logging
@@ -90,6 +96,12 @@ def convert_pdf_remote(
                     args_dict["watermark_text"] = watermark_text
                     if watermark_link:
                         args_dict["watermark_link"] = watermark_link
+                    if watermark_font is not None:
+                        args_dict["watermark_font"] = watermark_font
+                    if watermark_font_size is not None:
+                        args_dict["watermark_font_size"] = watermark_font_size
+                    if watermark_font_color is not None:
+                        args_dict["watermark_font_color"] = watermark_font_color
                 logger.debug("POST URL: %s, args = %s", compile_service, args_dict, extra=log_extra)
                 logger.debug("uploading = %s", uploading, extra=log_extra)
                 try:

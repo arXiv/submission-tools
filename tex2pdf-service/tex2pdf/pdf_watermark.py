@@ -53,13 +53,18 @@ def add_watermark_text_to_pdf(
     in_pdf: pathlib.Path | str,
     out_pdf: str | io.FileIO,
     font: str | None = None,
-    fsize: int = 20,
-    fcolor: str = "#808080",
+    fsize: int | None = None,
+    fcolor: str | None = None,
 ) -> None:
     """combines/overlays the watermark PDF with the source PDF."""
     logger = get_logger()
     fname = "Times-Roman"
     font_file: str | None = None
+    # None means "use the default"; the defaults live here, in one place.
+    if fsize is None:
+        fsize = 20
+    if fcolor is None:
+        fcolor = "#808080"
 
     if font:
         # if the font parameter is specified, it needs to be either a full path to a otf/tff font file,
