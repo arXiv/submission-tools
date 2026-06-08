@@ -1,11 +1,14 @@
 """This module implements QA checks for PDF files."""
 
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .models import CheckResult, CheckSeverity, logger
+from .feature_flags import HIDDEN_TEXT_REJECTS
+from .hidden_text_pdf import analyze_hidden_text
+from .models import CheckResult, CheckSeverity, IssueType, TeXFileIssue, logger
 
 
 def get_pdf_info(pdf: str) -> dict[str, Any]:
@@ -34,7 +37,7 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         # ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
     ]
 
-    results = {}
+    results: dict[str, Any] = {}
 
     for key, cmd in cmds:
         try:
@@ -50,6 +53,10 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         except Exception as e:
             logger.error(f"Error running {' '.join(cmd)}: {e}")
             results[key] = {"error": str(e), "returncode": -1}
+
+    # Make the path available to checks that need to open the PDF directly
+    # (e.g. the hidden-text check via pymupdf).
+    results["pdf_path"] = str(pdf_path)
 
     return results
 
@@ -75,8 +82,39 @@ def check_javascript(res: dict, severity: CheckSeverity) -> CheckResult:
     return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
 
 
+def check_hidden_text(res: dict, severity: CheckSeverity) -> CheckResult:
+    """Check for hidden/invisible text in the PDF (white-on-white, tiny font, off-page).
+
+    See :mod:`tex2pdf_tools.preflight.hidden_text_pdf` for the detection method
+    and sources.  Severity is warning by default and error when
+    ``HIDDEN_TEXT_REJECTS`` is set (see :mod:`...feature_flags`).
+    """
+    logger.debug("Checking for hidden text in PDF")
+    pdf_path = res.get("pdf_path")
+    if not pdf_path:
+        logger.debug("No pdf_path in result dictionary, skipping hidden-text check.")
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+    result = analyze_hidden_text(pdf_path)
+    if not result.flagged:
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+    info = "pdf-contains-hidden-text"
+    long_info = (
+        f"{result.hidden_char_count} hidden characters detected on page(s) {result.pages} "
+        f"via {result.signals}\n---\n{result.text}"
+    )
+    issue = TeXFileIssue(IssueType.hidden_text, info, filename=os.path.basename(pdf_path))
+    return CheckResult(
+        check_passed=False,
+        info=info,
+        long_info=long_info,
+        severity=severity,
+        issues=[issue],
+    )
+
+
 PDF_CHECKS: dict[str, tuple[Callable[[dict, CheckSeverity], CheckResult], CheckSeverity]] = {
     "javascript": (check_javascript, CheckSeverity.warning),
+    "hidden-text": (check_hidden_text, CheckSeverity.error if HIDDEN_TEXT_REJECTS else CheckSeverity.warning),
 }
 
 

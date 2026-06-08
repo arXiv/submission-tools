@@ -1838,7 +1838,19 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
         nodes = {}
-        status = PreflightStatus(key=PreflightStatusValues.success)
+        # Surface any warning issues collected during PDF QA (e.g. hidden text)
+        # on the toplevel file, and flip to "suspicious" when hidden text is
+        # found in flag mode (in reject mode a CheckPreflightException would
+        # already have been raised above).
+        if warning_issues:
+            n.issues.extend(warning_issues)
+        if any(issue.key == IssueType.hidden_text for issue in warning_issues):
+            status = PreflightStatus(
+                key=PreflightStatusValues.suspicious,
+                info="hidden text detected in PDF",
+            )
+        else:
+            status = PreflightStatus(key=PreflightStatusValues.success)
     else:
         nodes = n
         if nodes == {}:
