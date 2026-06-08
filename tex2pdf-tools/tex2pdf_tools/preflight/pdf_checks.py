@@ -1,11 +1,14 @@
 """This module implements QA checks for PDF files."""
 
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .models import CheckResult, CheckSeverity, logger
+from .feature_flags import GLYPH_MISMATCH_REJECTS
+from .glyph_unicode import analyze_glyph_unicode
+from .models import CheckResult, CheckSeverity, IssueType, TeXFileIssue, logger
 
 
 def get_pdf_info(pdf: str) -> dict[str, Any]:
@@ -34,7 +37,7 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         # ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
     ]
 
-    results = {}
+    results: dict[str, Any] = {}
 
     for key, cmd in cmds:
         try:
@@ -50,6 +53,10 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         except Exception as e:
             logger.error(f"Error running {' '.join(cmd)}: {e}")
             results[key] = {"error": str(e), "returncode": -1}
+
+    # Make the path available to checks that need to open the PDF directly
+    # (e.g. the glyph/ToUnicode check via pymupdf).
+    results["pdf_path"] = str(pdf_path)
 
     return results
 
@@ -75,8 +82,43 @@ def check_javascript(res: dict, severity: CheckSeverity) -> CheckResult:
     return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
 
 
+def check_glyph_unicode_mismatch(res: dict, severity: CheckSeverity) -> CheckResult:
+    """Check for font glyph / ToUnicode remapping (text renders but extracts as garbage).
+
+    See :mod:`tex2pdf_tools.preflight.glyph_unicode` for the detection method and
+    sources.  Severity is warning by default and error when
+    ``GLYPH_MISMATCH_REJECTS`` is set (see :mod:`...feature_flags`).
+    """
+    logger.debug("Checking for glyph/ToUnicode mismatch in PDF")
+    pdf_path = res.get("pdf_path")
+    if not pdf_path:
+        logger.debug("No pdf_path in result dictionary, skipping glyph/ToUnicode check.")
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+    result = analyze_glyph_unicode(pdf_path)
+    if not result.flagged:
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+    info = "pdf-text-not-extractable"
+    sample = " ".join(f"U+{cp:04X}" for cp in result.sample)
+    long_info = (
+        f"{result.bad_glyphs}/{result.total_glyphs} ({result.bad_ratio:.0%}) rendered glyphs do not map "
+        f"to valid Unicode; fonts: {result.fonts}\n---\n{sample}"
+    )
+    issue = TeXFileIssue(IssueType.glyph_unicode_mismatch, info, filename=os.path.basename(pdf_path))
+    return CheckResult(
+        check_passed=False,
+        info=info,
+        long_info=long_info,
+        severity=severity,
+        issues=[issue],
+    )
+
+
 PDF_CHECKS: dict[str, tuple[Callable[[dict, CheckSeverity], CheckResult], CheckSeverity]] = {
     "javascript": (check_javascript, CheckSeverity.warning),
+    "glyph-unicode": (
+        check_glyph_unicode_mismatch,
+        CheckSeverity.error if GLYPH_MISMATCH_REJECTS else CheckSeverity.warning,
+    ),
 }
 
 

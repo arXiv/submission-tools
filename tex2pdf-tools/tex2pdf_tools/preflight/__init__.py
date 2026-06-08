@@ -1838,7 +1838,19 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         # pdf only submission, we received the toplevel file already
         toplevel_files = {n.filename: n}
         nodes = {}
-        status = PreflightStatus(key=PreflightStatusValues.success)
+        # Surface any warning issues collected during PDF QA (e.g. glyph/ToUnicode
+        # mismatch) on the toplevel file, and flip to "suspicious" when such a
+        # mismatch is found in flag mode (in reject mode a CheckPreflightException
+        # would already have been raised above).
+        if warning_issues:
+            n.issues.extend(warning_issues)
+        if any(issue.key == IssueType.glyph_unicode_mismatch for issue in warning_issues):
+            status = PreflightStatus(
+                key=PreflightStatusValues.suspicious,
+                info="font glyph/ToUnicode mismatch detected in PDF",
+            )
+        else:
+            status = PreflightStatus(key=PreflightStatusValues.success)
     else:
         nodes = n
         if nodes == {}:
