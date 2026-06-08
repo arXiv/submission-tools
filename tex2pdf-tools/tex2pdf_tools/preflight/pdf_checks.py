@@ -1,11 +1,14 @@
 """This module implements QA checks for PDF files."""
 
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .models import CheckResult, CheckSeverity, logger
+from .feature_flags import OCCLUDED_TEXT_REJECTS
+from .models import CheckResult, CheckSeverity, IssueType, TeXFileIssue, logger
+from .occluded_text import analyze_occluded_text
 
 
 def get_pdf_info(pdf: str) -> dict[str, Any]:
@@ -34,7 +37,7 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         # ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
     ]
 
-    results = {}
+    results: dict[str, Any] = {}
 
     for key, cmd in cmds:
         try:
@@ -50,6 +53,10 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         except Exception as e:
             logger.error(f"Error running {' '.join(cmd)}: {e}")
             results[key] = {"error": str(e), "returncode": -1}
+
+    # Make the path available to checks that need to open the PDF directly
+    # (e.g. the occluded-text check via pymupdf).
+    results["pdf_path"] = str(pdf_path)
 
     return results
 
@@ -75,8 +82,41 @@ def check_javascript(res: dict, severity: CheckSeverity) -> CheckResult:
     return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
 
 
+def check_occluded_text(res: dict, severity: CheckSeverity) -> CheckResult:
+    """Check for text hidden behind an opaque image (drawn over earlier text).
+
+    See :mod:`tex2pdf_tools.preflight.occluded_text` for the detection method and
+    sources.  Severity is warning by default and error when
+    ``OCCLUDED_TEXT_REJECTS`` is set (see :mod:`...feature_flags`).
+    """
+    logger.debug("Checking for image-occluded text in PDF")
+    pdf_path = res.get("pdf_path")
+    if not pdf_path:
+        logger.debug("No pdf_path in result dictionary, skipping occluded-text check.")
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+    result = analyze_occluded_text(pdf_path)
+    if not result.flagged:
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+    info = "pdf-contains-occluded-text"
+    long_info = (
+        f"{result.occluded_char_count} characters hidden behind images on page(s) {result.pages}\n---\n{result.text}"
+    )
+    issue = TeXFileIssue(IssueType.occluded_text, info, filename=os.path.basename(pdf_path))
+    return CheckResult(
+        check_passed=False,
+        info=info,
+        long_info=long_info,
+        severity=severity,
+        issues=[issue],
+    )
+
+
 PDF_CHECKS: dict[str, tuple[Callable[[dict, CheckSeverity], CheckResult], CheckSeverity]] = {
     "javascript": (check_javascript, CheckSeverity.warning),
+    "occluded-text": (
+        check_occluded_text,
+        CheckSeverity.error if OCCLUDED_TEXT_REJECTS else CheckSeverity.warning,
+    ),
 }
 
 

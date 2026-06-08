@@ -15,3 +15,12 @@ ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 # Enable JavaScript checks
 ENABLE_JS_CHECKS: bool = env_flag("ENABLE_JS_CHECKS")
+
+# When the produced/uploaded PDF hides text behind an opaque image (see
+# preflight.occluded_text), this controls the action:
+#   * default (False): non-blocking warning -- surfaced (outcome["problems"] /
+#     preflight "suspicious" status), PDF kept.
+#   * True: hard QA error -- the service deletes the PDF and fails, and preflight
+#     raises CheckPreflightException.
+# Enable rejection with PREFLIGHT_OCCLUDED_TEXT_REJECT=1 (or true/yes/on/y).
+OCCLUDED_TEXT_REJECTS: bool = env_flag("PREFLIGHT_OCCLUDED_TEXT_REJECT")
