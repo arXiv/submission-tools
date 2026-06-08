@@ -15,3 +15,10 @@ ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 # Enable JavaScript checks
 ENABLE_JS_CHECKS: bool = env_flag("ENABLE_JS_CHECKS")
+
+# When a file is flagged as obfuscated source (see preflight.obfuscation), also
+# flip the overall preflight status to "suspicious".  The per-file issue is
+# always attached regardless; this only controls the top-level status surfacing
+# so it can be toggled without disturbing downstream pipelines.
+# Defaults to False (per env_flag)
+OBFUSCATION_SETS_SUSPICIOUS_STATUS: bool = env_flag("PREFLIGHT_OBFUSCATION_SUSPICIOUS")

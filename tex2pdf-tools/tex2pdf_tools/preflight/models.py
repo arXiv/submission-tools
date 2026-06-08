@@ -97,6 +97,7 @@ class IssueType(str, Enum):
     graphics_driver_option = "graphics_driver_option"
     graphics_driver_unsupported = "graphics_driver_unsupported"
     unsupported_zzrm_format = "unsupported_zzrm_format"
+    obfuscated_source = "obfuscated_source"
     other = "other"
 
 

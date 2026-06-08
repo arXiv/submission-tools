@@ -18,7 +18,7 @@ from pprint import pformat
 
 from pydantic import BaseModel, Field
 
-from .feature_flags import ENABLE_LUALATEX
+from .feature_flags import ENABLE_LUALATEX, OBFUSCATION_SETS_SUSPICIOUS_STATUS
 from .file_checks import run_checks as run_file_checks
 from .images import collect_image_info
 from .models import (
@@ -53,6 +53,7 @@ from .models import (
     ToplevelFile,
     logger,
 )
+from .obfuscation import detect_obfuscation_issues
 from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
@@ -160,6 +161,14 @@ class ParsedTeXFile(BaseModel):
     issues: list[TeXFileIssue] = []
     children: list["ParsedTeXFile"] = Field(exclude=True, default=[])
     parents: list["ParsedTeXFile"] = Field(exclude=True, default=[])
+
+    def detect_obfuscation(self) -> None:
+        """Flag deliberately obfuscated source as an issue on this file.
+
+        See :mod:`tex2pdf_tools.preflight.obfuscation` for the technique
+        taxonomy, sources, and the (conservative) decision rule.
+        """
+        self.issues.extend(detect_obfuscation_issues(self.filename, self._data))
 
     def detect_language(self) -> None:
         """Detect the language used in the given file (TeX, LaTeX, or unknown)."""
@@ -1024,6 +1033,8 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     n.detect_included_files(only_images=only_image)
     logger.debug("parse_file: starting detect_language")
     n.detect_language()
+    logger.debug("parse_file: starting detect_obfuscation")
+    n.detect_obfuscation()
     logger.debug("parse_file: finished parsing")
 
     return n
@@ -1878,8 +1889,22 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             if toplevel_files and warning_issues:
                 first_tlf = next(iter(toplevel_files.values()))
                 first_tlf.issues.extend(warning_issues)
-            # TODO check for suspicious status!
-            status = PreflightStatus(key=PreflightStatusValues.success)
+            # Surface obfuscated source as a "suspicious" overall status.
+            # The per-file issue is always attached during parsing; this only
+            # flips the top-level status, and is toggled by the feature flag
+            # PREFLIGHT_OBFUSCATION_SUSPICIOUS (on by default).
+            obfuscated = [
+                n_.filename
+                for n_ in nodes.values()
+                if any(issue.key == IssueType.obfuscated_source for issue in n_.issues)
+            ]
+            if OBFUSCATION_SETS_SUSPICIOUS_STATUS and obfuscated:
+                status = PreflightStatus(
+                    key=PreflightStatusValues.suspicious,
+                    info=f"obfuscated source suspected in: {', '.join(obfuscated)}",
+                )
+            else:
+                status = PreflightStatus(key=PreflightStatusValues.success)
     return PreflightResponse(
         status=status,
         detected_toplevel_files=[tl for tl in toplevel_files.values()],
