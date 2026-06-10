@@ -2,7 +2,7 @@ import typing
 from collections import OrderedDict
 from hashlib import sha1 as hash_func
 
-import fitz  # PyMuPDF
+import pdf_oxide
 from rapidfuzz.distance.Levenshtein import distance as levenshtein_distance
 
 
@@ -24,12 +24,12 @@ class PageProfile:
     text_digest: str
     image_digests: list[list[int]]
 
-    def __init__(self, page: fitz.Page):
-        self.digest(page)
+    def __init__(self, doc: "pdf_oxide.PdfDocument", page_index: int):
+        self.digest(doc, page_index)
         pass
 
-    def digest(self, page: fitz.Page) -> None:
-        text = page.get_text()
+    def digest(self, doc: "pdf_oxide.PdfDocument", page_index: int) -> None:
+        text = doc.to_plain_text(page_index)
         self.text = text
         for encoding in ["iso-8859-1", "utf-8"]:
             try:
@@ -41,11 +41,9 @@ class PageProfile:
         hash_obj.update(text_bytes)
         self.text_digest = hash_obj.hexdigest()
 
-        # https://pymupdf.readthedocs.io/en/latest/document.html#Document.get_page_images
-        # returns
-        # (xref, smask, width, height, bpc, colorspace, alt. colorspace, name, filter, referencer)
-        # Only thing I can use here is witgh/height
-        self.image_digests = [list(image[2:4]) for image in page.get_images()]
+        # extract_images() yields one dict per image with its intrinsic pixel
+        # dimensions (among other metadata); we only profile width/height.
+        self.image_digests = [[int(image["width"]), int(image["height"])] for image in doc.extract_images(page_index)]
         pass
 
     def as_ordict(self) -> OrderedDict:
@@ -72,10 +70,10 @@ class PdfProfile:
     def profile_pdf(self, pdf_path: str) -> OrderedDict:
         """Take a look at each page of PDF file."""
         # Extract text
-        doc = fitz.open(pdf_path)
+        doc = pdf_oxide.PdfDocument(pdf_path)
 
-        for page in doc:
-            page_prof = PageProfile(page)
+        for page_index in range(len(doc)):
+            page_prof = PageProfile(doc, page_index)
             self.image_count += len(page_prof.image_digests)
             self.pages.append(page_prof)
             pass
