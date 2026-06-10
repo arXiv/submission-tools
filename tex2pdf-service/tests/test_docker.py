@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-import pymupdf
+import pdf_oxide
 import pytest
 import requests
 from conftest import _check_docker_api_ready, _start_docker_container, submit_file, submit_tarball
@@ -478,8 +478,11 @@ def test_api_bookmark_out_file(docker_container):
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
     unpack_tarball(outcome_dir, outcome, {})
-    with pymupdf.open(os.path.join(outcome_dir, "out", "bookmark-out-file.pdf")) as pdf:
-        assert pdf.get_toc()[0] == [1, "Proof of Lemma 1", 1]
+    pdf = pdf_oxide.PdfDocument(os.path.join(outcome_dir, "out", "bookmark-out-file.pdf"))
+    outline = pdf.get_outline()
+    # pdf_oxide reports a flat-per-level list of {title, page (0-based), children};
+    assert outline[0]["title"] == "Proof of Lemma 1"
+    assert outline[0]["page"] == 0
 
 
 @pytest.mark.integration
