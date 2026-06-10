@@ -142,7 +142,8 @@ def _build_watermark_overlay(
     # Measure the actual drawn extent by rendering and finding the non-background
     # bounding box. This is font-agnostic and exact, unlike base-14 metrics.
     scale = _INK_DPI / 72.0
-    image = _render_page_rgb(pdf_oxide.PdfDocument.from_bytes(overlay_pdf), 0, _INK_DPI)
+    with _quiet_pdf_oxide_logs():
+        image = _render_page_rgb(pdf_oxide.PdfDocument.from_bytes(overlay_pdf), 0, _INK_DPI)
     background = Image.new("RGB", image.size, image.getpixel((0, 0)))
     bbox = ImageChops.difference(image, background).getbbox()
     if bbox is None:
