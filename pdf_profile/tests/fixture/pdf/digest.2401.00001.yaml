@@ -1,71 +1,59 @@
 n_pages: 16
-image_count: 23
+image_count: 24
 pages:
-- text_digest: c212cef963220e96ad7a4ae07d41ee1e2f6a86d1
+- text_digest: 04501adce051c95de5fbc7ecb9c94dfa95f19c54
   image_digests: []
-- text_digest: 437abea16def9af812a643d69e73edb4446a1723
+- text_digest: 63cc93023da8229a37dfc77d06882021dfa4cbec
   image_digests:
   - [1722, 1098]
-- text_digest: 01e9494814d701da5583d2dfa083c7493692fbb2
+- text_digest: 5f5c4036fc76d9dd5f78a55cf3697323ae0314b5
   image_digests: []
-- text_digest: f81033a97a5b4e16c4263a2a7d32f2fa2cc4438a
+- text_digest: 22920c82e19f86195838f394f44663a7278841d2
   image_digests:
   - [1978, 1090]
-- text_digest: f93fa1e7c66401f6459ce29d8f3297789a33777e
+- text_digest: 269c8b5da82998b187240e4dc0327d3441716832
   image_digests:
   - [1988, 1088]
-- text_digest: 6e1a4a01aafcc24e41b49bfc79170a703d5e9cc6
+- text_digest: c44ddad54d56dcc649bacccb73d910be0c311cbe
   image_digests:
   - [1990, 1084]
   - [1982, 1092]
-- text_digest: 8c33a5efbe66a6305f60b97cd39a929a6c5e6181
+- text_digest: eb0d532c5add5aa64b63671a46da8ec32674f19c
   image_digests:
   - [1988, 1096]
   - [1990, 1094]
-- text_digest: 07f338cfc84014f75b6193541623c468aa021ff6
+- text_digest: 50600acafdc0ba436e73ed4bf71d756087106d95
   image_digests:
   - [1164, 604]
-- text_digest: f6b78600dbde14470f14731ea2dd8a5f44d828df
+- text_digest: acffc5d2a112e4a4e92d4af084161db65b48c5d3
   image_digests:
   - [1166, 604]
   - [1166, 604]
-- text_digest: cbb1652f8965fcb165dfda8944a0956996be6877
+- text_digest: a2d1bb7aef7a384a889a495a9ba357cf510bf53f
   image_digests:
-  - - 1166
-    - 604
-- text_digest: f25514280376d248e9ce1c354a8c8c8df6db5c2a
+  - [1166, 604]
+- text_digest: b18c9df36fac75e01793a83e3040f24a28b9ab69
   image_digests:
-  - - 1164
-    - 604
+  - [1164, 604]
 - text_digest: ad552e6dc057d1d825bf49df79d6b98eba846ebe
   image_digests:
-  - - 432
-    - 288
-  - - 432
-    - 288
-  - - 432
-    - 288
-  - - 432
-    - 288
-  - - 432
-    - 288
-  - - 432
-    - 288
-  - - 432
-    - 288
-- text_digest: 111632da31421e09d754251234fb715e052be0c5
+  - [432, 288]
+  - [432, 288]
+  - [432, 288]
+  - [432, 288]
+  - [432, 288]
+  - [432, 288]
+  - [432, 288]
+  - [432, 288]
+- text_digest: c8a0a7ece4b0ffe75bb3a974c26eb8953bbe6de5
   image_digests:
-  - - 432
-    - 288
-  - - 432
-    - 288
-- text_digest: a1f847808537781eaa882bb54c677f22f9beb324
+  - [432, 288]
+  - [432, 288]
+- text_digest: e1245ade56dc14d166f3e61043b1560f18c0c66f
   image_digests:
-  - - 4592
-    - 2250
-- text_digest: 8a26068e9562e38e0e56de86d7d9f736de2114d5
+  - [4592, 2250]
+- text_digest: 2eb224d54c656ce426c99a2c33bca240488ed7ed
   image_digests:
-  - - 566
-    - 381
-- text_digest: 53232dc00e8fa2c70af608858ad570dc4a3133f3
+  - [566, 381]
+- text_digest: c512c02f8902f23aceeaa93b7f9347473e41781d
   image_digests: []

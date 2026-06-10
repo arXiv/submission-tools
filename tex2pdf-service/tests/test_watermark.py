@@ -5,7 +5,9 @@ import tempfile
 import unittest
 from unittest import mock
 
-import pymupdf
+import pdf_oxide
+import pikepdf
+from PIL import Image, ImageChops
 from tex2pdf.converter_driver import ConverterDriver
 from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
 
@@ -15,6 +17,41 @@ watermark_pdf = os.path.join(SELF_DIR, "output/watermark.pdf")
 in_pdf = os.path.join(SELF_DIR, "fixture/smoke/Test.pdf")
 
 CUSTOM_FONT_BASENAME = "IBMPlexSans-Medium.otf"
+
+_FONT_FILE_KEYS = ("/FontFile", "/FontFile2", "/FontFile3")
+
+
+def _embedded_font_basefonts(path: str) -> set[str]:
+    """Return the BaseFont names of every embedded (FontFile) font on page 0.
+
+    Recurses into Form XObject resources (the watermark text is composited as an
+    XObject) and into Type0 descendant fonts (where the font program lives).
+    """
+    names: set[str] = set()
+
+    def _has_program(font_obj) -> bool:
+        if any(k in font_obj for k in _FONT_FILE_KEYS):
+            return True
+        descriptor = font_obj.get("/FontDescriptor")
+        if descriptor is not None and any(k in descriptor for k in _FONT_FILE_KEYS):
+            return True
+        for descendant in font_obj.get("/DescendantFonts", []) or []:
+            fd = descendant.get("/FontDescriptor")
+            if fd is not None and any(k in fd for k in _FONT_FILE_KEYS):
+                return True
+        return False
+
+    def _scan(resources) -> None:
+        for font_obj in dict(resources.get("/Font", {})).values():
+            if _has_program(font_obj):
+                names.add(str(font_obj.get("/BaseFont")))
+        for xobject in dict(resources.get("/XObject", {})).values():
+            if "/Resources" in xobject:
+                _scan(xobject.Resources)
+
+    with pikepdf.open(path) as pdf:
+        _scan(pdf.pages[0].Resources)
+    return names
 
 
 def _kpsewhich_font() -> str | None:
@@ -37,6 +74,39 @@ class MyTestCase(unittest.TestCase):
             os.path.join(SELF_DIR, "output/Test.pdf"),
         )
 
+    def test_watermark_is_centered_and_unclipped(self):
+        """Watermark must span the full text length and be vertically centered.
+
+        Regression guard against a leaked page base-CTM shrinking/clipping it:
+        ``in_pdf`` (Test.pdf) sets an unbalanced base transform in its content
+        stream; without isolating it the watermark collapses to ~1/4 size near
+        the top of the page.
+        """
+        text = "Water World is in Orlando, FL."
+        out_path = os.path.join(SELF_DIR, "output/Test_centered.pdf")
+        add_watermark_text_to_pdf(Watermark(text, None), in_pdf, out_path)
+
+        # Render page 0 (72 dpi -> 1 px per point) and locate the watermark ink
+        # in the left margin. The render glyph shapes may be wrong (a known
+        # pdf_oxide rasterizer quirk for /Encoding-less base-14 fonts) but the
+        # ink position and extent are accurate.
+        doc = pdf_oxide.PdfDocument(out_path)
+        page_height = doc.page_media_box(0)[3]
+        pixmap = doc.render_pixmap(0, dpi=72)
+        image = Image.frombytes("RGBA", (pixmap.width, pixmap.height), pixmap.data).convert("RGB")
+        strip = image.crop((0, 0, 60, image.height))
+        bbox = ImageChops.difference(strip, Image.new("RGB", strip.size, (255, 255, 255))).getbbox()
+        self.assertIsNotNone(bbox, "no watermark ink found in the left margin")
+        # Pixel space is top-left origin; convert the vertical span to PDF points.
+        y_low, y_high = page_height - bbox[3], page_height - bbox[1]
+        length = y_high - y_low
+        center = (y_low + y_high) / 2.0
+        # The text is ~250 pt long at 20 pt; a clipped watermark would be ~60 pt.
+        self.assertGreater(length, 180, f"watermark looks clipped: span {length:.0f} pt")
+        self.assertAlmostEqual(
+            center, page_height / 2.0, delta=60, msg=f"watermark not vertically centered: center {center:.0f} pt"
+        )
+
 
 @unittest.skipUnless(_kpsewhich_font(), f"{CUSTOM_FONT_BASENAME} not found via kpsewhich")
 class TestCustomFont(unittest.TestCase):
@@ -56,16 +126,15 @@ class TestCustomFont(unittest.TestCase):
     def _assert_watermark_pdf(self, out_path: str, text: str) -> None:
         self.assertTrue(os.path.exists(out_path), f"{out_path} was not produced")
         self.assertGreater(os.path.getsize(out_path), 0)
-        with pymupdf.open(out_path) as doc:
-            self.assertTrue(doc.is_pdf)
-            page_text = doc[0].get_text()
-            self.assertIn(text, page_text)
-            # After subset_fonts() the font is renamed to "<6-char prefix>+IBM Plex Sans Medium".
-            font_names = {f[3] for f in doc[0].get_fonts()}
-            self.assertTrue(
-                any("IBM Plex Sans" in n or "Plex" in n for n in font_names),
-                f"Custom font not embedded; saw fonts: {font_names}",
-            )
+        # The watermark text must be present and extractable on the first page.
+        doc = pdf_oxide.PdfDocument(out_path)
+        self.assertIn(text, doc.to_plain_text(0))
+        # The custom font must be embedded (subset) and carry a "Plex" base name.
+        font_names = _embedded_font_basefonts(out_path)
+        self.assertTrue(
+            any("Plex" in n for n in font_names),
+            f"Custom font not embedded; saw fonts: {font_names}",
+        )
 
     def test_custom_font_full_path(self):
         text = "Watermark via full path"

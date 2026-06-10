@@ -736,6 +736,28 @@ re2 = ["google-re2 (>=1.1)"]
 tests = ["pytest (>=9)", "typing-extensions (>=4.15)"]
 
 [[package]]
+name = "pdf-oxide"
+version = "0.3.63"
+description = "The fastest Python PDF library: 0.8ms mean, 5× faster than PyMuPDF. Text extraction, markdown conversion, PDF creation. 100% pass rate on 3,830 PDFs."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "pdf_oxide-0.3.63-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:31fb32f33e8c470aa99d860d11c4dc49c8298cf5292189a8c10e32c852d10d9c"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:688a5c7906b2ae1877a18b7b22d6fd85d40d10a4ad19d9865f9f18f5016e4b38"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:e683698d30a52fe13bc109d55d1996917bdeab1d4347dabc308ad264d94d87d1"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:993f8f25af05d4156fc841eb73b6ce2491d83cb2a1cfa1868f21ea2e06334a60"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:3b26ae59448988b372d46d73afeb9817cc9c3fcdeb5fe34577b670994f4ebb10"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:7751a0cec6071007ee0446cc66c432f14c837e973215de93cc3336cd33f46280"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-win_amd64.whl", hash = "sha256:3534d9014edae789d38890412e8bdfdd5839489eee34939a766eac32294d9dea"},
+    {file = "pdf_oxide-0.3.63-cp38-abi3-win_arm64.whl", hash = "sha256:98a475dbafc7cb3dabcc49b917140c91cf6ac165268b7885623db3325161b5d4"},
+    {file = "pdf_oxide-0.3.63.tar.gz", hash = "sha256:71890eeb95aee4d1bb47c05ecb827b2957fa9e930b0dc4a450abd67c72e35baa"},
+]
+
+[package.extras]
+ocr = ["onnxruntime (>=1.20.1)"]
+
+[[package]]
 name = "pdf2image"
 version = "1.17.0"
 description = "A wrapper around the pdftoppm and pdftocairo command line tools to convert PDF to a PIL Image list."
@@ -978,25 +1000,6 @@ tomlkit = ">=0.10.1"
 [package.extras]
 spelling = ["pyenchant (>=3.2,<4.0)"]
 testutils = ["gitpython (>3)"]
-
-[[package]]
-name = "pymupdf"
-version = "1.27.2.2"
-description = "A high performance Python library for data extraction, analysis, conversion & manipulation of PDF (and other) documents."
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "pymupdf-1.27.2.2-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:800f43e60a6f01f644343c2213b8613db02eaf4f4ba235b417b3351fa99e01c0"},
-    {file = "pymupdf-1.27.2.2-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:8e2e4299ef1ac0c9dff9be096cbd22783699673abecfa7c3f73173ae06421d73"},
-    {file = "pymupdf-1.27.2.2-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:c5e3d54922db1c7da844f1208ac1db05704770988752311f81dd36694ae0a07b"},
-    {file = "pymupdf-1.27.2.2-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:892698c9768457eb0991c102c96a856c0a7062539371df5e6bee0816f3ef498e"},
-    {file = "pymupdf-1.27.2.2-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:8b4bbfa6ef347fade678771a93f6364971c51a2cdc44cd2400dc4eeed1ddb4e6"},
-    {file = "pymupdf-1.27.2.2-cp310-abi3-win32.whl", hash = "sha256:0b8e924433b7e0bd46be820899300259235997d5a747638471fb2762baa8ee30"},
-    {file = "pymupdf-1.27.2.2-cp310-abi3-win_amd64.whl", hash = "sha256:09bb53f9486ccb5297030cbc2dbdae845ba1c3c5126e96eb2d16c4f118de0b5b"},
-    {file = "pymupdf-1.27.2.2-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:6cebfbbdfd219ebdebf4d8e3914624b2e3d3a844c43f4f76935822dd9b13cc12"},
-    {file = "pymupdf-1.27.2.2.tar.gz", hash = "sha256:ea8fdc3ab6671ca98f629d5ec3032d662c8cf1796b146996b7ad306ac7ed3335"},
-]
 
 [[package]]
 name = "pytest"
@@ -1360,4 +1363,4 @@ dev = ["pytest", "setuptools"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "164d530b971433fb54de1677a60ea465d4e2835faf744ac9baef231e562dc06a"
+content-hash = "d629414c6f1899717339ad89c9056d91963336fecdc0804650e5ebe8a6e99124"
