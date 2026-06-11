@@ -58,7 +58,7 @@ TEX2PDF_DEFAULT_KEYS_TO_URLS = {
     "autotex-tl2011": f"https://tex2pdf-autotex-tl2011-{PROJECT_NR}.us-central1.run.app/autotex/",
     "autotex-tl2016": f"https://tex2pdf-autotex-tl2016-{PROJECT_NR}.us-central1.run.app/autotex/",
     "autotex-tl2020": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
-    "autotex-tl2023": f"https://tex2pdf-autotex-tl2020-{PROJECT_NR}.us-central1.run.app/autotex/",
+    "autotex-tl2023": f"https://tex2pdf-autotex-tl2023-{PROJECT_NR}.us-central1.run.app/autotex/",
     "tl2023": f"https://tex-to-pdf-2023-{PROJECT_NR}.us-central1.run.app/convert/",
     "tl2025": f"https://tex-to-pdf-2025-{PROJECT_NR}.us-central1.run.app/convert/",
 }
