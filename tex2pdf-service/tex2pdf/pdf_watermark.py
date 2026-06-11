@@ -256,7 +256,11 @@ def add_watermark_text_to_pdf(
                 xobject = pikepdf.Page(overlay_doc.pages[0]).as_form_xobject()
                 xref = source.copy_foreign(xobject)
             page_obj = pikepdf.Page(page)
-            name = page_obj.add_resource(xref, pikepdf.Name.XObject)
+            # Use a fixed resource name rather than letting pikepdf invent a random
+            # one: a random name makes the stamped PDF differ on every run for
+            # otherwise identical input, which breaks reproducible builds and the
+            # byte-exact comparisons in the test suites.
+            name = page_obj.add_resource(xref, pikepdf.Name.XObject, name=pikepdf.Name("/ArXivWatermark"))
             # Wrap the existing content in q/Q so the page's base CTM (some PDFs
             # set a scale/flip transform that is never balanced) cannot leak into
             # our appended content stream and distort the watermark.
