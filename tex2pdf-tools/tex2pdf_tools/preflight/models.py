@@ -101,14 +101,23 @@ class IssueType(str, Enum):
 
 
 class TeXFileIssue(BaseModel):
-    """Specification of Issue in a file."""
+    """Specification of Issue in a file.
 
-    key: IssueType
+    ``key`` is widened to ``IssueType | str`` so that check *plugins* (which live
+    outside this public package) can emit their own issue-type identifiers
+    without those identifiers having to be enumerated here.  Built-in checks keep
+    using the ``IssueType`` enum (so ``issue.key.value`` keeps working); a
+    plugin-supplied string that is not a known member is accepted as-is.  Both
+    serialize to the same plain string on the wire (Pydantic dumps the enum's
+    value), so downstream JSON consumers see a uniform string ``key``.
+    """
+
+    key: IssueType | str
     info: str
     # line: int
     filename: str | None = None
 
-    def __init__(self, key: IssueType, info: str, filename: str | None = None, **kwargs: typing.Any) -> None:
+    def __init__(self, key: IssueType | str, info: str, filename: str | None = None, **kwargs: typing.Any) -> None:
         """Override __init__ to be able to use positional parameters."""
         super().__init__(key=key, info=info, filename=filename, **kwargs)
 
