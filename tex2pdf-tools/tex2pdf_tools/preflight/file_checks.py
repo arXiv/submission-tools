@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from .images import collect_image_info
 from .models import CheckResult, CheckSeverity, ImageInfo, IssueType, TeXFileIssue, logger
+from .plugin_api import FILE_CHECKS_GROUP, merge_check_specs, safe_call
 
 # Default threshold for oversized images (in megapixels)
 # Assuming 600dpi on a full page A4 paper we would have
@@ -146,11 +147,36 @@ def pdf_are_pdf(
     )
 
 
-FILE_CHECKS: dict[str, tuple[Callable[[list[str], str, dict, CheckSeverity], CheckResult], CheckSeverity]] = {
-    "no-exe": (check_no_exe, CheckSeverity.error),
-    "image-sizes": (check_image_sizes, CheckSeverity.warning),
-    "pdf-are-pdf": (pdf_are_pdf, CheckSeverity.error),
-}
+# Registry of available file checks: name -> (callable, default severity).
+# Populated in place by ``_ensure_loaded()`` from the built-in checks plus any
+# checks discovered via the ``tex2pdf_tools.preflight.file_checks`` entry-point
+# group.  Kept as a single module-level object (never rebound) so that test
+# ``monkeypatch.setitem(file_checks.FILE_CHECKS, ...)`` keeps working.
+FILE_CHECKS: dict[str, tuple[Callable[[list[str], str, dict, CheckSeverity], CheckResult], CheckSeverity]] = {}
+_loaded = False
+
+
+def _ensure_loaded() -> None:
+    """Populate ``FILE_CHECKS`` once: built-ins first (they win), then plugins."""
+    global _loaded  # noqa: PLW0603
+    if _loaded:
+        return
+    builtins = {
+        "no-exe": (check_no_exe, CheckSeverity.error),
+        "image-sizes": (check_image_sizes, CheckSeverity.warning),
+        "pdf-are-pdf": (pdf_are_pdf, CheckSeverity.error),
+    }
+    for name, spec in builtins.items():
+        FILE_CHECKS.setdefault(name, spec)
+    merge_check_specs(FILE_CHECKS_GROUP, FILE_CHECKS)
+    _loaded = True
+
+
+def reset_checks() -> None:
+    """Test hook: clear the registry and force re-discovery on next use."""
+    global _loaded  # noqa: PLW0603
+    FILE_CHECKS.clear()
+    _loaded = False
 
 
 def run_checks(
@@ -169,6 +195,7 @@ def run_checks(
         - the list of **failed** CheckResults with severity=error
         - the list of **failed** CheckResults with severity=warning
     """
+    _ensure_loaded()
     error_results: list[CheckResult] = []
     warning_results: list[CheckResult] = []
 
@@ -182,7 +209,10 @@ def run_checks(
         if check in FILE_CHECKS:
             func = FILE_CHECKS[check][0]
             severity = FILE_CHECKS[check][1]
-            res = func(files, rundir, extra, severity)
+            # Fail-open: a check raising must never abort preflight.
+            res = safe_call(func, files, rundir, extra, severity, label=f"file-check:{check}")
+            if res is None:
+                continue
             if not res.check_passed:
                 if res.severity == CheckSeverity.error:
                     error_results.append(res)

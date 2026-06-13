@@ -15,3 +15,10 @@ ENABLE_LUALATEX: bool = env_flag("ENABLE_LUALATEX")
 
 # Enable JavaScript checks
 ENABLE_JS_CHECKS: bool = env_flag("ENABLE_JS_CHECKS")
+
+# When a source-check plugin flags a file (e.g. obfuscated source), also flip the
+# overall preflight status to "suspicious".  The per-file issues are attached
+# regardless; this only controls the top-level status surfacing.  Opt-in
+# (default False), consistent with the other PREFLIGHT_* flags -- set
+# PREFLIGHT_SOURCE_SUSPICIOUS=1 in the deployment env to enable.
+SOURCE_CHECK_SETS_SUSPICIOUS: bool = env_flag("PREFLIGHT_SOURCE_SUSPICIOUS")

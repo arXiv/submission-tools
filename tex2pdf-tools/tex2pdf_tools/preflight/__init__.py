@@ -18,7 +18,7 @@ from pprint import pformat
 
 from pydantic import BaseModel, Field
 
-from .feature_flags import ENABLE_LUALATEX
+from .feature_flags import ENABLE_LUALATEX, SOURCE_CHECK_SETS_SUSPICIOUS
 from .file_checks import run_checks as run_file_checks
 from .images import collect_image_info
 from .models import (
@@ -57,6 +57,7 @@ from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
 from .report import PreflightReport  # noqa
+from .source_checks import run_source_file_checks, run_source_tree_checks
 
 MODULE_PATH = os.path.dirname(__file__)
 
@@ -138,6 +139,10 @@ class ParsedTeXFile(BaseModel):
 
     filename: str
     _data: bytes = b""  # content of files is read in bytes
+    # Non-serialized side channel: set True when a per-file source-check plugin
+    # produced an issue for this file, so the overall status logic can decide
+    # "suspicious" without inspecting the (plugin-private) issue keys.
+    _source_checks_flagged: bool = False
     _graphicspath: list[list[str]] = []
     _uses_bibliography: bool = False
     _uses_bbl_file_type: set[BblType] = set()
@@ -1024,6 +1029,12 @@ def parse_file(basedir: str, filename: str, only_image: bool = False) -> ParsedT
     n.detect_included_files(only_images=only_image)
     logger.debug("parse_file: starting detect_language")
     n.detect_language()
+    # Run any per-file source-check plugins (e.g. obfuscated-source detection).
+    # No-op when no plugin is installed.
+    src_issues = run_source_file_checks(n.filename, n._data)
+    if src_issues:
+        n.issues.extend(src_issues)
+        n._source_checks_flagged = True
     logger.debug("parse_file: finished parsing")
 
     return n
@@ -1835,7 +1846,11 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
         maybe_files = []
         status = PreflightStatus(key=PreflightStatusValues.error, info=error_msg)
     elif isinstance(n, ToplevelFile):
-        # pdf only submission, we received the toplevel file already
+        # pdf only submission, we received the toplevel file already.
+        # Surface any PDF-check warnings (e.g. hidden-text/glyph in warning mode)
+        # collected by parse_dir; these are informational and do not by themselves
+        # make the submission "suspicious".
+        n.issues.extend(warning_issues)
         toplevel_files = {n.filename: n}
         nodes = {}
         status = PreflightStatus(key=PreflightStatusValues.success)
@@ -1878,8 +1893,35 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             if toplevel_files and warning_issues:
                 first_tlf = next(iter(toplevel_files.values()))
                 first_tlf.issues.extend(warning_issues)
-            # TODO check for suspicious status!
-            status = PreflightStatus(key=PreflightStatusValues.success)
+            # Run whole-tree source-check plugins (e.g. a pattern that spans several
+            # files, where per-file signals alone are insufficient).  No-op when no
+            # plugin is installed.
+            tree_source_flagged = False
+            for tlf in toplevel_files:
+                tl_n = nodes[tlf]
+                tree_names = list(dict.fromkeys([tlf, *tl_n.recursive_collect_files(FileType.tex)]))
+                tree_files = [(nm, nodes[nm]._data) for nm in tree_names if nm in nodes]
+                for issue in run_source_tree_checks(tree_files):
+                    n_ = nodes.get(issue.filename) if issue.filename is not None else None
+                    if n_ is None:
+                        continue
+                    tree_source_flagged = True
+                    # Dedup: skip if the same (file, key) issue is already attached
+                    # (e.g. a per-file source check already flagged this file).
+                    if not any(i.key == issue.key for i in n_.issues):
+                        n_.issues.append(issue)
+            # A source-check plugin flagging a file makes the submission "suspicious"
+            # (opt-in via PREFLIGHT_SOURCE_SUSPICIOUS).  Decided from the private side
+            # channel / tree results, never from a specific (plugin-private) issue key.
+            if SOURCE_CHECK_SETS_SUSPICIOUS and (
+                tree_source_flagged or any(nd._source_checks_flagged for nd in nodes.values())
+            ):
+                status = PreflightStatus(
+                    key=PreflightStatusValues.suspicious,
+                    info="source check flagged one or more files",
+                )
+            else:
+                status = PreflightStatus(key=PreflightStatusValues.success)
     return PreflightResponse(
         status=status,
         detected_toplevel_files=[tl for tl in toplevel_files.values()],

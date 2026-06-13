@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import CheckResult, CheckSeverity, logger
+from .plugin_api import PDF_CHECKS_GROUP, merge_check_specs, safe_call
 
 
 def get_pdf_info(pdf: str) -> dict[str, Any]:
@@ -34,7 +35,7 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         # ("pdfimages_list", ["pdfimages", "-list", str(pdf_path)]),
     ]
 
-    results = {}
+    results: dict[str, Any] = {}
 
     for key, cmd in cmds:
         try:
@@ -50,6 +51,10 @@ def get_pdf_info(pdf: str) -> dict[str, Any]:
         except Exception as e:
             logger.error(f"Error running {' '.join(cmd)}: {e}")
             results[key] = {"error": str(e), "returncode": -1}
+
+    # Make the path available to checks that need to open the PDF directly
+    # (e.g. PDF-check plugins that parse the PDF rather than read pdfinfo output).
+    results["pdf_path"] = str(pdf_path)
 
     return results
 
@@ -75,9 +80,30 @@ def check_javascript(res: dict, severity: CheckSeverity) -> CheckResult:
     return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
 
 
-PDF_CHECKS: dict[str, tuple[Callable[[dict, CheckSeverity], CheckResult], CheckSeverity]] = {
-    "javascript": (check_javascript, CheckSeverity.warning),
-}
+# Registry of available PDF checks: name -> (callable, default severity).
+# Populated in place by ``_ensure_loaded()`` from the built-in checks plus any
+# checks discovered via the ``tex2pdf_tools.preflight.pdf_checks`` entry-point
+# group.  Kept as a single module-level object (never rebound) so that test
+# ``monkeypatch.setitem(pdf_checks.PDF_CHECKS, ...)`` keeps working.
+PDF_CHECKS: dict[str, tuple[Callable[[dict, CheckSeverity], CheckResult], CheckSeverity]] = {}
+_loaded = False
+
+
+def _ensure_loaded() -> None:
+    """Populate ``PDF_CHECKS`` once: built-ins first (they win), then plugins."""
+    global _loaded  # noqa: PLW0603
+    if _loaded:
+        return
+    PDF_CHECKS.setdefault("javascript", (check_javascript, CheckSeverity.warning))
+    merge_check_specs(PDF_CHECKS_GROUP, PDF_CHECKS)
+    _loaded = True
+
+
+def reset_checks() -> None:
+    """Test hook: clear the registry and force re-discovery on next use."""
+    global _loaded  # noqa: PLW0603
+    PDF_CHECKS.clear()
+    _loaded = False
 
 
 def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResult], list[CheckResult]]:
@@ -92,6 +118,7 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResul
         - the list of **failed** CheckResults with severity=error
         - the list of **failed** CheckResults with severity=warning
     """
+    _ensure_loaded()
     pdf_info = get_pdf_info(pdf)
     error_results: list[CheckResult] = []
     warning_results: list[CheckResult] = []
@@ -104,7 +131,10 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResul
         if check in PDF_CHECKS:
             func = PDF_CHECKS[check][0]
             severity = PDF_CHECKS[check][1]
-            res = func(pdf_info, severity)
+            # Fail-open: a check raising must never abort PDF production.
+            res = safe_call(func, pdf_info, severity, label=f"pdf-check:{check}")
+            if res is None:
+                continue
             if not res.check_passed:
                 if res.severity == CheckSeverity.error:
                     error_results.append(res)
