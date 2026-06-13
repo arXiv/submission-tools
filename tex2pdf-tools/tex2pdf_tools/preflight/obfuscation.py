@@ -89,6 +89,22 @@ OBFUSCATION_SKIP_EXTENSIONS = {
     ".lot",
 }
 
+# S6 "prose-aliasing macro army": a whole-document-tree signal.  The preamble (or
+# a separate macros file) defines many macros whose body is a plain-language word
+# (\newcommand{\trasmisero}{Warehouse\xspace}), and the body is then written
+# almost entirely as calls to them, so the *source* carries no readable prose.
+# Because the definitions and the calls can live in different files, this signal
+# is evaluated per document tree (see detect_alias_army_in_tree), not per file.
+#
+# Calibrated on arXiv 2511/2512 (max over 427 legitimate bodies: 13 alias defs,
+# 0.30 ratio only on tiny bodies with <20 calls) and on 20 known-obfuscated
+# submissions (the Allen-Zhu family: 987-1990 defs, 0.71-0.85 ratio).  The three
+# thresholds sit in the gap with >=3x margin on both sides.
+OBFUSCATION_MIN_ALIAS_DEFS = 40  # distinct prose-bodied macros in the tree
+OBFUSCATION_MIN_ALIAS_CALLS = 50  # absolute floor; never flag a small body
+OBFUSCATION_MIN_ALIAS_RATIO = 0.5  # fraction of the body's control sequences
+OBFUSCATION_MAX_ALIAS_BODY_CHARS = 40  # an alias body is a short word / phrase
+
 #
 # REGEXES (operate on the cleaned, decoded body)
 #
@@ -139,6 +155,22 @@ _RE_LETTER_DEF = re.compile(r"\\def\s*\\(.)\s*\{([^{}]*)\}|\\let\s*\\(.)\s*=?\s*
 # S5: runtime tokenisation.
 _RE_EXPANDAFTER = re.compile(r"\\expandafter\b")
 _RE_SCANTOKENS = re.compile(r"\\scantokens\b")
+
+# S6: macro definitions whose body we test for being a plain-language fragment.
+# The braced-body alternatives use [^{}]* so a body containing nested braces
+# (e.g. \newcommand{\R}{\mathbb{R}}) does not match -- only flat, text-like
+# bodies are captured, which is exactly what a prose alias looks like.
+_RE_MACRO_DEF = re.compile(
+    r"\\(?:new|renew|provide)command\*?\s*\{?\\([A-Za-z]+)\}?(?:\[\d+\])?(?:\[[^\]]*\])?\s*\{([^{}]*)\}"
+    r"|\\DeclareRobustCommand\*?\s*\{?\\([A-Za-z]+)\}?\s*\{([^{}]*)\}"
+    r"|\\def\s*\\([A-Za-z]+)\s*\{([^{}]*)\}"
+)
+# A body is "prose" when, after dropping a trailing \xspace, it is letters plus
+# simple word punctuation only (no braces, no other control sequences).
+_RE_PROSE_BODY = re.compile(r"^[A-Za-z][A-Za-z0-9 ,.'\-]*?(?:\\xspace)?$")
+_RE_XSPACE_SUFFIX = re.compile(r"\\xspace$")
+_RE_CS_NAME = re.compile(r"\\([A-Za-z]+)")
+_RE_WORD_RUN = re.compile(r"[A-Za-z]{2,}")
 
 
 def _strip_for_prose(region: str) -> str:
@@ -236,3 +268,107 @@ def detect_obfuscation_issues(filename: str, data: bytes) -> list[TeXFileIssue]:
     )
     logger.debug("Obfuscation detected in %s: %s", filename, info)
     return [TeXFileIssue(IssueType.obfuscated_source, info, filename=filename)]
+
+
+#
+# S6: prose-aliasing macro army (evaluated per document tree)
+#
+
+
+def collect_prose_aliases(data: bytes) -> set[str]:
+    r"""Return the names of macros defined in ``data`` whose body is plain prose.
+
+    Scans the whole file (comments and verbatim blocks removed): a prose alias is
+    a ``\newcommand`` / ``\renewcommand`` / ``\providecommand`` /
+    ``\DeclareRobustCommand`` / ``\def`` whose body, after dropping a trailing
+    ``\xspace``, is a short natural-language fragment (letters plus simple word
+    punctuation, no braces or other control sequences).  These are the building
+    blocks of a prose-aliasing macro army; see the module docstring and the
+    ``OBFUSCATION_MIN_ALIAS_*`` thresholds.
+    """
+    text = data.decode("utf-8", errors="replace")
+    text = _RE_COMMENT.sub("", text)
+    text = _RE_VERBATIM.sub(" ", text)
+    aliases: set[str] = set()
+    for m in _RE_MACRO_DEF.finditer(text):
+        groups = m.groups()
+        name = body = None
+        for name_idx, body_idx in ((0, 1), (2, 3), (4, 5)):
+            if groups[name_idx] is not None:
+                name, body = groups[name_idx], groups[body_idx]
+                break
+        if name is None or body is None:
+            continue
+        body = body.strip()
+        core = _RE_XSPACE_SUFFIX.sub("", body).strip()
+        if (
+            1 <= len(core) <= OBFUSCATION_MAX_ALIAS_BODY_CHARS
+            and _RE_WORD_RUN.search(core)
+            and _RE_PROSE_BODY.match(body)
+        ):
+            aliases.add(name)
+    return aliases
+
+
+def alias_usage_in_body(data: bytes, aliases: set[str]) -> tuple[int, int, float]:
+    r"""Measure how much the document body of ``data`` consists of alias calls.
+
+    Returns ``(body_cs, alias_calls, ratio)`` where ``body_cs`` is the number of
+    control sequences in the document body (the whole file for plain TeX without
+    ``\begin{document}``, e.g. an ``\input``-ed section file), ``alias_calls`` is
+    how many of those name a macro in ``aliases``, and ``ratio = alias_calls /
+    body_cs``.  Comments and verbatim blocks are removed first.
+    """
+    text = data.decode("utf-8", errors="replace")
+    body_match = _RE_DOC_BODY.search(text)
+    region = body_match.group(1) if body_match else text
+    region = _RE_COMMENT.sub("", region)
+    region = _RE_VERBATIM.sub(" ", region)
+    control_seqs = _RE_CS_NAME.findall(region)
+    body_cs = len(control_seqs)
+    if not body_cs:
+        return 0, 0, 0.0
+    alias_calls = sum(1 for c in control_seqs if c in aliases)
+    return body_cs, alias_calls, alias_calls / body_cs
+
+
+def s6_alias_army_flag(n_defs: int, alias_calls: int, ratio: float) -> bool:
+    """Return ``True`` when all three conservative S6 thresholds hold together."""
+    return (
+        n_defs >= OBFUSCATION_MIN_ALIAS_DEFS
+        and alias_calls >= OBFUSCATION_MIN_ALIAS_CALLS
+        and ratio >= OBFUSCATION_MIN_ALIAS_RATIO
+    )
+
+
+def detect_alias_army_in_tree(tree_files: list[tuple[str, bytes]]) -> list[TeXFileIssue]:
+    r"""Detect a prose-aliasing macro army across one document tree.
+
+    ``tree_files`` is every file of a single document tree as ``(filename,
+    data)`` -- the alias dictionary is unioned across all of them, so definitions
+    in a separate ``macros.tex`` / ``macros.sty`` are taken into account even when
+    the body that calls them lives in another file.  Returns one
+    ``IssueType.obfuscated_source`` issue per body file that trips S6.  Style and
+    other legitimately macro-dense file types (``OBFUSCATION_SKIP_EXTENSIONS``)
+    are never themselves flagged; they only donate definitions to the alias set.
+    """
+    aliases: set[str] = set()
+    for _filename, data in tree_files:
+        aliases |= collect_prose_aliases(data)
+    if len(aliases) < OBFUSCATION_MIN_ALIAS_DEFS:
+        return []
+
+    issues: list[TeXFileIssue] = []
+    for filename, data in tree_files:
+        if os.path.splitext(filename)[1].lower() in OBFUSCATION_SKIP_EXTENSIONS:
+            continue
+        body_cs, alias_calls, ratio = alias_usage_in_body(data, aliases)
+        if s6_alias_army_flag(len(aliases), alias_calls, ratio):
+            info = (
+                f"obfuscation suspected: prose-aliasing-macro-army "
+                f"[alias-defs={len(aliases)}, alias-calls={alias_calls}, "
+                f"body-control-seqs={body_cs}, alias-ratio={ratio:.2f}]"
+            )
+            logger.debug("Alias-army obfuscation detected in %s: %s", filename, info)
+            issues.append(TeXFileIssue(IssueType.obfuscated_source, info, filename=filename))
+    return issues

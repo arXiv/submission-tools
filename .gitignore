@@ -166,3 +166,9 @@ cython_debug/
 *~
 \#*
 .python-version
+
+# Claude Code local files (worktrees, settings, scratch)
+.claude/
+
+# Fetched obfuscation example sources (research data, not source code)
+obfuscation-examples/

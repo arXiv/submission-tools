@@ -53,7 +53,7 @@ from .models import (
     ToplevelFile,
     logger,
 )
-from .obfuscation import detect_obfuscation_issues
+from .obfuscation import detect_alias_army_in_tree, detect_obfuscation_issues
 from .pdf_checks import run_checks as run_pdf_checks
 
 # tell ruff to not complain, I don't want to add __all__ entries
@@ -1889,6 +1889,18 @@ def _generate_preflight_response_dict(rundir: str) -> PreflightResponse:
             if toplevel_files and warning_issues:
                 first_tlf = next(iter(toplevel_files.values()))
                 first_tlf.issues.extend(warning_issues)
+            # Detect a prose-aliasing macro army per document tree.  The per-file
+            # signals (S1-S5) ran during parsing; this whole-tree pass also catches
+            # the case where the alias definitions live in a separate file (e.g.
+            # macros.tex / macros.sty) while the body that calls them is elsewhere.
+            for tlf in toplevel_files:
+                tl_n = nodes[tlf]
+                tree_names = list(dict.fromkeys([tlf, *tl_n.recursive_collect_files(FileType.tex)]))
+                tree_files = [(nm, nodes[nm]._data) for nm in tree_names if nm in nodes]
+                for issue in detect_alias_army_in_tree(tree_files):
+                    n_ = nodes.get(issue.filename) if issue.filename is not None else None
+                    if n_ is not None and not any(i.key == IssueType.obfuscated_source for i in n_.issues):
+                        n_.issues.append(issue)  # dedup: avoid double-flagging a file caught by S1-S5
             # Surface obfuscated source as a "suspicious" overall status.
             # The per-file issue is always attached during parsing; this only
             # flips the top-level status, and is toggled by the feature flag
