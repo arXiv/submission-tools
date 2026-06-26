@@ -752,3 +752,20 @@ def test_makeindex(docker_container):
     # pdflatex (creates .idx), makeindex (creates .ind), pdflatex, pdflatex
     assert len(meta["converters"][0]["runs"]) == 4
     assert meta["converters"][0]["runs"][1]["step"] == "makeindex_run"
+
+
+@pytest.mark.integration
+def test_texlive_version_autodetect_set(docker_container):
+    """Test that texlive_version is correctly set in outcome and in zzrm when auto-detected."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(
+        SELF_DIR, "fixture/tarballs/test-texlive-version-auto-detect-set/test-texlive-version-auto-detect-set.tar.gz"
+    )
+    outcome = os.path.join(SELF_DIR, "output/test-texlive-version-auto-detect-set.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "true"})
+    assert status == 200
+    assert meta is not None
+    assert meta["texlive_version"] is not None
+    assert meta["texlive_version"].startswith("20")
+    assert "texlive_version" in meta["zzrm"]["generated"]
+    assert "texlive_version" in meta["zzrm"]["content"]

@@ -19,6 +19,7 @@ from . import (
     GIT_COMMIT_HASH,
     ID_TAG,
     MAX_TIME_BUDGET,
+    TEXLIVE_BASE_RELEASE,
     catalog_files,
     file_props,
     file_props_in_dir,
@@ -161,6 +162,7 @@ class ConverterDriver:
 
         # this might raise various exceptions, that should be reported to the API down the line
         self.zzrm = ZeroZeroReadMe(self.in_dir)
+        assert self.zzrm is not None
 
         self.outcome = {
             ID_TAG: self.tag,
@@ -171,6 +173,7 @@ class ConverterDriver:
             "use_addon_tree": self.use_addon_tree,
             "max_tex_files": self.max_tex_files,
             "max_appending_files": self.max_appending_files,
+            "texlive_version": TEXLIVE_BASE_RELEASE,
         }
         if self.water.text:
             self.outcome["watermark"] = self.water
@@ -193,6 +196,8 @@ class ConverterDriver:
                 raise Exception("Preflight didn't succeed!")
             if not self.zzrm.update_from_preflight(preflight_response):
                 raise ZZRMUnderspecified("Cannot determine compiler from preflight and sources")
+            if not self.zzrm.texlive_version or self.zzrm.texlive_version is None:
+                self.zzrm.texlive_version = int(TEXLIVE_BASE_RELEASE)
 
         # we should now be ready to go
         if not self.zzrm.is_ready_for_compilation:
