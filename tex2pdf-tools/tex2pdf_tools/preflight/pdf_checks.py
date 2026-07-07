@@ -1,11 +1,12 @@
 """This module implements QA checks for PDF files."""
 
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .models import CheckResult, CheckSeverity, logger
+from .models import CheckResult, CheckSeverity, IssueType, TeXFileIssue, logger
 from .plugin_api import PDF_CHECKS_GROUP, merge_check_specs, safe_call
 
 
@@ -70,12 +71,23 @@ def check_javascript(res: dict, severity: CheckSeverity) -> CheckResult:
     # "returncode" should be always set, and if it is 0, stdout and stderr are also set
     if res["pdfinfo_js"]["returncode"] == 0 and res["pdfinfo_js"]["stdout"].strip():
         logger.debug("Detected JavaScript in PDF")
+        # Attach a TeXFileIssue so the finding surfaces through the preflight
+        # ``issues`` channel too (e.g. the single-PDF branch in parse_dir, which
+        # only forwards ``CheckResult.issues``), not just the compile-time
+        # ``problems`` channel which reads ``CheckResult.info``.
+        pdf_path = res.get("pdf_path")
+        info = "pdf-contains-js"
+        issue = TeXFileIssue(
+            IssueType.pdf_javascript,
+            info,
+            filename=os.path.basename(pdf_path) if pdf_path else None,
+        )
         return CheckResult(
             check_passed=False,
-            info="pdf-contains-js",
+            info=info,
             long_info=res["pdfinfo_js"]["stdout"],
             severity=severity,
-            issues=[],
+            issues=[issue],
         )
     return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
 
