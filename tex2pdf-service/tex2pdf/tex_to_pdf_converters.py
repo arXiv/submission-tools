@@ -434,7 +434,8 @@ class BaseConverter:
                     logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} found in line {line}")
                     citation_missing = True
                 else:
-                    logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} not found in line {line}")
+                    # logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} not found in line {line}")
+                    pass
             run["iteration"] = iteration
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
