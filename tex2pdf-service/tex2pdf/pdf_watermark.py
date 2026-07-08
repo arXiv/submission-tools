@@ -43,6 +43,16 @@ _BAND_RIGHT = 32.0
 # Resolution used to measure the true glyph extent of the rendered watermark.
 _INK_DPI = 150
 
+# Fallback font embedded when the caller passes no custom font. A *self-contained*
+# face is mandatory for reproducible output (see _build_watermark_overlay): the
+# base-14 "Times-Roman" has no font program, so pdf_oxide would rasterize the
+# glyph-extent measurement with whatever font it finds on the host, making the
+# stamp placement differ from machine to machine. Nimbus Roman is URW's
+# metrically-Times-compatible face (the Ghostscript default Times substitute),
+# licensed AGPL-3.0-only WITH PS-or-PDF-font-exception-20170817, which permits
+# embedding and redistribution. See tex2pdf/fonts/LICENSE.
+_BUNDLED_FONT = Path(__file__).resolve().parent / "fonts" / "NimbusRoman-Regular.otf"
+
 
 class WatermarkError(Exception):
     """Custom exception for watermark errors."""
@@ -126,14 +136,21 @@ def _build_watermark_overlay(
     page_height = fsize * 1.8
     baseline = 0.4 * fsize
 
+    # Without a caller-supplied font, embed the bundled Nimbus Roman rather than
+    # the base-14 "Times-Roman": the latter has no font program, so the ink
+    # measurement below would be rasterized with an arbitrary host font and the
+    # stamp would land in a slightly different place on every machine. Always
+    # embedding a self-contained face keeps the output byte-reproducible and
+    # makes the stamp render identically in every PDF viewer.
+    if not font_file:
+        font_file = str(_BUNDLED_FONT)
+
     builder = pdf_oxide.DocumentBuilder()
-    font_name = "Times-Roman"
-    if font_file:
-        # Use the font file stem as the recorded PostScript name (pdf_oxide does
-        # not reliably parse it from the face) and subset on build().
-        embedded = pdf_oxide.EmbeddedFont.from_bytes(Path(font_file).read_bytes(), Path(font_file).stem)
-        font_name = _WATERMARK_FONT_NAME
-        builder.register_embedded_font(font_name, embedded)
+    # Use the font file stem as the recorded PostScript name (pdf_oxide does not
+    # reliably parse it from the face) and subset on build().
+    embedded = pdf_oxide.EmbeddedFont.from_bytes(Path(font_file).read_bytes(), Path(font_file).stem)
+    font_name = _WATERMARK_FONT_NAME
+    builder.register_embedded_font(font_name, embedded)
 
     page = builder.page(page_width, page_height)  # type: ignore[call-arg, arg-type]
     page.font(font_name, fsize).at(0.0, baseline).inline_color(rgb[0], rgb[1], rgb[2], text)
