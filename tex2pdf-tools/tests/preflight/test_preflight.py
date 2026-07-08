@@ -822,9 +822,15 @@ def test_pdf_with_javascript():
     """Test detection of PDF file with javascript embedded."""
     dir_path = os.path.join(FIXTURE_DIR, "pdf-with-javascript")
     pf: PreflightResponse = generate_preflight_response(dir_path)
+    # javascript is a warning, so the submission still succeeds ...
     assert pf.status.key.value == "success"
     assert len(pf.detected_toplevel_files) == 1
     assert len(pf.tex_files) == 0
+    # ... but the finding is surfaced as a (non-blocking) issue on the PDF toplevel
+    tlf = pf.detected_toplevel_files[0]
+    assert [i.info for i in tlf.issues] == ["pdf-contains-js"]
+    assert tlf.issues[0].key.value == "pdf_javascript"
+    assert tlf.issues[0].filename == "main.pdf"
 
 def test_fontspec_font_detection():
     """Test detection of font files used by fontspec commands."""
