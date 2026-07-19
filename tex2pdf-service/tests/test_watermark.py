@@ -71,6 +71,21 @@ def _core_ink_color(path: str) -> tuple[int, int, int]:
     return tuple(round(sum(channel) / len(ink)) for channel in zip(*ink))  # type: ignore[return-value]
 
 
+def _extracted_watermark_text(path: str) -> str:
+    """Reconstruct the watermark string from the first page.
+
+    The watermark is composited as a rotated (90°) Form XObject. pdf_oxide's
+    ``to_plain_text``/``extract_text`` drop such rotated-XObject spans during
+    reading-order assembly (they collapse to zero spans), so use
+    ``extract_chars`` -- which recovers every glyph via the font's ToUnicode
+    CMap -- and order the chars bottom-to-top (ascending ``origin_y``), the
+    direction the vertical watermark reads.
+    """
+    doc = pdf_oxide.PdfDocument(path)
+    chars = doc.extract_chars(0)
+    return "".join(c.char for c in sorted(chars, key=lambda c: c.origin_y))
+
+
 def _kpsewhich_font() -> str | None:
     """Return absolute path of CUSTOM_FONT_BASENAME via kpsewhich, else None."""
     if not shutil.which("kpsewhich"):
@@ -168,8 +183,7 @@ class TestCustomFont(unittest.TestCase):
         self.assertTrue(os.path.exists(out_path), f"{out_path} was not produced")
         self.assertGreater(os.path.getsize(out_path), 0)
         # The watermark text must be present and extractable on the first page.
-        doc = pdf_oxide.PdfDocument(out_path)
-        self.assertIn(text, doc.to_plain_text(0))
+        self.assertIn(text, _extracted_watermark_text(out_path))
         # The custom font must be embedded (subset) and carry a "Plex" base name.
         font_names = _embedded_font_basefonts(out_path)
         self.assertTrue(
