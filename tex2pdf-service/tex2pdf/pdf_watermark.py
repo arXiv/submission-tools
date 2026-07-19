@@ -156,6 +156,14 @@ def _build_watermark_overlay(
     page.font(font_name, fsize).at(0.0, baseline).inline_color(rgb[0], rgb[1], rgb[2], text)
     overlay_pdf = bytes(page.done().build())
 
+    # pdf_oxide's inline_color() lays down the glyphs but emits no fill-color
+    # operator, so the text falls back to the default black. Relying on the
+    # graphics state inherited from the `Do` invocation does not help either --
+    # pdf_oxide's own renderer ignores inherited fill color inside Form
+    # XObjects. Bake the color into the overlay's content stream so it renders
+    # identically in every viewer.
+    overlay_pdf = _inject_fill_color(overlay_pdf, rgb)
+
     # Measure the actual drawn extent by rendering and finding the non-background
     # bounding box. This is font-agnostic and exact, unlike base-14 metrics.
     scale = _INK_DPI / 72.0
@@ -169,6 +177,24 @@ def _build_watermark_overlay(
     else:
         ink = (bbox[0] / scale, bbox[1] / scale, bbox[2] / scale, bbox[3] / scale)
     return overlay_pdf, ink
+
+
+def _inject_fill_color(overlay_pdf: bytes, rgb: tuple[float, float, float]) -> bytes:
+    """Prepend a fill-color (``r g b rg``) operator to the overlay content stream.
+
+    pdf_oxide's ``inline_color`` does not currently emit a color operator, so the
+    watermark glyphs would otherwise render in the default black. Prepending the
+    fill color makes the color intrinsic to the watermark page instead of relying
+    on inherited graphics state (which pdf_oxide's renderer ignores for Form
+    XObjects). pikepdf's save is deterministic, so this keeps output reproducible.
+    """
+    with pikepdf.open(io.BytesIO(overlay_pdf)) as doc:
+        page = pikepdf.Page(doc.pages[0])
+        color_op = f"{rgb[0]:.4f} {rgb[1]:.4f} {rgb[2]:.4f} rg\n".encode()
+        page.contents_add(color_op, prepend=True)
+        out = io.BytesIO()
+        doc.save(out)
+        return out.getvalue()
 
 
 def _watermark_should_overlay(
