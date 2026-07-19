@@ -54,6 +54,23 @@ def _embedded_font_basefonts(path: str) -> set[str]:
     return names
 
 
+def _core_ink_color(path: str) -> tuple[int, int, int]:
+    """Return the average RGB of the watermark's core (non-antialiased) ink.
+
+    Renders page 0 at 150 dpi, restricts to the left-margin band where the
+    watermark sits, and averages only the strongly-inked pixels (channel sum
+    < 450) so anti-aliased edges near white do not skew the result.
+    """
+    doc = pdf_oxide.PdfDocument(path)
+    pixmap = doc.render_pixmap(0, dpi=150)
+    image = Image.frombytes("RGBA", (pixmap.width, pixmap.height), pixmap.data).convert("RGB")
+    strip = image.crop((0, 0, int(40 * 150 / 72), image.height))
+    ink = [p for p in strip.get_flattened_data() if sum(p) < 450]
+    if not ink:
+        raise AssertionError("no watermark ink found in the left margin")
+    return tuple(round(sum(channel) / len(ink)) for channel in zip(*ink))  # type: ignore[return-value]
+
+
 def _kpsewhich_font() -> str | None:
     """Return absolute path of CUSTOM_FONT_BASENAME via kpsewhich, else None."""
     if not shutil.which("kpsewhich"):
@@ -106,6 +123,30 @@ class MyTestCase(unittest.TestCase):
         self.assertAlmostEqual(
             center, page_height / 2.0, delta=60, msg=f"watermark not vertically centered: center {center:.0f} pt"
         )
+
+    def test_default_watermark_is_gray_not_black(self):
+        """The default watermark must render in #808080 gray, not full black.
+
+        Regression guard: pdf_oxide's inline_color() emits the glyphs without a
+        fill-color operator, so without _inject_fill_color the text would fall
+        back to the default black. Verify the stamped ink is the requested gray.
+        """
+        out_path = os.path.join(SELF_DIR, "output/Test_gray.pdf")
+        add_watermark_text_to_pdf(Watermark("arXiv:2601.00001", None), in_pdf, out_path)
+        r, g, b = _core_ink_color(out_path)
+        # #808080 == (128, 128, 128): neutral gray, clearly not black.
+        self.assertAlmostEqual(r, 128, delta=16, msg=f"ink not gray: {(r, g, b)}")
+        self.assertAlmostEqual(g, 128, delta=16, msg=f"ink not gray: {(r, g, b)}")
+        self.assertAlmostEqual(b, 128, delta=16, msg=f"ink not gray: {(r, g, b)}")
+
+    def test_watermark_color_is_honored(self):
+        """A caller-supplied fcolor must be reflected in the stamped ink."""
+        out_path = os.path.join(SELF_DIR, "output/Test_red.pdf")
+        add_watermark_text_to_pdf(Watermark("arXiv:2601.00001", None), in_pdf, out_path, fcolor="#ff0000")
+        r, g, b = _core_ink_color(out_path)
+        self.assertGreater(r, 200, f"red channel too low: {(r, g, b)}")
+        self.assertLess(g, 60, f"green channel too high: {(r, g, b)}")
+        self.assertLess(b, 60, f"blue channel too high: {(r, g, b)}")
 
 
 @unittest.skipUnless(_kpsewhich_font(), f"{CUSTOM_FONT_BASENAME} not found via kpsewhich")
