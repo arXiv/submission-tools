@@ -123,9 +123,12 @@ def convert_pdf_remote(
                     return 422, "Failed to submit tarball: connection error"
                 status_code = res.status_code
                 logger.debug("Received status code %d from POST to %s", status_code, res.url, extra=log_extra)
-                if status_code == 504:
+                if status_code in (503, 504):
                     # This is the only place we retry, and at most 3 times in total.
-                    logger.warning("Got 504 for %s", compile_service, extra=log_extra)
+                    # 503 is what Cloud Run answers with when it cannot hand the
+                    # request to a container (cold start, scale-out). Relaying it
+                    # to the caller ends the compilation, so absorb it here.
+                    logger.warning("Got %d for %s", status_code, compile_service, extra=log_extra)
                     time.sleep(1)
                     # we need to rewind the data_fd otherwise the next request will send
                     # an empty file.
