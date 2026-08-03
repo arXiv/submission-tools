@@ -78,6 +78,7 @@ class BaseConverter:
     init_time: float
     max_time_budget: float
     stem: str
+    bib_run_nr: int
 
     def __init__(
         self,
@@ -94,6 +95,7 @@ class BaseConverter:
         self.log = ""
         self.log_extra = {ID_TAG: self.conversion_tag}
         self.supp_file_hashes = {"aux": [], "out": []}
+        self.bib_run_nr = 0
         self.init_time = time.perf_counter() if init_time is None else init_time
         try:
             default_max = float(MAX_TIME_BUDGET)
@@ -257,6 +259,93 @@ class BaseConverter:
                 logger.warning("determine_bib_bbl_processor: no aux file found, strange.")
                 return []
 
+    def _collect_cited_keys(self, in_dir: str) -> set[str]:
+        r"""Collect the citation keys the last engine run requested from the bib processor.
+
+        For bibtex, the keys are the arguments of ``\\citation{...}`` in the ``.aux`` files
+        (following ``\\@input`` into the aux files of included files, like bibtex does).
+        For biblatex/biber, the keys are the ``<bcf:citekey>`` entries of the ``.bcf`` file.
+
+        The union of both is returned; only one of the two is populated for a given document.
+        """
+        keys: set[str] = set()
+        citation_re = re.compile(rb"^\\citation{(.*)}$")
+        atinput_re = re.compile(rb"^\\@input{(.*)}$")
+        citekey_re = re.compile(rb"<bcf:citekey[^>]*>([^<]*)</bcf:citekey>")
+
+        seen_aux: set[str] = set()
+        pending = [f"{self.stem}.aux"]
+        while pending:
+            aux_name = pending.pop()
+            if aux_name in seen_aux:
+                continue
+            seen_aux.add(aux_name)
+            aux_file = os.path.join(in_dir, aux_name)
+            if not os.path.exists(aux_file):
+                continue
+            with open(aux_file, "rb") as f:
+                for raw_line in f:
+                    line = raw_line.rstrip()
+                    if ma := citation_re.match(line):
+                        keys.update(key.strip().decode("utf-8", "replace") for key in ma.group(1).split(b","))
+                    elif ma := atinput_re.match(line):
+                        pending.append(ma.group(1).decode("utf-8", "replace"))
+
+        bcf_file = os.path.join(in_dir, f"{self.stem}.bcf")
+        if os.path.exists(bcf_file):
+            with open(bcf_file, "rb") as f:
+                keys.update(ma.group(1).decode("utf-8", "replace") for ma in citekey_re.finditer(f.read()))
+        return keys
+
+    def _run_bib_processors(
+        self,
+        bib_call_items: list[tuple[str, list[str], list[str]]],
+        work_dir: str,
+        in_dir: str,
+        out_dir: str,
+        base_format: str,
+        artifact_file: str,
+        output_name: str,
+        outcome: dict[str, typing.Any],
+    ) -> bool:
+        """Run all bib-to-bbl processors once. Return False (and update outcome) if one of them failed."""
+        logger = get_logger()
+        stem = self.stem
+        for bibprog, bibopts, bibargs in bib_call_items:
+            # make sure that options with spaces are split and everything flattened
+            # for bibtex8, the option contains '--min_crossrefs 2'
+            bibopts_list = [y for ys in bibopts for y in str.split(ys)]
+            bib_step = f"bib_run:{self.bib_run_nr}:{bibprog}"
+            logger.debug(f"Starting {bibprog} run")
+            bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts_list, *bibargs]
+            bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
+            # bibtex and biber only outputs to stdout, even errors
+            # since the frontend only shows the `log` entry, move the stdout part to log
+            bib_run["log"] = bib_out
+            bbl_filename = os.path.join(in_dir, f"{stem}.bbl")
+            self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", bbl_filename)
+            if bib_run["return_code"] != 0:
+                logger.debug(f"{bibprog} run failed")
+                # remove generated pdf to be sure it will not be shown
+                # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
+                # believes all is fine and continues with success!
+                if os.path.exists(artifact_file):
+                    logger.debug("Output %s deleted due to failed run", output_name)
+                    os.unlink(artifact_file)
+                    # the pdf/dvi file was generated in the first run
+                    self.runs[0][base_format] = file_props(artifact_file)
+                outcome.update(
+                    {
+                        "status": "fail",
+                        "step": bib_step,
+                        "reason": f"{bibprog} run returned error code",
+                        "runs": self.runs,
+                    }
+                )
+                return False
+            self.bib_run_nr += 1
+        return True
+
     def _run_base_engine_necessary_times(
         self, tex_file: str, work_dir: str, in_dir: str, out_dir: str, base_format: str
     ) -> dict:
@@ -286,41 +375,18 @@ class BaseConverter:
 
         bib_call_items = self._determine_bib_bbl_processor(in_dir)
 
+        # The citation keys that were known when the bib processor last ran. If a later engine
+        # run discovers additional keys - because a \bibitem in the generated .bbl itself
+        # contains a \cite - the bib processor has to run once more to resolve them.
+        cited_keys_at_bib_run: set[str] = set()
+        bib_reprocessed = False
+
         if bib_call_items:
-            bib_run_nr = 0
-            for bibprog, bibopts, bibargs in bib_call_items:
-                # make sure that options with spaces are split and everything flattened
-                # for bibtex8, the option contains '--min_crossrefs 2'
-                bibopts_list = [y for ys in bibopts for y in str.split(ys)]
-                bib_step = f"bib_run:{bib_run_nr}:{bibprog}"
-                logger.debug(f"Starting {bibprog} run")
-                bib_args = [f"{TEXLIVE_BIN_DIR}/{bibprog}", *bibopts_list, *bibargs]
-                bib_run, bib_out, bib_err = self._exec_cmd(bib_args, stem, in_dir, work_dir)
-                # bibtex and biber only outputs to stdout, even errors
-                # since the frontend only shows the `log` entry, move the stdout part to log
-                bib_run["log"] = bib_out
-                bbl_filename = os.path.join(in_dir, f"{stem}.bbl")
-                self._report_run(bib_run, bib_out, bib_err, bib_step, in_dir, out_dir, "bib", bbl_filename)
-                if bib_run["return_code"] != 0:
-                    logger.debug(f"{bibprog} run failed")
-                    # remove generated pdf to be sure it will not be shown
-                    # Note! We need to delete the PDF/DVI file otherwise "upstream" Converter
-                    # believes all is fine and continues with success!
-                    if os.path.exists(artifact_file):
-                        logger.debug("Output %s deleted due to failed run", output_name)
-                        os.unlink(artifact_file)
-                        # the pdf/dvi file was generated in the first run
-                        self.runs[0][base_format] = file_props(artifact_file)
-                    outcome.update(
-                        {
-                            "status": "fail",
-                            "step": bib_step,
-                            "reason": f"{bibprog} run returned error code",
-                            "runs": self.runs,
-                        }
-                    )
-                    return outcome
-                bib_run_nr += 1
+            cited_keys_at_bib_run = self._collect_cited_keys(in_dir)
+            if not self._run_bib_processors(
+                bib_call_items, work_dir, in_dir, out_dir, base_format, artifact_file, output_name, outcome
+            ):
+                return outcome
 
         # if idx file is present and ind file is not, run makeindex
         if ENABLE_MAKEINDEX:
@@ -437,6 +503,25 @@ class BaseConverter:
                     # logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} not found in line {line}")
                     pass
             run["iteration"] = iteration
+            # A \bibitem of the generated .bbl can itself contain a \cite. Such a citation key
+            # only becomes visible in the .aux/.bcf after the .bbl has been read in, that is,
+            # after the bib processor has already run. Detect exactly this situation - a missing
+            # citation together with citation keys that the bib processor has not seen yet - and
+            # run the bib processor a second (and final) time. Submissions without second level
+            # references keep running it only once.
+            if citation_missing and bib_call_items and not bib_reprocessed and iteration != iteration_list[-1]:
+                cited_keys = self._collect_cited_keys(in_dir)
+                new_keys = cited_keys - cited_keys_at_bib_run
+                if new_keys:
+                    logger.debug("Citation keys %s appeared after the bib run, rerunning", sorted(new_keys))
+                    bib_reprocessed = True
+                    cited_keys_at_bib_run = cited_keys
+                    if not self._run_bib_processors(
+                        bib_call_items, work_dir, in_dir, out_dir, base_format, artifact_file, output_name, outcome
+                    ):
+                        return outcome
+                    # the .bbl changed, so another engine run is needed to pick it up
+                    status = "fail"
             outcome.update({"runs": self.runs, "status": status, "step": step})
             if status == "success":
                 # if no rerun needle is found, we would return now, but there might
