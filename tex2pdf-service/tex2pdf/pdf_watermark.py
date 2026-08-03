@@ -129,9 +129,7 @@ def _build_watermark_overlay(
     # pdf_oxide's text measurement only knows base-14 metrics, so it is just a
     # rough size hint here; the page is made generously wide so even a wider
     # custom face is never clipped by the Form XObject bounding box.
-    # NB: the pdf_oxide type stub mistypes DocumentBuilder.page() (it lists the
-    # self-handle as an extra positional), hence the ignores on .page() calls.
-    approx = pdf_oxide.DocumentBuilder().page(10.0, fsize * 1.6).font("Times-Roman", fsize).measure(text)  # type: ignore[call-arg, arg-type]
+    approx = pdf_oxide.DocumentBuilder().page(10.0, fsize * 1.6).font("Times-Roman", fsize).measure(text)
     page_width = max(approx, 1.0) * 2.0 + 4.0 * fsize
     page_height = fsize * 1.8
     baseline = 0.4 * fsize
@@ -152,7 +150,7 @@ def _build_watermark_overlay(
     font_name = _WATERMARK_FONT_NAME
     builder.register_embedded_font(font_name, embedded)
 
-    page = builder.page(page_width, page_height)  # type: ignore[call-arg, arg-type]
+    page = builder.page(page_width, page_height)
     page.font(font_name, fsize).at(0.0, baseline).inline_color(rgb[0], rgb[1], rgb[2], text)
     overlay_pdf = bytes(page.done().build())
 
