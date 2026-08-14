@@ -220,9 +220,16 @@ def _watermark_should_overlay(
         color_count = len(colors) if colors is not None else 2
         logger.debug("Color count in watermark area: %s", color_count)
         return color_count <= 1
-    except Exception as exc:
-        # If we cannot inspect the band, default to overlaying on top (the
-        # common case for the usually-blank left margin).
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as exc:
+        # `pdf_oxide` (via tiny-skia) occasionally panics rendering malformed
+        # pages; pyo3 surfaces that as pyo3_runtime.PanicException, which
+        # subclasses BaseException rather than Exception, so a plain
+        # `except Exception` here would miss it and the panic would crash
+        # the whole request. Treat it like any other analysis failure and
+        # default to overlaying on top (the common case for the usually-blank
+        # left margin).
         logger.warning("Could not analyze watermark area, defaulting to overlay: %s", exc)
         return True
 
@@ -342,6 +349,11 @@ def add_watermark_text_to_pdf(
         raise WatermarkFileTypeError()
     except WatermarkError:
         raise
-    except Exception as exc:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as exc:
+        # Same pyo3_runtime.PanicException concern as in _watermark_should_overlay:
+        # a Rust panic from pdf_oxide subclasses BaseException, not Exception,
+        # so this must not be narrowed back to `except Exception`.
         logger.error("Failed to watermark PDF file: %s - %s", in_pdf, exc, exc_info=True)
         raise WatermarkError()
