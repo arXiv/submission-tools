@@ -19,10 +19,9 @@ import collections
 import contextlib
 import io
 import logging
-import multiprocessing
 import pathlib
-import queue
 import subprocess
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -370,28 +369,6 @@ def add_watermark_text_to_pdf(
         raise WatermarkError()
 
 
-def _watermark_worker(
-    result_q: "multiprocessing.Queue[tuple[str, str]]",
-    watermark: Watermark,
-    in_pdf: str,
-    out_pdf: str,
-    font: str | None,
-    fsize: int | None,
-    fcolor: str | None,
-) -> None:
-    """Run add_watermark_text_to_pdf() in a child process and report the outcome back.
-
-    Module-level so the ``spawn`` start method can pickle a reference to it.
-    """
-    try:
-        add_watermark_text_to_pdf(watermark, in_pdf, out_pdf, font=font, fsize=fsize, fcolor=fcolor)
-        result_q.put(("ok", ""))
-    except WatermarkError as exc:
-        result_q.put((type(exc).__name__, str(exc)))
-    except Exception as exc:
-        result_q.put(("error", f"{type(exc).__name__}: {exc}"))
-
-
 def add_watermark_text_to_pdf_bounded(
     watermark: Watermark,
     in_pdf: pathlib.Path | str,
@@ -405,33 +382,44 @@ def add_watermark_text_to_pdf_bounded(
 
     pdf_oxide is a Rust extension (via pyo3); if it hangs on pathological input
     it may never hand control back to Python, so neither a thread-based timeout
-    nor SIGALRM is guaranteed to interrupt it. A child process is the only
-    mechanism that can be reliably killed regardless of what the hang looks
-    like, so this runs the real call out-of-process and SIGKILLs it on timeout.
+    nor SIGALRM is guaranteed to interrupt it. A separate OS process is the
+    only mechanism that can be reliably killed regardless of what the hang
+    looks like, so this runs the real call out-of-process via
+    _watermark_worker_main and SIGKILLs it on timeout - the same
+    Popen-plus-communicate(timeout=)-plus-kill() pattern already used for
+    every pdflatex/bibtex subprocess in this service.
+
+    A plain subprocess, not multiprocessing.Process: the hypercorn worker
+    that ends up calling this is itself a daemonic multiprocessing.Process,
+    and Python refuses to let a daemonic process start multiprocessing
+    children ("daemonic processes are not allowed to have children") -
+    subprocess.Popen has no such restriction.
     """
     logger = get_logger()
-    ctx = multiprocessing.get_context("spawn")
-    result_q: multiprocessing.Queue[tuple[str, str]] = ctx.Queue()
-    proc = ctx.Process(
-        target=_watermark_worker,
-        args=(result_q, watermark, str(in_pdf), str(out_pdf), font, fsize, fcolor),
-        daemon=True,
-    )
-    proc.start()
-    proc.join(timeout)
-    if proc.is_alive():
+    args = [
+        sys.executable,
+        "-m",
+        "tex2pdf._watermark_worker_main",
+        str(in_pdf),
+        str(out_pdf),
+        watermark.text or "",
+        watermark.link or "",
+        font or "",
+        str(fsize) if fsize is not None else "",
+        fcolor or "",
+    ]
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        _out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
         logger.error("Watermarking timed out after %.1fs, killing worker pid %s", timeout, proc.pid)
         proc.kill()
-        proc.join()
-        raise WatermarkTimeout(f"Watermarking did not finish within {timeout:.0f}s")
+        proc.communicate()
+        raise WatermarkTimeout(f"Watermarking did not finish within {timeout:.0f}s") from None
 
-    try:
-        status, detail = result_q.get(timeout=5)
-    except queue.Empty:
-        raise WatermarkError(f"Watermark worker exited unexpectedly (exit code {proc.exitcode})") from None
-
-    if status == "ok":
+    if proc.returncode == 0:
         return
-    if status == "WatermarkFileTypeError":
-        raise WatermarkFileTypeError(detail)
-    raise WatermarkError(detail)
+    err = err.strip() or f"watermark worker exited with code {proc.returncode}"
+    if err.startswith("WatermarkFileTypeError"):
+        raise WatermarkFileTypeError(err)
+    raise WatermarkError(err)
