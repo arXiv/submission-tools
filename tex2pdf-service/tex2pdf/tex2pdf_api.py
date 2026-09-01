@@ -39,7 +39,13 @@ from . import (
 )
 from .converter_driver import AutoTeXConverterDriver, ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
-from .pdf_watermark import Watermark, WatermarkError, WatermarkFileTypeError, add_watermark_text_to_pdf
+from .pdf_watermark import (
+    Watermark,
+    WatermarkError,
+    WatermarkFileTypeError,
+    WatermarkTimeout,
+    add_watermark_text_to_pdf_bounded,
+)
 from .remote_call import convert_pdf_remote
 from .service_logger import get_logger
 from .tarball import (
@@ -543,6 +549,7 @@ def _convert_pdf_current(
         STATCODE.HTTP_200_OK: {"content": {"application/gzip": {}}, "description": "Conversion result"},
         STATCODE.HTTP_400_BAD_REQUEST: {"model": Message},
         STATCODE.HTTP_500_INTERNAL_SERVER_ERROR: {"model": Message},
+        STATCODE.HTTP_504_GATEWAY_TIMEOUT: {"model": Message},
     },
 )
 async def stamp_pdf(
@@ -575,7 +582,7 @@ async def stamp_pdf(
 
     watermark = Watermark(watermark_text, watermark_link)
     try:
-        add_watermark_text_to_pdf(
+        add_watermark_text_to_pdf_bounded(
             watermark,
             in_file,
             out_file,
@@ -587,6 +594,11 @@ async def stamp_pdf(
         logger.warning("Failed watermarking - input file type error %s: %s", filename, exc, extra=log_extra)
         return JSONResponse(
             status_code=STATCODE.HTTP_400_BAD_REQUEST, content={"message": "input file type not supported"}
+        )
+    except WatermarkTimeout as exc:
+        logger.error("Watermarking timed out for %s: %s", filename, exc, extra=log_extra)
+        return JSONResponse(
+            status_code=STATCODE.HTTP_504_GATEWAY_TIMEOUT, content={"message": "watermarking timed out"}
         )
     except WatermarkError as exc:
         logger.warning("Failed watermarking - other error %s: %s", filename, exc, extra=log_extra)

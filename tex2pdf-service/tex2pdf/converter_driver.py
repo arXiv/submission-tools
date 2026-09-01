@@ -27,7 +27,7 @@ from . import (
     test_file_extent,
 )
 from .doc_converter import combine_documents
-from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf
+from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf_bounded
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
@@ -542,13 +542,18 @@ class ConverterDriver:
                 watered = os.path.join(os.path.dirname(pdf_file), "watermarked-" + os.path.basename(pdf_file))
                 pass
             try:
-                add_watermark_text_to_pdf(
+                # Don't let watermarking outrun whatever's left of the request's
+                # own time budget, but never give it less than a few seconds.
+                time_left = self.max_time_budget - (time.perf_counter() - self.t0)
+                watermark_timeout = max(5.0, min(60.0, time_left))
+                add_watermark_text_to_pdf_bounded(
                     self.water,
                     pdf_file,
                     watered,
                     font=self.watermark_font,
                     fsize=self.watermark_font_size,
                     fcolor=self.watermark_font_color,
+                    timeout=watermark_timeout,
                 )
                 output = watered
             except WatermarkError as _exc:

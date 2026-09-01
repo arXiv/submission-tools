@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -9,7 +10,11 @@ import pdf_oxide
 import pikepdf
 from PIL import Image, ImageChops
 from tex2pdf.converter_driver import ConverterDriver
-from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
+from tex2pdf.pdf_watermark import (
+    Watermark,
+    add_watermark_text_to_pdf,
+    add_watermark_text_to_pdf_bounded,
+)
 
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -241,7 +246,7 @@ class TestCustomFont(unittest.TestCase):
 
 
 class TestConverterDriverFontForwarding(unittest.TestCase):
-    """ConverterDriver must forward the watermark font customization to add_watermark_text_to_pdf."""
+    """ConverterDriver must forward the watermark font customization to add_watermark_text_to_pdf_bounded."""
 
     def _make_driver(self, **kwargs) -> ConverterDriver:
         return ConverterDriver(
@@ -253,9 +258,13 @@ class TestConverterDriverFontForwarding(unittest.TestCase):
 
     def test_defaults_forwarded(self):
         driver = self._make_driver()
-        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf") as stamp:
+        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf_bounded") as stamp:
             driver._watermark("/in.pdf", "/out.pdf")
-        stamp.assert_called_once_with(driver.water, "/in.pdf", "/out.pdf", font=None, fsize=None, fcolor=None)
+        stamp.assert_called_once_with(
+            driver.water, "/in.pdf", "/out.pdf", font=None, fsize=None, fcolor=None, timeout=mock.ANY
+        )
+        timeout = stamp.call_args.kwargs["timeout"]
+        self.assertTrue(0 < timeout <= 60)
 
     def test_custom_values_forwarded(self):
         driver = self._make_driver(
@@ -263,7 +272,7 @@ class TestConverterDriverFontForwarding(unittest.TestCase):
             watermark_font_size=32,
             watermark_font_color="#ff0000",
         )
-        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf") as stamp:
+        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf_bounded") as stamp:
             driver._watermark("/in.pdf", "/out.pdf")
         stamp.assert_called_once_with(
             driver.water,
@@ -272,7 +281,71 @@ class TestConverterDriverFontForwarding(unittest.TestCase):
             font="IBMPlexSans-Medium.otf",
             fsize=32,
             fcolor="#ff0000",
+            timeout=mock.ANY,
         )
+        timeout = stamp.call_args.kwargs["timeout"]
+        self.assertTrue(0 < timeout <= 60)
+
+
+class TestAddWatermarkTextToPdfBounded(unittest.TestCase):
+    """add_watermark_text_to_pdf_bounded() must actually stamp, and must actually kill a hung worker.
+
+    The kill path is exercised in a throwaway child interpreter (not via
+    multiprocessing directly in-process) because multiprocessing's ``spawn``
+    start method re-imports ``__main__`` in the child, which is the pytest
+    entry point here, not this test module - a real, separate process avoids
+    that footgun entirely and is what the production hypercorn worker does too.
+    """
+
+    def test_normal_case_produces_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out_path = os.path.join(tmp, "out.pdf")
+            add_watermark_text_to_pdf_bounded(Watermark("arXiv:2601.00001", None), in_pdf, out_path, timeout=30)
+            self.assertTrue(os.path.exists(out_path))
+            self.assertGreater(os.path.getsize(out_path), 0)
+
+    def test_hung_worker_is_killed_and_raises_timeout(self):
+        # multiprocessing's spawn start method only re-executes __main__ from a
+        # real file (its _fixup_main_from_path), not from `python -c ...`, so
+        # the monkeypatch below must live in an actual script file to reach
+        # the spawned child.
+        service_root = os.path.join(SELF_DIR, "..")
+        script = f"""
+import sys, time
+sys.path.insert(0, {service_root!r})
+import tex2pdf.pdf_watermark as w
+w.add_watermark_text_to_pdf = lambda *a, **k: time.sleep(300)  # simulate a pdf_oxide hang
+from tex2pdf.pdf_watermark import Watermark, WatermarkTimeout
+
+def main():
+    t0 = time.perf_counter()
+    try:
+        w.add_watermark_text_to_pdf_bounded(Watermark("x", None), {in_pdf!r}, "/tmp/wont-be-written.pdf", timeout=3)
+        print("FAIL: no timeout raised")
+        sys.exit(1)
+    except WatermarkTimeout:
+        elapsed = time.perf_counter() - t0
+        assert 2 < elapsed < 15, f"fired at unexpected time: {{elapsed}}"
+        print("PASS")
+
+if __name__ == "__main__":
+    main()
+"""
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+            f.write(script)
+            script_path = f.name
+        try:
+            result = subprocess.run(
+                [sys.executable, script_path],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        finally:
+            os.unlink(script_path)
+        self.assertEqual(result.returncode, 0, f"stdout={result.stdout!r} stderr={result.stderr!r}")
+        self.assertIn("PASS", result.stdout)
 
 
 if __name__ == "__main__":

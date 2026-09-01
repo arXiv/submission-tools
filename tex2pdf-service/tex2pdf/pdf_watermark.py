@@ -19,7 +19,9 @@ import collections
 import contextlib
 import io
 import logging
+import multiprocessing
 import pathlib
+import queue
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
@@ -31,6 +33,9 @@ from PIL import Image, ImageChops
 from .service_logger import get_logger
 
 Watermark = collections.namedtuple("Watermark", ["text", "link"])
+
+# Generous default: normal watermarking finishes in well under a second.
+DEFAULT_WATERMARK_TIMEOUT = 60.0
 
 # Name under which a custom font is registered with pdf_oxide and referenced
 # from the watermark page's content stream.
@@ -62,6 +67,12 @@ class WatermarkError(Exception):
 
 class WatermarkFileTypeError(WatermarkError):
     """Exception raised for unsupported file types."""
+
+    pass
+
+
+class WatermarkTimeout(WatermarkError):
+    """Raised when watermarking does not finish within its time budget."""
 
     pass
 
@@ -357,3 +368,70 @@ def add_watermark_text_to_pdf(
         # so this must not be narrowed back to `except Exception`.
         logger.error("Failed to watermark PDF file: %s - %s", in_pdf, exc, exc_info=True)
         raise WatermarkError()
+
+
+def _watermark_worker(
+    result_q: "multiprocessing.Queue[tuple[str, str]]",
+    watermark: Watermark,
+    in_pdf: str,
+    out_pdf: str,
+    font: str | None,
+    fsize: int | None,
+    fcolor: str | None,
+) -> None:
+    """Run add_watermark_text_to_pdf() in a child process and report the outcome back.
+
+    Module-level so the ``spawn`` start method can pickle a reference to it.
+    """
+    try:
+        add_watermark_text_to_pdf(watermark, in_pdf, out_pdf, font=font, fsize=fsize, fcolor=fcolor)
+        result_q.put(("ok", ""))
+    except WatermarkError as exc:
+        result_q.put((type(exc).__name__, str(exc)))
+    except Exception as exc:
+        result_q.put(("error", f"{type(exc).__name__}: {exc}"))
+
+
+def add_watermark_text_to_pdf_bounded(
+    watermark: Watermark,
+    in_pdf: pathlib.Path | str,
+    out_pdf: str,
+    font: str | None = None,
+    fsize: int | None = None,
+    fcolor: str | None = None,
+    timeout: float = DEFAULT_WATERMARK_TIMEOUT,
+) -> None:
+    """Run add_watermark_text_to_pdf(), bounded by a hard wall-clock timeout.
+
+    pdf_oxide is a Rust extension (via pyo3); if it hangs on pathological input
+    it may never hand control back to Python, so neither a thread-based timeout
+    nor SIGALRM is guaranteed to interrupt it. A child process is the only
+    mechanism that can be reliably killed regardless of what the hang looks
+    like, so this runs the real call out-of-process and SIGKILLs it on timeout.
+    """
+    logger = get_logger()
+    ctx = multiprocessing.get_context("spawn")
+    result_q: multiprocessing.Queue[tuple[str, str]] = ctx.Queue()
+    proc = ctx.Process(
+        target=_watermark_worker,
+        args=(result_q, watermark, str(in_pdf), str(out_pdf), font, fsize, fcolor),
+        daemon=True,
+    )
+    proc.start()
+    proc.join(timeout)
+    if proc.is_alive():
+        logger.error("Watermarking timed out after %.1fs, killing worker pid %s", timeout, proc.pid)
+        proc.kill()
+        proc.join()
+        raise WatermarkTimeout(f"Watermarking did not finish within {timeout:.0f}s")
+
+    try:
+        status, detail = result_q.get(timeout=5)
+    except queue.Empty:
+        raise WatermarkError(f"Watermark worker exited unexpectedly (exit code {proc.exitcode})") from None
+
+    if status == "ok":
+        return
+    if status == "WatermarkFileTypeError":
+        raise WatermarkFileTypeError(detail)
+    raise WatermarkError(detail)
