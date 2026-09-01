@@ -21,6 +21,7 @@ import io
 import logging
 import pathlib
 import subprocess
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -31,6 +32,9 @@ from PIL import Image, ImageChops
 from .service_logger import get_logger
 
 Watermark = collections.namedtuple("Watermark", ["text", "link"])
+
+# Generous default: normal watermarking finishes in well under a second.
+DEFAULT_WATERMARK_TIMEOUT = 60.0
 
 # Name under which a custom font is registered with pdf_oxide and referenced
 # from the watermark page's content stream.
@@ -62,6 +66,12 @@ class WatermarkError(Exception):
 
 class WatermarkFileTypeError(WatermarkError):
     """Exception raised for unsupported file types."""
+
+    pass
+
+
+class WatermarkTimeout(WatermarkError):
+    """Raised when watermarking does not finish within its time budget."""
 
     pass
 
@@ -357,3 +367,59 @@ def add_watermark_text_to_pdf(
         # so this must not be narrowed back to `except Exception`.
         logger.error("Failed to watermark PDF file: %s - %s", in_pdf, exc, exc_info=True)
         raise WatermarkError()
+
+
+def add_watermark_text_to_pdf_bounded(
+    watermark: Watermark,
+    in_pdf: pathlib.Path | str,
+    out_pdf: str,
+    font: str | None = None,
+    fsize: int | None = None,
+    fcolor: str | None = None,
+    timeout: float = DEFAULT_WATERMARK_TIMEOUT,
+) -> None:
+    """Run add_watermark_text_to_pdf(), bounded by a hard wall-clock timeout.
+
+    pdf_oxide is a Rust extension (via pyo3); if it hangs on pathological input
+    it may never hand control back to Python, so neither a thread-based timeout
+    nor SIGALRM is guaranteed to interrupt it. A separate OS process is the
+    only mechanism that can be reliably killed regardless of what the hang
+    looks like, so this runs the real call out-of-process via
+    _watermark_worker_main and SIGKILLs it on timeout - the same
+    Popen-plus-communicate(timeout=)-plus-kill() pattern already used for
+    every pdflatex/bibtex subprocess in this service.
+
+    A plain subprocess, not multiprocessing.Process: the hypercorn worker
+    that ends up calling this is itself a daemonic multiprocessing.Process,
+    and Python refuses to let a daemonic process start multiprocessing
+    children ("daemonic processes are not allowed to have children") -
+    subprocess.Popen has no such restriction.
+    """
+    logger = get_logger()
+    args = [
+        sys.executable,
+        "-m",
+        "tex2pdf._watermark_worker_main",
+        str(in_pdf),
+        str(out_pdf),
+        watermark.text or "",
+        watermark.link or "",
+        font or "",
+        str(fsize) if fsize is not None else "",
+        fcolor or "",
+    ]
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        _out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        logger.error("Watermarking timed out after %.1fs, killing worker pid %s", timeout, proc.pid)
+        proc.kill()
+        proc.communicate()
+        raise WatermarkTimeout(f"Watermarking did not finish within {timeout:.0f}s") from None
+
+    if proc.returncode == 0:
+        return
+    err = err.strip() or f"watermark worker exited with code {proc.returncode}"
+    if err.startswith("WatermarkFileTypeError"):
+        raise WatermarkFileTypeError(err)
+    raise WatermarkError(err)

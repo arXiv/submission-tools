@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -9,7 +10,12 @@ import pdf_oxide
 import pikepdf
 from PIL import Image, ImageChops
 from tex2pdf.converter_driver import ConverterDriver
-from tex2pdf.pdf_watermark import Watermark, add_watermark_text_to_pdf
+from tex2pdf.pdf_watermark import (
+    Watermark,
+    WatermarkTimeout,
+    add_watermark_text_to_pdf,
+    add_watermark_text_to_pdf_bounded,
+)
 
 SELF_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -241,7 +247,7 @@ class TestCustomFont(unittest.TestCase):
 
 
 class TestConverterDriverFontForwarding(unittest.TestCase):
-    """ConverterDriver must forward the watermark font customization to add_watermark_text_to_pdf."""
+    """ConverterDriver must forward the watermark font customization to add_watermark_text_to_pdf_bounded."""
 
     def _make_driver(self, **kwargs) -> ConverterDriver:
         return ConverterDriver(
@@ -253,9 +259,13 @@ class TestConverterDriverFontForwarding(unittest.TestCase):
 
     def test_defaults_forwarded(self):
         driver = self._make_driver()
-        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf") as stamp:
+        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf_bounded") as stamp:
             driver._watermark("/in.pdf", "/out.pdf")
-        stamp.assert_called_once_with(driver.water, "/in.pdf", "/out.pdf", font=None, fsize=None, fcolor=None)
+        stamp.assert_called_once_with(
+            driver.water, "/in.pdf", "/out.pdf", font=None, fsize=None, fcolor=None, timeout=mock.ANY
+        )
+        timeout = stamp.call_args.kwargs["timeout"]
+        self.assertTrue(0 < timeout <= 60)
 
     def test_custom_values_forwarded(self):
         driver = self._make_driver(
@@ -263,7 +273,7 @@ class TestConverterDriverFontForwarding(unittest.TestCase):
             watermark_font_size=32,
             watermark_font_color="#ff0000",
         )
-        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf") as stamp:
+        with mock.patch("tex2pdf.converter_driver.add_watermark_text_to_pdf_bounded") as stamp:
             driver._watermark("/in.pdf", "/out.pdf")
         stamp.assert_called_once_with(
             driver.water,
@@ -272,7 +282,35 @@ class TestConverterDriverFontForwarding(unittest.TestCase):
             font="IBMPlexSans-Medium.otf",
             fsize=32,
             fcolor="#ff0000",
+            timeout=mock.ANY,
         )
+        timeout = stamp.call_args.kwargs["timeout"]
+        self.assertTrue(0 < timeout <= 60)
+
+
+class TestAddWatermarkTextToPdfBounded(unittest.TestCase):
+    """add_watermark_text_to_pdf_bounded() must actually stamp, and must actually kill a hung worker.
+
+    The worker is a genuine subprocess (python -m tex2pdf._watermark_worker_main),
+    not a multiprocessing.Process: the hypercorn worker that calls this in
+    production is itself a daemonic multiprocessing.Process, and Python
+    refuses to let a daemonic process start further multiprocessing children.
+    """
+
+    def test_normal_case_produces_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out_path = os.path.join(tmp, "out.pdf")
+            add_watermark_text_to_pdf_bounded(Watermark("arXiv:2601.00001", None), in_pdf, out_path, timeout=30)
+            self.assertTrue(os.path.exists(out_path))
+            self.assertGreater(os.path.getsize(out_path), 0)
+
+    def test_hung_worker_is_killed_and_raises_timeout(self):
+        with mock.patch.dict(os.environ, {"TEX2PDF_WATERMARK_TEST_HANG": "1"}):
+            t0 = time.perf_counter()
+            with self.assertRaises(WatermarkTimeout):
+                add_watermark_text_to_pdf_bounded(Watermark("x", None), in_pdf, "/tmp/wont-be-written.pdf", timeout=3)
+            elapsed = time.perf_counter() - t0
+        self.assertTrue(2 < elapsed < 15, f"fired at unexpected time: {elapsed}")
 
 
 if __name__ == "__main__":
