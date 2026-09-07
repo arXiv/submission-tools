@@ -40,6 +40,11 @@ esac
 #   and we need to pass some values (FORCE_SOURCE_DATE etc) forward
 # - we use a **custom build** bwrap that disables setting up a loopback net device on init
 #   This is necessary otherwise --unshare-net (via --unshare-all) does not work on gvisor
+# - --die-with-parent is what makes a timed-out run actually die: on timeout the
+#   Python side kills this shell, and without it bwrap keeps running with the TeX
+#   process inside, holding the stdout/stderr pipes open. --new-session puts the
+#   sandbox in its own session, so killing the process group does not reach it
+#   either.
 # - we need to bind /dev/null for ps2pdf/gs
 # - it would be nice to use --overlay-src/--overlay as in
 #     --overlay-src /usr/local/texlive/2023/texmf-var/ --tmp-overlay /usr/local/texlive/2023/texmf-var/
@@ -48,6 +53,7 @@ bwrap \
     --unshare-all \
     --new-session \
     --as-pid-1 \
+    --die-with-parent \
     --uid 65534 --gid 65534 \
     --cap-drop ALL \
     --bind $tmpdir /tmp \

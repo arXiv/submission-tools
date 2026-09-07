@@ -23,6 +23,7 @@ from . import (
     TEXLIVE_BIN_DIR,
     file_props,
     file_props_in_dir,
+    kill_and_collect,
     local_exec,
 )
 from .service_logger import get_logger
@@ -568,8 +569,7 @@ class BaseConverter:
                 process_completion = True
             except subprocess.TimeoutExpired:
                 logger.warning("Process timeout %s", shlex.join(worker_args), extra=extra)
-                child.kill()
-                (out, err) = child.communicate()
+                (out, err) = kill_and_collect(child)
                 pass
             elapse_time = time.perf_counter() - t0
             timestamp1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
