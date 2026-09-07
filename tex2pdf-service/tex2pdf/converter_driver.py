@@ -24,6 +24,7 @@ from . import (
     file_props,
     file_props_in_dir,
     graphics_exts,
+    kill_and_collect,
     test_file_extent,
 )
 from .doc_converter import combine_documents
@@ -832,8 +833,7 @@ class AutoTeXConverterDriver(ConverterDriver):
                 process_completion = True
             except subprocess.TimeoutExpired:
                 logger.warning("Process timeout %s", shlex.join(worker_args), extra=self.log_extra)
-                child.kill()
-                (out, err) = child.communicate()
+                (out, err) = kill_and_collect(child)
             elapse_time = time.perf_counter() - t0
             t1 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         logger.debug(f"Exec result: return code: {child.returncode}", extra=self.log_extra)

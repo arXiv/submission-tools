@@ -2,6 +2,7 @@
 
 import os
 import stat
+import subprocess
 from typing import Any
 
 from pythonjsonlogger.json import JsonFormatter
@@ -182,3 +183,23 @@ def test_file_extent(filename: str, exts: list | dict, no_ext: str | None = None
         filename = filename + no_ext
         pass
     return filename if ext.lower() in exts else None
+
+
+def kill_and_collect(child: "subprocess.Popen[str]", grace: float = 10.0) -> tuple[str, str]:
+    """SIGKILL a timed-out child and collect its output without blocking forever.
+
+    communicate() waits for EOF on the pipes, not for the child, so anything the
+    child spawned that still holds them keeps this waiting - which wedges the
+    hypercorn worker for good, since the handler is sync code in an async
+    endpoint.  bwrap-tex.sh avoids that with --die-with-parent; the bound here is
+    what keeps a worker alive if some child ever escapes anyway.  Losing the
+    output of a killed run beats losing the worker.
+    """
+    logger = get_logger()
+    child.kill()
+    try:
+        return child.communicate(timeout=grace)
+    except subprocess.TimeoutExpired:
+        logger.warning("Child %d still holds its pipes %.0fs after SIGKILL", child.pid, grace)
+        child.poll()  # the child itself is dead; reap it so returncode is not left None
+        return "", f"process {child.pid} did not release its pipes within {grace:.0f}s after SIGKILL"
