@@ -45,7 +45,6 @@
       "qualname": "hcorn"
     },
     "tex2pdf": {
-      "level": "DEBUG",
       "handlers": ["access_handler"],
       "propagate": false,
       "qualname": "tex2pdf"

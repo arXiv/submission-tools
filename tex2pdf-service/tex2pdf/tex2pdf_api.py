@@ -59,7 +59,9 @@ from .tarball import (
     unpack_tarball,
 )
 
-log_level = os.environ.get("LOGLEVEL", "INFO").upper()
+# hypercorn applies --log-config only after this module is imported, so it would
+# override this. Hence app-logging.{conf,json} deliberately pin no level for tex2pdf.
+get_logger().setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
 get_logger().info("Starting: uid=%d gid=%d", os.getuid(), os.getgid())
 
 
