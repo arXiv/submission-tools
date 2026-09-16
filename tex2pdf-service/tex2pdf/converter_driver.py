@@ -849,9 +849,10 @@ class AutoTeXConverterDriver(ConverterDriver):
         elif len(pdf_files) > 1:
             raise Exception(f"Multiple PDF files found: {pdf_files}")
         else:
-            # move the file to self.out_dir
-            pdf_file = os.path.join(self.out_dir, os.path.basename(pdf_files[0]))
-            os.rename(pdf_files[0], pdf_file)
+            # move the file to self.out_dir; as in ConverterDriver, the outcome
+            # records the bare name, it is meant to be relative to out_dir
+            pdf_file = os.path.basename(pdf_files[0])
+            os.rename(pdf_files[0], os.path.join(self.out_dir, pdf_file))
         # we use glob here, since we will need to rename the autotex.log created
         # by autotex.pl to arxivID.log *within* autotex.log
         log_files = glob(f"{self.in_dir}/tex_logs/autotex.log")
