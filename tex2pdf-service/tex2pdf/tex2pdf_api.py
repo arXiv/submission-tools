@@ -47,7 +47,7 @@ from .pdf_watermark import (
     add_watermark_text_to_pdf_bounded,
 )
 from .remote_call import convert_pdf_remote
-from .service_logger import get_logger
+from .service_logger import TraceBinder, bind_arxiv_id, get_logger
 from .tarball import (
     RemovedSubmission,
     UnsupportedArchive,
@@ -81,6 +81,9 @@ origins = [
 app = FastAPI(
     description=DESCRIPTION, summary="TeX source compilation service to generate PDF", title="TeX to PDF Service"
 )
+
+# every record of a request gets the caller's trace id, see docs/cloud-run-logs.md
+app.add_middleware(TraceBinder)
 
 app.add_middleware(
     CORSMiddleware,
@@ -306,6 +309,7 @@ async def convert_pdf(
     hide_anc_dir: bool = False,
 ) -> Response:
     """Get a tarball, and convert to PDF."""
+    bind_arxiv_id(arxivid)
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()
@@ -641,6 +645,7 @@ async def autotex_pdf(
     watermark_link: str | None = None,
 ) -> Response:
     """Get a tarball, and convert to PDF using autotex."""
+    bind_arxiv_id(arxivid)
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()

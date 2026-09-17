@@ -10,7 +10,7 @@ import typing
 
 import requests
 
-from .service_logger import get_logger
+from .service_logger import get_logger, trace_headers
 
 
 def get_outcome_meta(outcome_file: str) -> dict:
@@ -81,6 +81,7 @@ def convert_pdf_remote(
                 if compile_service.endswith("convert/"):
                     args_dict = {
                         "timeout": timeout,
+                        "arxivid": arxivid,
                         "use_addon_tree": use_addon_tree,
                         "max_tex_files": max_tex_files,
                         "max_appending_files": max_appending_files,
@@ -111,6 +112,8 @@ def convert_pdf_remote(
                         timeout=timeout,
                         allow_redirects=False,
                         params=args_dict,
+                        # puts the proxied compile in the caller's trace
+                        headers=trace_headers(),
                     )
                 except ConnectionError as e:
                     logger.warning(
