@@ -1,5 +1,6 @@
 """tex2pdf: FastAPI to compile arXiv submissions to PDF."""
 
+import logging
 import os
 import stat
 import subprocess
@@ -7,7 +8,7 @@ from typing import Any
 
 from pythonjsonlogger.json import JsonFormatter
 
-from .service_logger import get_logger
+from .service_logger import arxiv_id_context, get_logger, trace_id
 
 
 def env_flag(env_var: str, default: bool = False) -> bool:
@@ -49,7 +50,10 @@ TEXLIVE_BIN_DIR: str = f"{TEXLIVE_ROOT}/bin/x86_64-linux"
 ENABLE_SANDBOX: bool = env_flag("ENABLE_SANDBOX")
 ENABLE_MAKEINDEX: bool = env_flag("ENABLE_MAKEINDEX")
 
-PROJECT_ID: str = os.environ.get("PROJECT_ID", "")
+# Needed in the log records as projects/<id>/traces/<trace>, the only form that
+# groups with the request log Cloud Run itself writes.  GOOGLE_CLOUD_PROJECT is
+# set in the images (see the Dockerfiles), PROJECT_ID is the manual override.
+PROJECT_ID: str = os.environ.get("PROJECT_ID", "") or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 PROJECT_NR: int = int(os.environ.get("PROJECT_NR", "0"))
 
 TEX2PDF_DEFAULT_KEYS_TO_URLS = {
@@ -127,11 +131,27 @@ if TEX2PDF_PROXY_RELEASE == "1":
         TEX2PDF_SCOPES = ""
 
 
+# Cloud Logging lifts this key out of the payload into the entry's trace field;
+# the prefix is dropped when the project is unknown, which still groups our own
+# records, just not with Cloud Run's request log.
+TRACE_FIELD = "logging.googleapis.com/trace"
+_TRACE_PREFIX = f"projects/{PROJECT_ID}/traces/" if PROJECT_ID else ""
+
+
 class CustomJsonFormatter(JsonFormatter):
     """Logging formatter to play nice with JSON logger."""
 
     def __init__(self, *args: list, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs, rename_fields={"levelname": LOG_LEVEL_NAME, "asctime": "time"})
+
+    def add_fields(self, log_record: dict, record: logging.LogRecord, message_dict: dict) -> None:
+        """Stamp the request context onto every record, wherever it was logged."""
+        super().add_fields(log_record, record, message_dict)
+        if tid := trace_id():
+            log_record[TRACE_FIELD] = _TRACE_PREFIX + tid
+        if (an_id := arxiv_id_context.get()) and not log_record.get(ID_TAG):
+            # an explicit extra={ID_TAG: ...} wins: those carry the conversion tag
+            log_record[ID_TAG] = an_id
 
     def _perform_rename_log_fields(self, log_record: dict) -> None:
         log_record.pop("color_message", None)
