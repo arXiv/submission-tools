@@ -263,7 +263,6 @@ def healthcheck() -> str:
     },
 )
 async def convert_pdf(
-    request: Request,
     incoming: UploadFile,
     use_addon_tree: typing.Annotated[
         bool, Query(title="Use addon tree", description="Determines whether an addon tree is used.")
@@ -313,7 +312,6 @@ async def convert_pdf(
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"source_filename": filename}
     logger = get_logger()
-    logger.debug("Request: %s", request.url, extra=log_extra)
     start_time = time.perf_counter()
     logger.info("Start processing %s", incoming.filename)
     tag = os.path.basename(filename)
@@ -561,6 +559,9 @@ def _convert_pdf_current(
 async def stamp_pdf(
     background_tasks: BackgroundTasks,
     incoming: UploadFile,
+    arxivid: typing.Annotated[
+        str | None, Query(title="arXiv ID", description="arXiv identifier, used to correlate the logs")
+    ] = None,
     watermark_text: str | None = None,
     watermark_link: str | None = None,
     watermark_font: str | None = None,
@@ -568,6 +569,7 @@ async def stamp_pdf(
     watermark_font_color: str | None = None,
 ) -> Response:
     """Get a PDF and return the PDF with a watermark."""
+    bind_arxiv_id(arxivid)
     filename = incoming.filename if incoming.filename else tempfile.mktemp(prefix="download")
     log_extra = {"in_pdf": filename}
     logger = get_logger()

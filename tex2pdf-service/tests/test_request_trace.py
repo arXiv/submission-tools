@@ -26,6 +26,14 @@ def format_record(extra: dict | None = None) -> dict:
     return json.loads(formatter.format(record))
 
 
+async def noop_app(scope: dict, receive: object, send: object) -> None:
+    return None
+
+
+def post_scope(path: str, query: bytes = b"") -> dict:
+    return {"type": "http", "method": "POST", "path": path, "query_string": query, "headers": []}
+
+
 class RequestTraceTest(unittest.TestCase):
     def setUp(self) -> None:
         trace_context.set("")
@@ -62,6 +70,33 @@ class RequestTraceTest(unittest.TestCase):
         trace_context.set("")
         self.assertEqual(trace_headers(), {})
 
+    def test_middleware_logs_what_the_caller_asked_for(self) -> None:
+        records = []
+        handler = logging.Handler()
+        handler.emit = records.append  # type: ignore[method-assign]
+        logger = logging.getLogger("tex2pdf")
+        logger.addHandler(handler)
+        level = logger.level
+        logger.setLevel(logging.DEBUG)
+        try:
+            scope = post_scope("/convert/", b"arxivid=2509.12345&ts=17")
+            scope["headers"] = [(b"user-agent", b"python-httpx/0.28")]
+            asyncio.run(TraceBinder(noop_app)(scope, None, None))
+            asyncio.run(TraceBinder(noop_app)({**post_scope("/"), "method": "GET"}, None, None))
+            # a consumer that passes no id at all announces itself
+            bind_arxiv_id(None)
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(level)
+        # the POST is logged with its query and its consumer, the health GET is not
+        self.assertEqual(
+            [record.getMessage() for record in records],
+            [
+                "Request: POST /convert/?arxivid=2509.12345&ts=17 from python-httpx/0.28",
+                "Request carries no arxivid: its records cannot be found by paper id",
+            ],
+        )
+
     def test_middleware_binds_the_header_and_clears_the_previous_request(self) -> None:
         seen = {}
 
@@ -70,7 +105,7 @@ class RequestTraceTest(unittest.TestCase):
             seen["arxiv_id"] = arxiv_id_context.get()
 
         bind_arxiv_id("from-the-previous-request")
-        scope = {"type": "http", "headers": [(b"host", b"x"), (b"x-cloud-trace-context", b"tid/9;o=1")]}
+        scope = {**post_scope("/convert/"), "headers": [(b"host", b"x"), (b"x-cloud-trace-context", b"tid/9;o=1")]}
         asyncio.run(TraceBinder(inner_app)(scope, None, None))
         self.assertEqual(seen, {"trace": "tid/9;o=1", "arxiv_id": ""})
 
@@ -80,7 +115,7 @@ class RequestTraceTest(unittest.TestCase):
         async def inner_app(scope: dict, receive: object, send: object) -> None:
             seen["trace"] = trace_context.get()
 
-        asyncio.run(TraceBinder(inner_app)(scope={"type": "http", "headers": []}, receive=None, send=None))
+        asyncio.run(TraceBinder(inner_app)(scope=post_scope("/convert/"), receive=None, send=None))
         self.assertEqual(seen, {"trace": ""})
 
     def test_middleware_ignores_non_http_scopes(self) -> None:

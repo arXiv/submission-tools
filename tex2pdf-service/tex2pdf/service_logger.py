@@ -39,8 +39,15 @@ def get_logger() -> logging.Logger:
 
 
 def bind_arxiv_id(arxiv_id: str | None) -> None:
-    """Stamp the paper id on the remaining log records of this request."""
+    """Stamp the paper id on the remaining log records of this request.
+
+    Warns when the caller passed none: that request cannot be found by paper id
+    afterwards, and the warning is how a consumer that forgets `arxivid` makes
+    itself known.
+    """
     arxiv_id_context.set(arxiv_id or "")
+    if not arxiv_id:
+        get_logger().warning("Request carries no arxivid: its records cannot be found by paper id")
 
 
 def trace_id() -> str:
@@ -69,12 +76,26 @@ class TraceBinder:
 
     async def __call__(self, scope: typing.Any, receive: typing.Any, send: typing.Any) -> None:
         if scope["type"] == "http":
-            trace = b""
+            trace = agent = b""
             for key, value in scope["headers"]:
                 if key == b"x-cloud-trace-context":
                     trace = value
-                    break
+                elif key == b"user-agent":
+                    agent = value
             # plain set, not reset: this is also what clears the previous request
             trace_context.set(trace.decode("latin-1"))
             arxiv_id_context.set("")
+            if scope["method"] not in ("GET", "HEAD"):
+                # the first record of the request, and the only one that says what
+                # the caller asked for and which consumer it was.  GETs are
+                # skipped, the health check is one.  Never the other headers,
+                # they carry the identity token.
+                query = scope.get("query_string", b"").decode("latin-1")
+                get_logger().debug(
+                    "Request: %s %s%s from %s",
+                    scope["method"],
+                    scope["path"],
+                    f"?{query}" if query else "",
+                    agent.decode("latin-1") or "(no user-agent)",
+                )
         await self.app(scope, receive, send)
