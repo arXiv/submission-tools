@@ -8,7 +8,6 @@ from unittest import mock
 
 import tex2pdf
 from fastapi import FastAPI
-from starlette.testclient import TestClient
 from tex2pdf.service_logger import (
     TraceBinder,
     arxiv_id_context,
@@ -95,6 +94,39 @@ class RequestTraceTest(unittest.TestCase):
         self.assertEqual(reached, ["lifespan"])
 
 
+def get(app: FastAPI, path: str, headers: tuple = ()) -> dict:
+    """Drive one GET through the app's real middleware stack.
+
+    Plain ASGI rather than starlette's TestClient, which would pull in httpx
+    just for this.
+    """
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [(key.lower().encode(), value.encode()) for key, value in headers],
+        "client": ("test", 1),
+        "server": ("test", 80),
+    }
+    sent: list[dict] = []
+
+    async def receive() -> dict:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: dict) -> None:
+        sent.append(message)
+
+    asyncio.run(app(scope, receive, send))
+    body = b"".join(msg.get("body", b"") for msg in sent if msg["type"] == "http.response.body")
+    return json.loads(body)
+
+
 class RequestTraceThroughTheAppTest(unittest.TestCase):
     """add_middleware() wiring plus the hop from endpoint to nested sync code."""
 
@@ -114,14 +146,14 @@ class RequestTraceThroughTheAppTest(unittest.TestCase):
 
     def test_trace_reaches_the_records_and_the_next_hop(self) -> None:
         header = "4bf92f3577b34da6a3ce929d0e0e4736/17;o=1"
-        res = TestClient(self.app).get("/compile/2304.99997v1", headers={"X-Cloud-Trace-Context": header})
-        self.assertEqual(res.json(), {"X-Cloud-Trace-Context": header})
+        res = get(self.app, "/compile/2304.99997v1", (("X-Cloud-Trace-Context", header),))
+        self.assertEqual(res, {"X-Cloud-Trace-Context": header})
         self.assertEqual(self.seen[0][tex2pdf.TRACE_FIELD], "projects/p/traces/4bf92f3577b34da6a3ce929d0e0e4736")
         self.assertEqual(self.seen[0]["arxiv_id"], "2304.99997v1")
 
     def test_a_request_without_the_header_still_works(self) -> None:
-        res = TestClient(self.app).get("/compile/0601247v1")
-        self.assertEqual(res.json(), {})
+        res = get(self.app, "/compile/0601247v1")
+        self.assertEqual(res, {})
         self.assertNotIn(tex2pdf.TRACE_FIELD, self.seen[0])
         self.assertEqual(self.seen[0]["arxiv_id"], "0601247v1")
 
