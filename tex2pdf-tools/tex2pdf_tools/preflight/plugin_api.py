@@ -92,10 +92,18 @@ def load_callables(group: str) -> list[Callable]:
 
 
 def safe_call(func: Callable, *args: Any, default: Any = None, label: str = "") -> Any:
-    """Invoke a plugin callable, fail-open: log and return ``default`` on any error."""
+    """Invoke a plugin callable, fail-open: log and return ``default`` on any error.
+
+    "Any error" includes a panic in a Rust extension the plugin uses (e.g.
+    pdf_oxide): PyO3 raises it as ``pyo3_runtime.PanicException``, which
+    subclasses BaseException, not Exception, so ``except Exception`` would let
+    it through and abort the preflight or compile.
+    """
     try:
         return func(*args)
-    except Exception as e:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as e:
         name = label or getattr(func, "__name__", "") or repr(func)
         logger.warning("Check plugin %s raised during invocation: %s", name, e)
         return default
