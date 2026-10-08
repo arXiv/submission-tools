@@ -121,6 +121,30 @@ def test_merge_is_fail_open(monkeypatch):
     assert "bad" not in registry
 
 
+class _FakePanic(BaseException):
+    """Stand-in for pyo3_runtime.PanicException, which subclasses BaseException."""
+
+
+def test_pdf_check_panic_is_fail_open(monkeypatch):
+    """A Rust panic inside a plugin must not abort the PDF checks."""
+
+    def panics(res, severity):
+        raise _FakePanic("rust panic")
+
+    monkeypatch.setattr(plugin_api, "_load_entry_points", lambda group: [])
+    pdf_checks._ensure_loaded()
+    monkeypatch.setitem(pdf_checks.PDF_CHECKS, "panics", (panics, CheckSeverity.error))
+    assert pdf_checks.run_checks("missing.pdf", ["panics"]) == (True, [], [])
+
+
+def test_safe_call_does_not_swallow_interrupts():
+    def interrupted():
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        plugin_api.safe_call(interrupted)
+
+
 # --------------------------------------------------------------------------- #
 # Source-check wiring -> suspicious status (opt-in) + arbitrary key round-trip
 # --------------------------------------------------------------------------- #
