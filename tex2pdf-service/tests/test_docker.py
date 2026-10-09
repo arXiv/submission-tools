@@ -521,6 +521,51 @@ def test_bibtex(docker_container):
 
 
 @pytest.mark.integration
+def test_nested_citation(docker_container, ts):
+    r"""A \bibitem containing a \cite needs a second bibtex run to be resolved."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/nested-citation/nested-citation.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/nested-citation.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
+    assert status == 200
+    assert meta is not None
+    assert meta.get("status") == "success"
+    # the citation inside the bibitem of `outer` must end up resolved
+    assert meta.get("problems", []) == []
+    steps = [run["step"] for run in meta["converters"][0]["runs"]]
+    assert steps == [
+        "first_run",
+        "bib_run:0:bibtex",
+        "second_run:0",
+        "bib_run:1:bibtex",
+        "second_run:1",
+        "second_run:2",
+    ]
+
+
+@pytest.mark.integration
+def test_nested_citation_biber(docker_container, ts):
+    """Same as test_nested_citation, but the second level key is discovered via the .bcf."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/nested-citation-biber/nested-citation-biber.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/nested-citation-biber.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false", "ts": ts})
+    assert status == 200
+    assert meta is not None
+    assert meta.get("status") == "success"
+    assert meta.get("problems", []) == []
+    steps = [run["step"] for run in meta["converters"][0]["runs"]]
+    assert steps == [
+        "first_run",
+        "bib_run:0:biber",
+        "second_run:0",
+        "bib_run:1:biber",
+        "second_run:1",
+        "second_run:2",
+    ]
+
+
+@pytest.mark.integration
 def test_biblatex_biber(docker_container):
     url = docker_container + "/convert"
     tarball = os.path.join(SELF_DIR, "fixture/tarballs/biblatex-biber/biblatex-biber.tar.gz")
