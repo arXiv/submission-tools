@@ -207,9 +207,53 @@ def _inject_fill_color(overlay_pdf: bytes, rgb: tuple[float, float, float]) -> b
         return out.getvalue()
 
 
-def _watermark_should_overlay(
-    in_pdf: pathlib.Path | str, band: tuple[float, float, float, float], page_height: float
-) -> bool:
+def _band_pixels(
+    doc: "pdf_oxide.PdfDocument", band: tuple[float, float, float, float], size: tuple[int, int]
+) -> tuple[int, int, int, int]:
+    """Return ``band`` (PDF points on page 0) as a pixel box within the render of page 0 of ``size``.
+
+    pdf_oxide (from 0.3.78) renders the displayed area -- the crop box clipped
+    to the media box -- turned clockwise by /Rotate, and scales a page down that
+    would exceed its render budget; so neither the media box origin nor one
+    pixel per point at 72 dpi can be assumed. The box is clipped to the image:
+    a part of the band the page does not display is not looked at.
+    """
+
+    def normalized(box: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+        x0, y0, x1, y1 = (float(v) for v in box)
+        return min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)
+
+    mx0, my0, mx1, my1 = normalized(doc.page_media_box(0))
+    crop = doc.page_crop_box(0)
+    x0, y0, x1, y1 = normalized(crop) if crop else (mx0, my0, mx1, my1)
+    x0, y0, x1, y1 = max(x0, mx0), max(y0, my0), min(x1, mx1), min(y1, my1)
+    if x1 <= x0 or y1 <= y0:  # a crop box that misses the media box shows the media box
+        x0, y0, x1, y1 = mx0, my0, mx1, my1
+    rotation = doc.page_rotation(0) % 360
+    width, height = size
+    turned = rotation in (90, 270)
+    sx = width / ((y1 - y0) if turned else (x1 - x0))
+    sy = height / ((x1 - x0) if turned else (y1 - y0))
+
+    def to_pixels(x: float, y: float) -> tuple[float, float]:  # (x right, y down)
+        if rotation == 90:
+            return (y - y0) * sx, (x - x0) * sy
+        if rotation == 180:
+            return (x1 - x) * sx, (y - y0) * sy
+        if rotation == 270:
+            return (y1 - y) * sx, (x1 - x) * sy
+        return (x - x0) * sx, (y1 - y) * sy
+
+    (u0, v0), (u1, v1) = to_pixels(band[0], band[1]), to_pixels(band[2], band[3])
+    return (
+        max(0, min(int(min(u0, u1)), width)),
+        max(0, min(int(min(v0, v1)), height)),
+        max(0, min(int(max(u0, u1)) + 1, width)),
+        max(0, min(int(max(v0, v1)) + 1, height)),
+    )
+
+
+def _watermark_should_overlay(in_pdf: pathlib.Path | str, band: tuple[float, float, float, float]) -> bool:
     """Decide whether to draw the watermark on top of (True) or beneath (False) content.
 
     Renders the watermark band of the source page and counts distinct colors: a
@@ -218,14 +262,11 @@ def _watermark_should_overlay(
     underneath to avoid obscuring it. Mirrors the previous behavior.
     """
     logger = get_logger()
-    left, bottom, right, top = band
     try:
+        doc = pdf_oxide.PdfDocument(str(in_pdf))
         with _quiet_pdf_oxide_logs():
-            image = _render_page_rgb(pdf_oxide.PdfDocument(str(in_pdf)), 0, 72)
-        # Pixel space (72 dpi == 1 px per point) has a top-left origin, so the
-        # PDF y axis is flipped.
-        crop = (int(left), int(page_height - top), int(right) + 1, int(page_height - bottom))
-        band_image = image.crop(crop)
+            image = _render_page_rgb(doc, 0, 72)
+        band_image = image.crop(_band_pixels(doc, band, image.size))
         colors = band_image.getcolors(maxcolors=1 << 24)
         color_count = len(colors) if colors is not None else 2
         logger.debug("Color count in watermark area: %s", color_count)
@@ -308,7 +349,7 @@ def add_watermark_text_to_pdf(
             band = (band_left, band_bottom, _BAND_RIGHT, band_top)
 
             # Decide placement order based on what is already in the band.
-            put_on_top = _watermark_should_overlay(in_pdf, band, page_height)
+            put_on_top = _watermark_should_overlay(in_pdf, band)
             logger.debug("Detected put_on_top: %s", put_on_top)
 
             # Import the watermark page as a Form XObject and place it.

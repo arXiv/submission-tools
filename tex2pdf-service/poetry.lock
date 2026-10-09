@@ -1656,21 +1656,21 @@ files = [
 
 [[package]]
 name = "pdf-oxide"
-version = "0.3.63"
-description = "The fastest Python PDF library: 0.8ms mean, 5× faster than PyMuPDF. Text extraction, markdown conversion, PDF creation. 100% pass rate on 3,830 PDFs."
+version = "0.3.78"
+description = "The fastest Python PDF library — 0.8ms mean, 5× faster than the industry leaders, 100% pass rate on 3,830 real-world PDFs. Text extraction, Markdown/HTML conversion, PDF creation and editing."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "pdf_oxide-0.3.63-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:31fb32f33e8c470aa99d860d11c4dc49c8298cf5292189a8c10e32c852d10d9c"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:688a5c7906b2ae1877a18b7b22d6fd85d40d10a4ad19d9865f9f18f5016e4b38"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:e683698d30a52fe13bc109d55d1996917bdeab1d4347dabc308ad264d94d87d1"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:993f8f25af05d4156fc841eb73b6ce2491d83cb2a1cfa1868f21ea2e06334a60"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:3b26ae59448988b372d46d73afeb9817cc9c3fcdeb5fe34577b670994f4ebb10"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:7751a0cec6071007ee0446cc66c432f14c837e973215de93cc3336cd33f46280"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-win_amd64.whl", hash = "sha256:3534d9014edae789d38890412e8bdfdd5839489eee34939a766eac32294d9dea"},
-    {file = "pdf_oxide-0.3.63-cp38-abi3-win_arm64.whl", hash = "sha256:98a475dbafc7cb3dabcc49b917140c91cf6ac165268b7885623db3325161b5d4"},
-    {file = "pdf_oxide-0.3.63.tar.gz", hash = "sha256:71890eeb95aee4d1bb47c05ecb827b2957fa9e930b0dc4a450abd67c72e35baa"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:a0c98d7753ec8593bd7e79ee41ad813b22a55fdd321cae85138e791802eac92b"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:538a809d35d9dec07e2e7a7568352bcf4114a8fb66d12f7452c802b2304d6946"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:dda4a7fb93f3b68a4b9bf52d0d314891d777c417f41993a0c2d8937325a59f2b"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:0b7e03008ca441e9183ef8f3c5d895424aca8119d5a860a205e1d16649f4f6a8"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:119c45cc16e1763440e438ab3e2d0a59ff406ed4c5bf6b78716bd2dfb2083b05"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:e290619267875256d310ea692f2a748ddb9575d3c35ade61db51f3aaade1ddac"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-win_amd64.whl", hash = "sha256:3c2800d15e60ce1d2ec5de5ff9a605c167e0c9964bb9f6143862d282ef6b46d0"},
+    {file = "pdf_oxide-0.3.78-cp38-abi3-win_arm64.whl", hash = "sha256:f05e894c5d984284f56694f03a9351ea18d8c1ea081b4445007dfaa5c11dce85"},
+    {file = "pdf_oxide-0.3.78.tar.gz", hash = "sha256:18fb43c7b4e390400aab51f546a7b8c6ee471b5cbec88f4cf3dd74f6c43c49f2"},
 ]
 
 [package.extras]
@@ -3025,4 +3025,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "de8d54b77172742d87e3f57aa51f9931f0166c90faf91c906a71f48277a5535f"
+content-hash = "c4f504b3e06b0c7fa421299cfe89dc2b4f9f143ff8d6eab321e58db7b99d44f9"

@@ -13,6 +13,7 @@ from tex2pdf.converter_driver import ConverterDriver
 from tex2pdf.pdf_watermark import (
     Watermark,
     WatermarkTimeout,
+    _watermark_should_overlay,
     add_watermark_text_to_pdf,
     add_watermark_text_to_pdf_bounded,
 )
@@ -311,6 +312,49 @@ class TestAddWatermarkTextToPdfBounded(unittest.TestCase):
                 add_watermark_text_to_pdf_bounded(Watermark("x", None), in_pdf, "/tmp/wont-be-written.pdf", timeout=3)
             elapsed = time.perf_counter() - t0
         self.assertTrue(2 < elapsed < 15, f"fired at unexpected time: {elapsed}")
+
+
+class TestOverlayDecision(unittest.TestCase):
+    """The over/under decision looks at the band where pdf_oxide renders it.
+
+    pdf_oxide renders the crop box turned by /Rotate, and a page beyond its
+    render budget at reduced scale, so the band must be mapped into the render.
+    """
+
+    BAND = (18.0, 231.0, 32.0, 561.0)  # the stamp band on a letter page
+    IN_BAND = b"0 g 20 380 10 40 re f"  # a small square inside the band
+    BELOW_BAND = b"0 g 20 80 10 40 re f"  # the same square 300pt lower
+    PAGES = (
+        {},
+        {"/CropBox": [0, 0, 612, 492]},  # trims 300pt off the top
+        {"/CropBox": [10, 0, 612, 792]},
+        {"/Rotate": 90},
+        {"/Rotate": 180},
+        {"/Rotate": 270},
+        {"/MediaBox": [0, 0, 5000, 5000]},  # 25 Mpx at 72 dpi: rendered scaled down
+    )
+
+    def _overlay(self, content: bytes, entries: dict) -> bool:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "page.pdf")
+            with pikepdf.new() as pdf:
+                pdf.add_blank_page(page_size=(612, 792))
+                page = pdf.pages[0]
+                page.Contents = pdf.make_stream(content)
+                for key, value in entries.items():
+                    page.obj[key] = value
+                pdf.save(path)
+            return _watermark_should_overlay(path, self.BAND)
+
+    def test_content_in_the_band_goes_on_top_of_the_stamp(self):
+        for entries in self.PAGES:
+            with self.subTest(entries=entries):
+                self.assertFalse(self._overlay(self.IN_BAND, entries))
+
+    def test_stamp_goes_on_top_of_a_blank_band(self):
+        for entries in self.PAGES:
+            with self.subTest(entries=entries):
+                self.assertTrue(self._overlay(self.BELOW_BAND, entries))
 
 
 if __name__ == "__main__":
