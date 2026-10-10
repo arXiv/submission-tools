@@ -94,6 +94,28 @@ reference = "master"
 resolved_reference = "e32d0d39017a79bee095d7cfc87c6c3fb964651a"
 
 [[package]]
+name = "arxiv-pdf-watermark"
+version = "0.1.0"
+description = "The arXiv watermark (stamp) for PDF files"
+optional = false
+python-versions = "^3.11"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+pdf-oxide = "0.3.78"
+pikepdf = "*"
+pillow = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/arXiv/submission-tools.git"
+reference = "HEAD"
+resolved_reference = "7aa1467691c545e1475923b4a13da6c1ea5ff941"
+subdirectory = "pdf-watermark"
+
+[[package]]
 name = "arxiv-tex2pdf-tools"
 version = "0.1.0"
 description = "Base tools for arXiv's tex-to-pdf conversion service"
@@ -3025,4 +3047,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "c4f504b3e06b0c7fa421299cfe89dc2b4f9f143ff8d6eab321e58db7b99d44f9"
+content-hash = "b090742d392bcd95fc7a4164aae9699428997001cae33a695759481ab3f4689d"

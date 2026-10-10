@@ -9,6 +9,7 @@ import time
 import typing
 from glob import glob
 
+from arxiv_pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf_bounded
 from tex2pdf_tools.preflight import PreflightStatusValues, generate_preflight_response
 from tex2pdf_tools.preflight.pdf_checks import run_checks as run_pdf_checks
 from tex2pdf_tools.tex_inspection import find_unused_toplevel_files, maybe_bbl
@@ -28,7 +29,6 @@ from . import (
     test_file_extent,
 )
 from .doc_converter import combine_documents
-from .pdf_watermark import Watermark, WatermarkError, add_watermark_text_to_pdf_bounded
 from .remote_call import service_process_tarball
 from .service_logger import get_logger
 from .tarball import ZZRMUnderspecified, ZZRMUnsupportedCompiler, unpack_tarball
