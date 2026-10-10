@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "arxiv-pdf-watermark"
+version = "0.1.0"
+description = "The arXiv watermark (stamp) for PDF files"
+authors = ["arxiv.org"]
+packages = [
+    { include = "arxiv_pdf_watermark" }
+]
+include = ["README.md"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pikepdf = "*"
+pillow = "*"
+# Pinned exactly: the watermark band check maps through how 0.3.78 renders (the
+# /CropBox, turned by /Rotate); check it again before moving to another version.
+pdf-oxide = "0.3.78"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "0.12.*"
+pytest = "*"
+mypy = "*"
+
+[tool.ruff]
+# Extend the `pyproject.toml` from the toplevel dir
+extend = "../pyproject.toml"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

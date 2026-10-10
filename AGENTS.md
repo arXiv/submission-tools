@@ -4,17 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository shape
 
-Three independent Poetry projects in one git repo. There is no top-level build — `cd` into a
+Four independent Poetry projects in one git repo. There is no top-level build — `cd` into a
 subproject first.
 
 | Directory | Package | What it is |
 | --- | --- | --- |
 | `tex2pdf-service/` | `arxiv-tex2pdf-service` (`tex2pdf`) | FastAPI service that compiles a submission tarball to PDF inside a TeX Live Docker image |
 | `tex2pdf-tools/` | `arxiv-tex2pdf-tools` (`tex2pdf_tools`) | Library: `preflight`, `zerozeroreadme`, `tex_inspection`, `directives`. No TeX-running service code |
+| `pdf-watermark/` | `arxiv-pdf-watermark` (`arxiv_pdf_watermark`) | Library: the arXiv watermark (stamp) on a PDF, used by the service and by publish's file-ops |
 | `pdf_profile/` | `pdf_profile` | PDF digest/profiling tool, used for comparing compile output |
 
 CI mirrors this split with path filters: `.github/workflows/test_service.yaml` fires only on
-`tex2pdf-service/**`, `test_tools.yaml` only on `tex2pdf-tools/**`. `pdf_profile` has no workflow.
+`tex2pdf-service/**`, `test_tools.yaml` only on `tex2pdf-tools/**`, `test_watermark.yaml` only on
+`pdf-watermark/**`. `pdf_profile` has no workflow.
 
 ### The tex2pdf-tools overlay — read this before editing the library
 
@@ -92,6 +94,18 @@ LOCAL_EXEC=t uvicorn --host 0.0.0.0 --port=6301 tex2pdf.tex2pdf_api:app
 
 Batch-compile a directory of tarballs against a running service and harvest results into
 `score.db`: `python bin/compile_submissions.py compile ~/tarballs` / `... harvest ~/tarballs`.
+
+### pdf-watermark
+
+```bash
+cd pdf-watermark
+poetry install --with=dev
+PYTHONPATH=$PWD poetry run pytest tests
+```
+
+Pure unit tests, no TeX or Docker (the custom-font tests skip without `kpsewhich`). Until
+tex2pdf-service switches to this package it still carries its own copy in
+`tex2pdf/pdf_watermark.py`; a watermark fix goes into both.
 
 ### pdf_profile
 
