@@ -1,0 +1,45 @@
+# Tests and lint for the pdf-watermark package.
+
+name: PDF Watermark Test
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'pdf-watermark/**'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'pdf-watermark/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        cd pdf-watermark
+        python -m pip install --upgrade pip
+        pip install pytest poetry
+        poetry install --with=dev
+    - name: pytest
+      run: |
+        cd pdf-watermark
+        export PYTHONPATH=$PWD
+        poetry run pytest tests
+    - uses: astral-sh/ruff-action@v3
+      with:
+        version: "0.12.x"
+        args: "--version" # don't run check automatically
+    - run: |
+        cd pdf-watermark
+        ruff check
+    - run: |
+        cd pdf-watermark
+        ruff format --check --diff
