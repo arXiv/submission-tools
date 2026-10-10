@@ -32,11 +32,12 @@ APP_DOCKER_RUN := docker run --cpus ${TEX2PDF_CPUS} --rm -e PORT=${dockerport} -
 
 #-#
 #-# Command: install.dev
-#-#   poetry install + editable overlay of ../tex2pdf-tools so local edits to
-#-#   the tools tree are picked up immediately by tests
+#-#   poetry install + editable overlays of ../tex2pdf-tools and ../pdf-watermark
+#-#   so local edits to those trees are picked up immediately by tests
 install.dev:
 	poetry install
 	poetry run pip install --no-deps -e ../tex2pdf-tools
+	poetry run pip install --no-deps -e ../pdf-watermark
 
 default: HELLO
 

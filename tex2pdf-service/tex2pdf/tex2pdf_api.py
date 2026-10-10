@@ -1,5 +1,6 @@
 """Tex2PDF FastAPI."""
 
+import logging
 import os
 import re
 import subprocess
@@ -12,6 +13,13 @@ from pathlib import Path
 
 from arxiv.identifier import Identifier as arXivID
 from arxiv.identifier import IdentifierException
+from arxiv_pdf_watermark import (
+    Watermark,
+    WatermarkError,
+    WatermarkFileTypeError,
+    WatermarkTimeout,
+    add_watermark_text_to_pdf_bounded,
+)
 from fastapi import FastAPI, Query, UploadFile
 from fastapi import status as STATCODE
 from fastapi.exceptions import RequestValidationError
@@ -39,13 +47,6 @@ from . import (
 )
 from .converter_driver import AutoTeXConverterDriver, ConversionOutcomeMaker, ConverterDriver
 from .fastapi_util import closer
-from .pdf_watermark import (
-    Watermark,
-    WatermarkError,
-    WatermarkFileTypeError,
-    WatermarkTimeout,
-    add_watermark_text_to_pdf_bounded,
-)
 from .remote_call import convert_pdf_remote
 from .service_logger import TraceBinder, bind_arxiv_id, get_logger
 from .tarball import (
@@ -62,6 +63,7 @@ from .tarball import (
 # hypercorn applies --log-config only after this module is imported, so it would
 # override this. Hence app-logging.{conf,json} deliberately pin no level for tex2pdf.
 get_logger().setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
+logging.getLogger("arxiv_pdf_watermark").setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
 get_logger().info("Starting: uid=%d gid=%d", os.getuid(), os.getgid())
 
 

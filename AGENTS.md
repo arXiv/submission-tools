@@ -33,6 +33,9 @@ overlays the working tree on top:
 
 If a change to `tex2pdf_tools` doesn't seem to take effect in the service, the overlay is missing.
 
+`arxiv-pdf-watermark` (`pdf-watermark/`) is a git dependency of the service in the same way and is
+overlaid in the same three places.
+
 ## Commands
 
 ### tex2pdf-tools
@@ -59,7 +62,7 @@ subcommand was renamed to `parse`, so both are currently broken.
 
 ```bash
 cd tex2pdf-service
-make install.dev                              # poetry install + tex2pdf-tools overlay
+make install.dev                              # poetry install + tex2pdf-tools and pdf-watermark overlays
 PYTHONPATH=$PWD poetry run pytest tests
 PYTHONPATH=$PWD poetry run pytest tests/test_watermark.py   # no Docker needed
 ```
@@ -103,9 +106,9 @@ poetry install --with=dev
 PYTHONPATH=$PWD poetry run pytest tests
 ```
 
-Pure unit tests, no TeX or Docker (the custom-font tests skip without `kpsewhich`). Until
-tex2pdf-service switches to this package it still carries its own copy in
-`tex2pdf/pdf_watermark.py`; a watermark fix goes into both.
+Pure unit tests, no TeX or Docker (the custom-font tests skip without `kpsewhich`). In
+tex2pdf-service, `tex2pdf/pdf_watermark.py` is only a re-export kept for arxiv-converter's
+`from tex2pdf.pdf_watermark import ...`; new code imports `arxiv_pdf_watermark`.
 
 ### pdf_profile
 

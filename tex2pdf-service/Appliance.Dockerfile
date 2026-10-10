@@ -37,18 +37,20 @@ RUN chown worker:users $WORKER_HOME
 USER worker
 WORKDIR $WORKER_HOME
 COPY tex2pdf-service/poetry.lock tex2pdf-service/pyproject.toml ./
-# Bring the local tex2pdf-tools tree into the build context so we can overlay
-# it on top of the GitHub-pinned copy that poetry installs.
+# Bring the local tex2pdf-tools and pdf-watermark trees into the build context
+# so we can overlay them on top of the GitHub-pinned copies that poetry installs.
 COPY tex2pdf-tools/ /tmp/tex2pdf-tools/
+COPY pdf-watermark/ /tmp/pdf-watermark/
 # poetry is BROKEN wrt to installing multiple packages from same git repo
 # see https://github.com/python-poetry/poetry/issues/6958
 # RUN poetry config installer.parallel false
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN poetry install --no-root --without=dev
-# Replace the pinned arxiv-tex2pdf-tools wheel with one built from the local
-# source so the image carries the working-tree version, not the GitHub commit
-# pinned in poetry.lock.
+# Replace the pinned arxiv-tex2pdf-tools and arxiv-pdf-watermark wheels with ones
+# built from the local source so the image carries the working-tree versions,
+# not the GitHub commits pinned in poetry.lock.
 RUN poetry run pip install --no-deps /tmp/tex2pdf-tools
+RUN poetry run pip install --no-deps /tmp/pdf-watermark
 
 # copy this afterwards to avoid re-installing poetry deps on each docker build
 COPY tex2pdf-service/tex2pdf/ ./tex2pdf/
