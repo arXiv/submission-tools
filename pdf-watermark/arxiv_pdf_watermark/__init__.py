@@ -47,6 +47,16 @@ _BAND_RIGHT = 32.0
 # Resolution used to measure the true glyph extent of the rendered watermark.
 _INK_DPI = 150
 
+# Largest image (width x height pixels) page 1 may carry for the band render in
+# _watermark_should_overlay. pdf_oxide decodes every image at full size before
+# scaling it into the 72 dpi render, at about 11 bytes a pixel at peak, so one
+# 82-megapixel JPEG in an 18 MB PDF needs ~1 GB and aborts a memory-capped
+# caller (arXiv's publish file-operations stamps in a child limited to 1 GiB).
+# Past this the render is skipped and the watermark goes on top, as when the
+# analysis fails. Of 2650 PDFs announced on 2026-10-15, 5 had a larger page-1
+# image, and the render put the watermark on top for all 5 anyway.
+_RENDER_MAX_IMAGE_PIXELS = 25_000_000
+
 # Fallback font embedded when the caller passes no custom font. A *self-contained*
 # face is mandatory for reproducible output (see _build_watermark_overlay): the
 # base-14 "Times-Roman" has no font program, so pdf_oxide would rasterize the
@@ -251,6 +261,35 @@ def _band_pixels(
     )
 
 
+def _largest_image_pixels(page: pikepdf.Page) -> int:
+    """Return width x height of the largest image XObject on ``page``, inside Form XObjects too.
+
+    Reads only the image dictionaries, never the image data. Malformed resources
+    end the search with what was found so far, which leaves the decision to the
+    band render and its own fallback.
+    """
+    largest = 0
+    todo: list[pikepdf.Object] = [page.resources]
+    seen: set[tuple[int, int]] = set()
+    try:
+        while todo:
+            xobjects = todo.pop().get("/XObject")
+            if not isinstance(xobjects, pikepdf.Dictionary):
+                continue
+            for _name, xobject in xobjects.items():
+                if not isinstance(xobject, pikepdf.Stream) or xobject.objgen in seen:
+                    continue
+                seen.add(xobject.objgen)
+                subtype = xobject.get("/Subtype")
+                if subtype == pikepdf.Name.Image:
+                    largest = max(largest, int(xobject.Width) * int(xobject.Height))
+                elif subtype == pikepdf.Name.Form and isinstance(xobject.get("/Resources"), pikepdf.Dictionary):
+                    todo.append(xobject.Resources)
+    except Exception as exc:
+        logger.debug("Could not read the page's image sizes: %s", exc)
+    return largest
+
+
 def _watermark_should_overlay(in_pdf: pathlib.Path | str, band: tuple[float, float, float, float]) -> bool:
     """Decide whether to draw the watermark on top of (True) or beneath (False) content.
 
@@ -344,8 +383,14 @@ def add_watermark_text_to_pdf(
             band_top = ty + ix1
             band = (band_left, band_bottom, _BAND_RIGHT, band_top)
 
-            # Decide placement order based on what is already in the band.
-            put_on_top = _watermark_should_overlay(in_pdf, band)
+            # Decide placement order based on what is already in the band -- unless
+            # page 1 carries an image too large to render safely.
+            pixels = _largest_image_pixels(pikepdf.Page(page))
+            if pixels > _RENDER_MAX_IMAGE_PIXELS:
+                logger.warning("Page 1 has a %d-pixel image, not rendering it; overlaying: %s", pixels, in_pdf)
+                put_on_top = True
+            else:
+                put_on_top = _watermark_should_overlay(in_pdf, band)
             logger.debug("Detected put_on_top: %s", put_on_top)
 
             # Import the watermark page as a Form XObject and place it.

@@ -315,5 +315,55 @@ class TestOverlayDecision(unittest.TestCase):
                 self.assertTrue(self._overlay(self.BELOW_BAND, entries))
 
 
+class TestHugeImageSkipsRender(unittest.TestCase):
+    """A page-1 image past the render budget is not rendered: pdf_oxide would decode it full-size.
+
+    Shaped like arXiv submission 8233897 (2026-10-15): an 18 MB PDF whose
+    13048x6422 JPEG sits in a Form XObject on page 1 aborted a 1 GiB stamping
+    child. The image data is never read on this path, so an empty stream will do.
+    """
+
+    def _stamp(self, width: int, height: int) -> tuple[mock.MagicMock, bool]:
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = os.path.join(tmp, "in.pdf"), os.path.join(tmp, "out.pdf")
+            with pikepdf.new() as pdf:
+                pdf.add_blank_page(page_size=(612, 792))
+                image = pdf.make_stream(
+                    b"",
+                    Type=pikepdf.Name.XObject,
+                    Subtype=pikepdf.Name.Image,
+                    Width=width,
+                    Height=height,
+                    ColorSpace=pikepdf.Name.DeviceRGB,
+                    BitsPerComponent=8,
+                )
+                form = pdf.make_stream(
+                    b"/Im0 Do",
+                    Type=pikepdf.Name.XObject,
+                    Subtype=pikepdf.Name.Form,
+                    BBox=[0, 0, 1, 1],
+                    Resources=pikepdf.Dictionary(XObject=pikepdf.Dictionary(Im0=image)),
+                )
+                page = pdf.pages[0]
+                page.Resources = pikepdf.Dictionary(XObject=pikepdf.Dictionary(Fm0=form))
+                page.Contents = pdf.make_stream(b"q 500 0 0 250 60 400 cm /Fm0 Do Q")
+                pdf.save(src)
+            with mock.patch("arxiv_pdf_watermark._watermark_should_overlay", return_value=False) as render:
+                add_watermark_text_to_pdf(Watermark("arXiv:2610.21429v1", None), src, out)
+            with pikepdf.open(out) as stamped:
+                on_top = b"/ArXivWatermark Do" in stamped.pages[0].Contents[-1].read_bytes()
+        return render, on_top
+
+    def test_huge_image_is_not_rendered_and_the_stamp_goes_on_top(self):
+        render, on_top = self._stamp(13048, 6422)
+        render.assert_not_called()
+        self.assertTrue(on_top)
+
+    def test_normal_image_still_decides_by_the_render(self):
+        render, on_top = self._stamp(4000, 3000)
+        render.assert_called_once()
+        self.assertFalse(on_top)  # the mocked render said "content in the band"
+
+
 if __name__ == "__main__":
     unittest.main()
