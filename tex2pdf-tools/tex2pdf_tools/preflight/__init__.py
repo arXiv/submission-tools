@@ -523,7 +523,7 @@ class ParsedTeXFile(BaseModel):
         # also normalize // to / for keys
         file_incspec_cleaned: dict[str, dict[str, IncludeSpec]] = {}
         for k, v in file_incspec.items():
-            k_cleaned = k.encode("unicode_escape").decode("utf-8").replace("//", "/")
+            k_cleaned = escape_nonprintable(k).replace("//", "/")
             file_incspec_cleaned[k_cleaned] = v
         # clean mentioned files from double //
         new_mentioned_files: dict[str, dict[str, IncludeSpec]] = {}
@@ -1008,6 +1008,14 @@ update_list_of_supported_compilers()
 #
 # FUNCTIONS
 #
+def escape_nonprintable(text: str) -> str:
+    r"""Return the text with the characters that aren't printable escaped.
+
+    Backslashes and other characters stay as written, so \includegraphics{\elslogo} names "\elslogo".
+    """
+    return "".join(c if c.isprintable() else c.encode("unicode_escape").decode("ascii") for c in text)
+
+
 def string_to_bool(value: str) -> bool:
     """Convert a string to a bool."""
     if value.lower() in ["true", "yes", "on", "1"]:

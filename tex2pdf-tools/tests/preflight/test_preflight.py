@@ -6,7 +6,13 @@ import tempfile
 import pytest
 
 import tex2pdf_tools.preflight
-from tex2pdf_tools.preflight import UNICODE_TEX_PACKAGES, IssueType, PreflightResponse, generate_preflight_response
+from tex2pdf_tools.preflight import (
+    UNICODE_TEX_PACKAGES,
+    IssueType,
+    PreflightResponse,
+    generate_preflight_response,
+    escape_nonprintable,
+)
 
 from .test_file_checks import create_test_png
 
@@ -615,6 +621,24 @@ def test_double_slash_normalization():
             found_sub = True
     assert found_main
     assert found_sub
+
+def test_a_file_argument_that_is_a_macro_keeps_its_backslash():
+    """\\includegraphics{\\elslogo}, as in Elsevier's template: the missing file is
+    reported as written, with one backslash."""
+    dir_path = os.path.join(FIXTURE_DIR, "macro-file-argument")
+    pf: PreflightResponse = generate_preflight_response(dir_path)
+    [tf] = [tf for tf in pf.tex_files if tf.filename == "main.tex"]
+    assert [issue.info for issue in tf.issues] == ["\\elslogo"]
+
+
+@pytest.mark.parametrize(
+    "text, shown",
+    [("\\elslogo", "\\elslogo"), ("fig\nure.png", "fig\\nure.png"), ("figür.png", "figür.png")],
+)
+def test_only_characters_that_are_not_printable_are_escaped(text, shown):
+    """A redefined \\includegraphics can put a newline in a file argument."""
+    assert escape_nonprintable(text) == shown
+
 
 def test_plain_tex_sub():
     """Test plain tex files with sub files."""
