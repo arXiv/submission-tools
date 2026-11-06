@@ -477,7 +477,7 @@ def test_api_bookmark_out_file(docker_container):
     os.makedirs(outcome_dir)
     meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
     assert status == 200
-    unpack_tarball(outcome_dir, outcome, {})
+    unpack_tarball(outcome_dir, outcome, False, {})
     # Read the first top-level bookmark with pikepdf. hyperref stores bookmark
     # titles as UTF-16BE strings; pikepdf decodes them correctly, whereas
     # pdf_oxide.get_outline() does not (and pymupdf was dropped).
