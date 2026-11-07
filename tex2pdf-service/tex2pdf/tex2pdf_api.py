@@ -361,7 +361,7 @@ async def convert_pdf(
 
         # unpack the tarball
         local_tarball = os.path.join(tempdir, filename)
-        unpack_tarball(in_dir, local_tarball, hide_anc_dir, log_extra)
+        unpack_tarball(in_dir, local_tarball, log_extra)
         chmod_775(tempdir)
 
         # deal with preflight computation
