@@ -28,6 +28,15 @@ from . import (
 )
 from .service_logger import get_logger
 
+
+def _file_hash(path: str) -> str | None:
+    """Return the sha256 of a file, or None if it does not exist."""
+    if not os.path.exists(path):
+        return None
+    with open(path, "rb") as fd:
+        return hashlib.sha256(fd.read()).hexdigest()
+
+
 WITH_SHELL_ESCAPE = False
 
 # common command line arguments to all tex/latex calls
@@ -323,11 +332,20 @@ class BaseConverter:
                     return outcome
                 bib_run_nr += 1
 
-        # if idx file is present and ind file is not, run makeindex
-        if ENABLE_MAKEINDEX:
-            idx_file = f"{in_dir}/{stem}.idx"
-            ind_file = f"{in_dir}/{stem}.ind"
-            if os.path.exists(idx_file) and not os.path.exists(ind_file):
+        # run makeindex unless the submission ships its own .ind file. Page numbers in the .idx
+        # move between runs (e.g. once the TOC is typeset), so makeindex is redone before every
+        # further compile run whenever the .idx changed since the last makeindex run.
+        idx_file = os.path.join(in_dir, f"{stem}.idx")
+        ind_file = os.path.join(in_dir, f"{stem}.ind")
+        run_makeindex = ENABLE_MAKEINDEX and not os.path.exists(ind_file)
+        indexed_idx_hash: str | None = None
+
+        # if DVI/PDF is generated, rerun for TOC and references
+        # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
+        iteration_list = range(MAX_LATEX_RUNS - 1)
+        for iteration in iteration_list:
+            if run_makeindex and (idx_hash := _file_hash(idx_file)) not in (None, indexed_idx_hash):
+                indexed_idx_hash = idx_hash
                 makeindex_step = "makeindex_run"
                 logger.debug("Starting makeindex run")
                 makeindex_args = [f"{TEXLIVE_BIN_DIR}/makeindex", stem]
@@ -335,9 +353,8 @@ class BaseConverter:
                 # makeindex outputs to stdout, even errors
                 # since the frontend only shows the `log` entry, move the stdout part to log
                 makeindex_run["log"] = makeindex_out
-                ind_filename = os.path.join(in_dir, f"{stem}.ind")
                 self._report_run(
-                    makeindex_run, makeindex_out, makeindex_err, makeindex_step, in_dir, out_dir, "idx", ind_filename
+                    makeindex_run, makeindex_out, makeindex_err, makeindex_step, in_dir, out_dir, "idx", ind_file
                 )
                 if makeindex_run["return_code"] != 0:
                     logger.debug("makeindex run failed")
@@ -347,8 +364,8 @@ class BaseConverter:
                     if os.path.exists(artifact_file):
                         logger.debug("Output %s deleted due to failed run", output_name)
                         os.unlink(artifact_file)
-                        # the pdf/dvi file was generated in the first run
-                        self.runs[0][base_format] = file_props(artifact_file)
+                        # the pdf/dvi file was generated in the last compile run
+                        run[base_format] = file_props(artifact_file)
                     outcome.update(
                         {
                             "status": "fail",
@@ -359,10 +376,6 @@ class BaseConverter:
                     )
                     return outcome
 
-        # if DVI/PDF is generated, rerun for TOC and references
-        # We had already one run, run it at most MAX_LATEX_RUNS - 1 times again
-        iteration_list = range(MAX_LATEX_RUNS - 1)
-        for iteration in iteration_list:
             logger.debug("Starting %s run", iteration + 1)
             step = f"second_run:{iteration}"
             run = self._latexen_run(step, tex_file, work_dir, in_dir, out_dir)
@@ -401,6 +414,13 @@ class BaseConverter:
                             logger.warning("Last run had changing labels, but we exhausted the MAX_LATEX_RUNS limit.")
                         else:
                             status = "fail"
+            if run_makeindex and _file_hash(idx_file) != indexed_idx_hash:
+                # index entries moved, makeindex has to be redone and the index typeset again
+                logger.debug("idx file changed, need to rerun makeindex")
+                if iteration == iteration_list[-1]:
+                    logger.warning("Last run had changing index entries, but we exhausted the MAX_LATEX_RUNS limit.")
+                else:
+                    status = "fail"
             citation_missing = False
             for line in run["log"].splitlines():
                 for error_needle, error_msg in error_needles:

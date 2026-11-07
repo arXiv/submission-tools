@@ -755,6 +755,20 @@ def test_makeindex(docker_container):
 
 
 @pytest.mark.integration
+def test_makeindex_toc(docker_container):
+    """Test that makeindex is rerun when the TOC shifts the index page numbers."""
+    url = docker_container + "/convert"
+    tarball = os.path.join(SELF_DIR, "fixture/tarballs/test-makeindex-toc/test-makeindex-toc.tar.gz")
+    outcome = os.path.join(SELF_DIR, "output/test-makeindex-toc.outcome.tar.gz")
+    meta, status = submit_tarball(url, tarball, outcome, api_args={"auto_detect": "false"})
+    assert status == 200
+    assert meta is not None
+    # the TOC only appears in the second run and moves the indexed term from page 2 to 5
+    steps = [run["step"] for run in meta["converters"][0]["runs"]]
+    assert steps == ["first_run", "makeindex_run", "second_run:0", "makeindex_run", "second_run:1"]
+
+
+@pytest.mark.integration
 def test_texlive_version_autodetect_set(docker_container):
     """Test that texlive_version is correctly set in outcome and in zzrm when auto-detected."""
     url = docker_container + "/convert"
