@@ -726,7 +726,7 @@ class RemoteConverterDriver(ConverterDriver):
 
         # unpack the tarball for further processing
         logger.debug("Unpacking to workdir %s", self.work_dir)
-        unpack_tarball(self.work_dir, outcome_file, False, {})
+        unpack_tarball(self.work_dir, outcome_file, {})
         logger.debug("Unpacking done")
 
         logger.debug("Getting outcome json")
