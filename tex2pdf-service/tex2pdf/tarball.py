@@ -77,13 +77,18 @@ async def save_stream(in_dir: str, incoming: UploadFile, filename: str, _log_ext
     pass
 
 
-def unpack_tarball(in_dir: str, filename: str, log_extra: dict) -> None:
+def unpack_tarball(in_dir: str, filename: str, hide_anc_dir: bool, log_extra: dict) -> None:
     """Unpack the submission archive file."""
+    # --anchored (must precede the patterns) matches only the top-level anc,
+    # for both "anc/..." and "./anc/..." member names; excluding a directory
+    # also excludes its contents. "sub/anc/" and "ancillary.tex" are kept.
+    exclude_args = ["--anchored", "--exclude=anc", "--exclude=./anc"] if hide_anc_dir else []
     if filename.endswith(".tar.gz"):
-        args = ["tar", "xzf", filename]
+        # dash form: a bare "xzf" after leading options is read as a file name
+        args = ["tar", *exclude_args, "-xzf", filename]
     elif filename.endswith(".tar"):
-        args = ["tar", "xf", filename]
-    elif filename.endswith(".zip"):
+        args = ["tar", *exclude_args, "-xf", filename]
+    elif filename.endswith(".zip"):  # why do we still have that? Do we have old zip files?
         args = ["unzip", filename, "-d", in_dir]
     else:
         raise UnsupportedArchive(f"Unknown file type: {os.path.basename(filename)}")
