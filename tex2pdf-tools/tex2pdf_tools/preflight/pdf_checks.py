@@ -118,12 +118,17 @@ def reset_checks() -> None:
     _loaded = False
 
 
-def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResult], list[CheckResult]]:
+def run_checks(
+    pdf: str, checks: list[str] | str, deadline: float | None = None
+) -> tuple[bool, list[CheckResult], list[CheckResult]]:
     """Run a list of checks or all.
 
     Args:
         pdf: Path to the PDF file to check
         checks: List of checks to run
+        deadline: ``time.monotonic()`` value by which the checks should be done,
+            e.g. the end of the request's time budget; passed to the checks as
+            ``res["deadline"]`` (see :mod:`.plugin_api`).  None: no deadline.
 
     Returns: a tuple containing:
         - a boolean indicating whether all checks passed (no errors, warnings OK)
@@ -132,6 +137,7 @@ def run_checks(pdf: str, checks: list[str] | str) -> tuple[bool, list[CheckResul
     """
     _ensure_loaded()
     pdf_info = get_pdf_info(pdf)
+    pdf_info["deadline"] = deadline
     error_results: list[CheckResult] = []
     warning_results: list[CheckResult] = []
     if type(checks) is str:

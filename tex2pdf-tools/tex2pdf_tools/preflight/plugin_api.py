@@ -18,6 +18,11 @@ File/PDF check entry points resolve to a zero-argument *provider* returning a
 :class:`CheckSpec`; using a provider (rather than the bare function) lets the
 plugin decide its severity lazily -- e.g. from its own feature flags -- at load
 time.  Source-check entry points resolve directly to the detection callable.
+
+A PDF check is called as ``func(res, severity)``; ``res["pdf_path"]`` is the
+PDF, and ``res["deadline"]`` is the ``time.monotonic()`` value by which the
+checks should be done, or None.  A check that may run long limits itself to the
+time left, so the checks cannot outrun the request that runs them.
 """
 
 from __future__ import annotations

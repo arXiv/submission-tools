@@ -137,6 +137,22 @@ def test_pdf_check_panic_is_fail_open(monkeypatch):
     assert pdf_checks.run_checks("missing.pdf", ["panics"]) == (True, [], [])
 
 
+def test_pdf_check_gets_the_deadline(monkeypatch):
+    """A PDF check sees run_checks' deadline as res["deadline"], None without one."""
+    seen = []
+
+    def records(res, severity):
+        seen.append(res["deadline"])
+        return CheckResult(check_passed=True, info="", long_info="", severity=severity, issues=[])
+
+    monkeypatch.setattr(plugin_api, "_load_entry_points", lambda group: [])
+    pdf_checks._ensure_loaded()
+    monkeypatch.setitem(pdf_checks.PDF_CHECKS, "records", (records, CheckSeverity.error))
+    pdf_checks.run_checks("missing.pdf", ["records"], deadline=123.5)
+    pdf_checks.run_checks("missing.pdf", ["records"])
+    assert seen == [123.5, None]
+
+
 def test_safe_call_does_not_swallow_interrupts():
     def interrupted():
         raise KeyboardInterrupt
