@@ -46,16 +46,17 @@ COPY pdf-watermark/ /tmp/pdf-watermark/
 # RUN poetry config installer.parallel false
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN poetry install --no-root --without=dev
-# Replace the pinned arxiv-tex2pdf-tools and arxiv-pdf-watermark wheels with ones
-# built from the local source so the image carries the working-tree versions,
-# not the GitHub commits pinned in poetry.lock.
-RUN poetry run pip install --no-deps /tmp/tex2pdf-tools
-RUN poetry run pip install --no-deps /tmp/pdf-watermark
 
 # copy this afterwards to avoid re-installing poetry deps on each docker build
 COPY tex2pdf-service/tex2pdf/ ./tex2pdf/
 # second poetry run should only install the current project
 RUN poetry install --without=dev
+# Replace the pinned arxiv-tex2pdf-tools and arxiv-pdf-watermark wheels with ones
+# built from the local source so the image carries the working-tree versions,
+# not the GitHub commits pinned in poetry.lock.  After the last poetry install:
+# poetry reinstalls a locked package whose source differs from the lock.
+RUN poetry run pip install --no-deps /tmp/tex2pdf-tools
+RUN poetry run pip install --no-deps /tmp/pdf-watermark
 
 FROM gcr.io/arxiv-development/arxiv-texlive/arxiv-texlive-base-${TEXLIVE_BASE_RELEASE}-${TEXLIVE_BASE_IMAGE_DATE} AS arxiv-texlive-base
 ARG TEXLIVE_BASE_RELEASE

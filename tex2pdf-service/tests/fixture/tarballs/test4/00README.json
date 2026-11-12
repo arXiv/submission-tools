@@ -1,0 +1,13 @@
+{
+  "process": {
+    "compiler": "latex+dvips_ps2pdf"
+  },
+  "sources": [
+    {
+      "filename": "main.tex"
+    },
+    {
+      "filename": "gdp.tex"
+    }
+  ]
+}

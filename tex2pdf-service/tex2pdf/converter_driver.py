@@ -281,7 +281,11 @@ class ConverterDriver:
             pdf_result = self.outcome.get("pdf_file")
             if pdf_result:
                 pdf_file = f"{self.out_dir}/{pdf_result}"
-                checks_succeed, check_failed_results, check_warn_results = run_pdf_checks(pdf_file, "all")
+                # The checks share what is left of the request's time budget.
+                time_left = self.max_time_budget - (time.perf_counter() - self.t0)
+                checks_succeed, check_failed_results, check_warn_results = run_pdf_checks(
+                    pdf_file, "all", deadline=time.monotonic() + time_left
+                )
                 if check_warn_results:
                     self.outcome["problems"] = self.outcome.get("problems", []) + [x.info for x in check_warn_results]
                 if not checks_succeed:
