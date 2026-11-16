@@ -112,7 +112,7 @@ pillow = "*"
 type = "git"
 url = "https://github.com/arXiv/submission-tools.git"
 reference = "HEAD"
-resolved_reference = "67be0bedc1fe5d3a785ce44929963230671ac066"
+resolved_reference = "b57146817d5d31f597dc71248e00c2fe2d02b01d"
 subdirectory = "pdf-watermark"
 
 [[package]]
