@@ -13,6 +13,7 @@ from PIL import Image, ImageChops
 from arxiv_pdf_watermark import (
     Watermark,
     WatermarkTimeout,
+    _largest_image_pixels,
     _watermark_should_overlay,
     add_watermark_text_to_pdf,
     add_watermark_text_to_pdf_bounded,
@@ -363,6 +364,45 @@ class TestHugeImageSkipsRender(unittest.TestCase):
         render, on_top = self._stamp(4000, 3000)
         render.assert_called_once()
         self.assertFalse(on_top)  # the mocked render said "content in the band"
+
+
+class TestSharedFormResources(unittest.TestCase):
+    """Form XObjects sharing one Resources dictionary are scanned once, not once per Form.
+
+    Shaped like arXiv submission 8363609 (2026-11-15): a LibreOffice PDF whose
+    12052 page-1 Forms all name the page's own Resources (12381 XObjects), so the
+    image-size search re-read that dictionary for every Form -- 149M steps, 185 s,
+    past the 120 s stamping timeout.
+    """
+
+    def test_shared_resources_are_scanned_once(self):
+        forms = 2000  # once per Form: ~4M steps, seconds; once: ~2000 steps
+        with pikepdf.new() as pdf:
+            pdf.add_blank_page(page_size=(612, 792))
+            resources = pdf.make_indirect(pikepdf.Dictionary(XObject=pikepdf.Dictionary()))
+            resources.XObject.Im0 = pdf.make_stream(
+                b"",
+                Type=pikepdf.Name.XObject,
+                Subtype=pikepdf.Name.Image,
+                Width=100,
+                Height=50,
+                ColorSpace=pikepdf.Name.DeviceRGB,
+                BitsPerComponent=8,
+            )
+            for i in range(forms):
+                resources.XObject[f"/Fm{i}"] = pdf.make_stream(
+                    b"",
+                    Type=pikepdf.Name.XObject,
+                    Subtype=pikepdf.Name.Form,
+                    BBox=[0, 0, 1, 1],
+                    Resources=resources,
+                )
+            pdf.pages[0].Resources = resources
+            start = time.monotonic()
+            pixels = _largest_image_pixels(pikepdf.Page(pdf.pages[0]))
+            elapsed = time.monotonic() - start
+        self.assertEqual(pixels, 100 * 50)
+        self.assertLess(elapsed, 1.0)
 
 
 if __name__ == "__main__":

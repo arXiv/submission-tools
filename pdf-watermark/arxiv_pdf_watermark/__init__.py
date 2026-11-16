@@ -267,13 +267,22 @@ def _largest_image_pixels(page: pikepdf.Page) -> int:
     Reads only the image dictionaries, never the image data. Malformed resources
     end the search with what was found so far, which leaves the decision to the
     band render and its own fallback.
+
+    Each XObject and each shared Resources dictionary is read once: LibreOffice
+    gives every Form the page's own Resources, so reading it again per Form was
+    quadratic (12052 Forms, 149M steps, 185 s for arXiv submission 8363609).
     """
     largest = 0
     todo: list[pikepdf.Object] = [page.resources]
     seen: set[tuple[int, int]] = set()
     try:
         while todo:
-            xobjects = todo.pop().get("/XObject")
+            resources = todo.pop()
+            if resources.is_indirect:
+                if resources.objgen in seen:
+                    continue
+                seen.add(resources.objgen)
+            xobjects = resources.get("/XObject")
             if not isinstance(xobjects, pikepdf.Dictionary):
                 continue
             for _name, xobject in xobjects.items():
