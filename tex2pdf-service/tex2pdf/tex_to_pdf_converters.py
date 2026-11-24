@@ -452,7 +452,7 @@ class BaseConverter:
                             status = "fail"
                         break
                 if MISSING_CITE_RE.search(line):
-                    logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} found in line {line}")
+                    # logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} found in line {line}")
                     citation_missing = True
                 else:
                     # logger.debug(f"MISSING_CITE: {MISSING_CITE_RE} not found in line {line}")
